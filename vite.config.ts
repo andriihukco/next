@@ -8,7 +8,7 @@ const developmentAdminAuth = (mode: string): Plugin => ({
   configureServer(server) {
     if (mode !== "development") return;
     const password = loadEnv(mode, process.cwd(), "").ADMIN_PASSWORD;
-    server.middlewares.use("/__admin/auth", (request, response, next) => {
+    server.middlewares.use("/__admin/auth", (request, response) => {
       response.setHeader("Cache-Control", "no-store");
       if (request.method !== "POST") {
         response.statusCode = 405;

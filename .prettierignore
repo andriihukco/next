@@ -1,0 +1,8 @@
+dist
+node_modules
+public
+data
+static.zip
+google-protobuf.js
+*.json
+src/index.css

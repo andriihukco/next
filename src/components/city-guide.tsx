@@ -21,7 +21,6 @@ import {
   Clock3,
   MapPin,
   MaterialIcon,
-  X,
 } from "./ui/material-icon";
 import {
   CITY_PLACE_CATEGORY_COLORS,
@@ -42,7 +41,6 @@ import {
   cityRealEstateListings,
   cityServiceListings,
 } from "../lib/city-fixtures";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { UnifiedCard } from "./ui/unified-card";
 
@@ -105,13 +103,6 @@ const TRANSPORT_TABS: { id: TransportTab; label: string; icon: string }[] = [
   { id: "trolleybus", label: "Тролейбуси",  icon: "electric_bolt" },
   { id: "taxi",       label: "Таксі",       icon: "local_taxi" },
 ];
-
-const TRANSIT_TYPE_TO_TAB: Record<CityTransitType, TransportTab> = {
-  bus: "bus",
-  tram: "tram",
-  trolleybus: "trolleybus",
-  taxi: "taxi",
-};
 
 const CITY_SECTIONS: { id: CitySection; label: string; icon: string }[] = [
   { id: "transport",   label: "Транспорт",    icon: "directions_transit" },
@@ -189,79 +180,19 @@ const REAL_ESTATE_FILTERS = [
   { id: "private",    label: "Приватне житло", icon: "house" },
 ] as const;
 
-const CATEGORY_PHOTOS: Record<CityPlaceCategory, string> = {
-  groceries:   "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=82",
-  food:        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=82",
-  health:      "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=900&q=82",
-  pets:        "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=900&q=82",
-  education:   "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=82",
-  parks:       "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=82",
-  sports:      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=82",
-  culture:     "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=900&q=82",
-  tourism:     "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=900&q=82",
-  transport:   "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=900&q=82",
-  finance:     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=82",
-  public:      "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=82",
-  religion:    "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=82",
-  shopping:    "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=82",
-  nightlife:   "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=82",
-  services:    "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=82",
-  jobs:        "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=82",
-  beauty:      "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=82",
-  "real-estate":"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=82",
-  stay:        "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=82",
-  buildings:   "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&w=900&q=82",
-  other:       "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=82",
-  // New categories
-  market:      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=82",
-  parking:     "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=900&q=82",
-  fuel:        "https://images.unsplash.com/photo-1547165868-28cb4c0c01b7?auto=format&fit=crop&w=900&q=82",
-  "charging-station": "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?auto=format&fit=crop&w=900&q=82",
-  recycling:   "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=900&q=82",
-  pharmacy:    "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=82",
-  atm:         "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=900&q=82",
-  "post-office": "https://images.unsplash.com/photo-1563227696-d43d5d085b45?auto=format&fit=crop&w=900&q=82",
-  library:     "https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&w=900&q=82",
-  "car-wash":  "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=900&q=82",
-  "car-repair": "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=900&q=82",
-  "tire-service": "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=900&q=82",
-  construction: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=900&q=82",
-  hardware:    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=82",
-  flowers:     "https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=900&q=82",
-  veterinary:  "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=82",
-  "pet-shop":  "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=900&q=82",
-  laundry:     "https://images.unsplash.com/photo-1579762715118-a6f1d4b934f1?auto=format&fit=crop&w=900&q=82",
-  "dry-cleaning": "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=900&q=82",
-  optician:    "https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=900&q=82",
-  dentist:     "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=900&q=82",
-  fitness:     "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=82",
-  yoga:        "https://images.unsplash.com/photo-1544367563-12123d8965cd?auto=format&fit=crop&w=900&q=82",
-  dance:       "https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?auto=format&fit=crop&w=900&q=82",
-  "music-school": "https://images.unsplash.com/photo-1507838153414-b4b713384ebd?auto=format&fit=crop&w=900&q=82",
-  "art-studio": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=900&q=82",
-  playground:  "https://images.unsplash.com/photo-1560010930-7e673c91f249?auto=format&fit=crop&w=900&q=82",
-  "bicycle-rental": "https://images.unsplash.com/photo-1571068316344-75bc76f77890?auto=format&fit=crop&w=900&q=82",
-  "scooter-rental": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=82",
-  "car-rental": "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=900&q=82",
-  "internet-cafe": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=900&q=82",
-  "copy-center": "https://images.unsplash.com/photo-1568702846914-96b305d28998?auto=format&fit=crop&w=900&q=82",
-  "print-shop": "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=900&q=82",
-  "photo-studio": "https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&w=900&q=82",
-  "shoe-repair": "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&w=900&q=82",
-  "key-cutting": "https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?auto=format&fit=crop&w=900&q=82",
-  locksmith:   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=82",
-  "waste-disposal": "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=900&q=82",
-  "water-fountain": "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?auto=format&fit=crop&w=900&q=82",
-  "public-toilet": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=900&q=82",
-  "bicycle-parking": "https://images.unsplash.com/photo-1571069917304-3906ca5065c9?auto=format&fit=crop&w=900&q=82",
-  "motorcycle-parking": "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=900&q=82",
-  "bus-stop":   "https://images.unsplash.com/photo-1553307654-913a27a11b27?auto=format&fit=crop&w=900&q=82",
-  "tram-stop":  "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=900&q=82",
-  "taxi-stand": "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=900&q=82",
-  "car-sharing": "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=900&q=82",
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** "All categories" disclosure above a category row. */
+function CategoryHeading({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
+  return (
+    <div className="city-category-heading">
+      <Button type="button" variant="ghost" size="sm" aria-expanded={expanded} onClick={onToggle}>
+        Усі категорії
+        <MaterialIcon name={expanded ? "keyboard_arrow_up" : "keyboard_arrow_down"} size={20} />
+      </Button>
+    </div>
+  );
+}
 
 /** Haversine approximation using flat-earth for short distances */
 function distanceToPlace(place: CityPlace, origin: [number, number]): number {
@@ -286,14 +217,6 @@ function formatPlaceDistance(meters: number): string {
   return meters >= 1000
     ? `${new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 1 }).format(meters / 1000)} км`
     : `${Math.round(meters / 10) * 10} м`;
-}
-
-function formatCartItemCount(count: number): string {
-  if (count % 100 >= 11 && count % 100 <= 19) return "товарів";
-  const last = count % 10;
-  if (last === 1) return "товар";
-  if (last >= 2 && last <= 4) return "товари";
-  return "товарів";
 }
 
 type PlaceActionKind = "cart" | "books" | "hotel" | "reservation" | "tickets" | "save";
@@ -371,55 +294,6 @@ function bookingChoicesFor(place: CityPlace): { label: string; options: string[]
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-
-function PlaceMapButton({
-  place,
-  onShowOnMap,
-}: {
-  place: CityPlace;
-  onShowOnMap: (coordinates: [number, number], name: string) => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      className="osm-place-map-button"
-      onClick={() => onShowOnMap([place.lng, place.lat], place.name)}
-    >
-      <MaterialIcon name="location_on" size={17} />
-      На мапі
-    </Button>
-  );
-}
-
-function PlacePhoto({
-  place,
-  distance,
-}: {
-  place: CityPlace;
-  distance: string;
-}) {
-  const [imageError, setImageError] = useState(false);
-  const photoUrl = place.imageUrl ?? CATEGORY_PHOTOS[place.category];
-  return (
-    <div className="osm-place-photo">
-      {!imageError && photoUrl ? (
-        <img
-          src={photoUrl}
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          onError={() => setImageError(true)}
-        />
-      ) : (
-        <div className={`osm-place-photo-placeholder ${place.category}`}>
-          <MaterialIcon name={cityPlaceIcons[place.category]} size={26} />
-        </div>
-      )}
-      <span className="osm-place-distance">{distance}</span>
-    </div>
-  );
-}
 
 function EducationCard({
   place,
@@ -524,31 +398,10 @@ function DirectoryListingPage({
     return listings.filter((item) => item.category === activeFilter);
   }, [listings, activeFilter]);
 
-  const currentFilterLabel = filters.find((f) => f.id === activeFilter)?.label || filters[0]?.label || title;
 
   return (
     <section className="city-section" aria-labelledby="directory-title">
-      <div className="city-category-heading">
-        <button
-          type="button"
-          aria-expanded={showAllCategories}
-          onClick={() => setShowAllCategories((c) => !c)}
-        >
-          Усі категорії
-          <MaterialIcon
-            name={showAllCategories ? "keyboard_arrow_up" : "keyboard_arrow_down"}
-            size={20}
-          />
-        </button>
-        <button
-          type="button"
-          className="city-filters-button"
-          aria-label="Фільтри"
-        >
-          <MaterialIcon name="tune" size={20} />
-          Фільтри
-        </button>
-      </div>
+      <CategoryHeading expanded={showAllCategories} onToggle={() => setShowAllCategories((c) => !c)} />
       {!showAllCategories && (
         <div className="city-filter-row" role="group" aria-label={`Фільтр: ${title}`}>
         {filters.map((filter) => (
@@ -892,7 +745,6 @@ export function CityGuide({
   >("popular");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [placeDisplayLimit, setPlaceDisplayLimit] = useState(40);
-  const [placeCart, setPlaceCart] = useState<Record<string, Record<string, number>>>({});
   const [placeActionSearch, setPlaceActionSearch] = useState<Record<string, string>>({});
   const [placeActionFeedback, setPlaceActionFeedback] = useState<Record<string, string>>({});
   const [savedPlaces, setSavedPlaces] = useState<Set<string>>(() => new Set());
@@ -1007,16 +859,6 @@ export function CityGuide({
     return next;
   };
 
-  const updatePlaceCart = (placeId: string, productId: string, delta: number): void => {
-    setPlaceCart((current) => {
-      const nextPlaceItems = { ...(current[placeId] ?? {}) };
-      const nextCount = Math.max(0, (nextPlaceItems[productId] ?? 0) + delta);
-      if (nextCount === 0) delete nextPlaceItems[productId];
-      else nextPlaceItems[productId] = nextCount;
-      return { ...current, [placeId]: nextPlaceItems };
-    });
-  };
-
   const setPlaceFeedback = (placeId: string, message: string): void => {
     setPlaceActionFeedback((current) => ({ ...current, [placeId]: message }));
   };
@@ -1074,27 +916,7 @@ export function CityGuide({
             </p>
           ) : null}
 
-          <div className="city-category-heading">
-            <button
-              type="button"
-              aria-expanded={showAllTransportCategories}
-              onClick={() => setShowAllTransportCategories((c) => !c)}
-            >
-              Усі категорії
-              <MaterialIcon
-                name={showAllTransportCategories ? "keyboard_arrow_up" : "keyboard_arrow_down"}
-                size={20}
-              />
-            </button>
-            <button
-              type="button"
-              className="city-filters-button"
-              aria-label="Фільтри"
-            >
-              <MaterialIcon name="tune" size={20} />
-              Фільтри
-            </button>
-          </div>
+          <CategoryHeading expanded={showAllTransportCategories} onToggle={() => setShowAllTransportCategories((c) => !c)} />
 
           {/* Transport type tab bar */}
           {!showAllTransportCategories && (
@@ -1203,27 +1025,7 @@ export function CityGuide({
             </div>
           ) : null}
           {!selectedPlaceId && (
-            <div className={`city-category-heading${showAllCategories ? " expanded" : ""}`}>
-              <button
-                type="button"
-                aria-expanded={showAllCategories}
-                onClick={() => setShowAllCategories((c) => !c)}
-              >
-                Усі категорії
-                <MaterialIcon
-                  name={showAllCategories ? "keyboard_arrow_up" : "keyboard_arrow_down"}
-                  size={20}
-                />
-              </button>
-              <button
-                type="button"
-                className="city-filters-button"
-                aria-label="Фільтри"
-              >
-                <MaterialIcon name="tune" size={20} />
-                Фільтри
-              </button>
-            </div>
+            <CategoryHeading expanded={showAllCategories} onToggle={() => setShowAllCategories((c) => !c)} />
           )}
           {!selectedPlaceId && (
             <div
@@ -1324,12 +1126,6 @@ export function CityGuide({
                       `${product.name} ${product.description}`
                         .toLocaleLowerCase("uk-UA")
                         .includes(actionSearch.trim().toLocaleLowerCase("uk-UA")),
-                    );
-                    const cart = placeCart[place.id] ?? {};
-                    const cartCount = Object.values(cart).reduce((t, c) => t + c, 0);
-                    const cartTotal = products.reduce(
-                      (total, product) => total + product.price * (cart[product.id] ?? 0),
-                      0,
                     );
                     return (
                       <>
@@ -1621,27 +1417,7 @@ export function CityGuide({
             </>
           ) : (
             <>
-              <div className="city-category-heading">
-                <button
-                  type="button"
-                  aria-expanded={showAllCategories}
-                  onClick={() => setShowAllCategories((c) => !c)}
-                >
-                  Усі категорії
-                  <MaterialIcon
-                    name={showAllCategories ? "keyboard_arrow_up" : "keyboard_arrow_down"}
-                    size={20}
-                  />
-                </button>
-                <button
-                  type="button"
-                  className="city-filters-button"
-                  aria-label="Фільтри"
-                >
-                  <MaterialIcon name="tune" size={20} />
-                  Фільтри
-                </button>
-              </div>
+              <CategoryHeading expanded={showAllCategories} onToggle={() => setShowAllCategories((c) => !c)} />
               {!showAllCategories && (
                 <div className="city-filter-row" role="group" aria-label="Тип закладу">
                 {EDUCATION_FILTERS.map((filter) => (
@@ -1752,27 +1528,7 @@ export function CityGuide({
         <section className="city-section" aria-label="Події">
           {!selectedEvent && (
             <>
-              <div className="city-category-heading">
-                <button
-                  type="button"
-                  aria-expanded={showAllEventCategories}
-                  onClick={() => setShowAllEventCategories((c) => !c)}
-                >
-                  Усі категорії
-                  <MaterialIcon
-                    name={showAllEventCategories ? "keyboard_arrow_up" : "keyboard_arrow_down"}
-                    size={20}
-                  />
-                </button>
-                <button
-                  type="button"
-                  className="city-filters-button"
-                  aria-label="Фільтри"
-                >
-                  <MaterialIcon name="tune" size={20} />
-                  Фільтри
-                </button>
-              </div>
+              <CategoryHeading expanded={showAllEventCategories} onToggle={() => setShowAllEventCategories((c) => !c)} />
               {!showAllEventCategories && (
                 <div className="city-filter-row" role="group" aria-label="Категорії подій">
                 {[

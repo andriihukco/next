@@ -2,7 +2,8 @@ type MaterialIconProps = {
   name: string;
   size?: number;
   className?: string;
-  outlined?: boolean;
+  /** Filled glyph. Use only for the selected/active state (DESIGN.md §6). */
+  filled?: boolean;
 };
 
 type SemanticIconProps = {
@@ -17,12 +18,12 @@ export function MaterialIcon({
   name,
   size = 20,
   className,
-  outlined = false,
+  filled = false,
 }: MaterialIconProps) {
   return (
     <span
       aria-hidden="true"
-      className={[outlined ? "material-symbols-outlined" : "material-symbols-rounded", className].filter(Boolean).join(" ")}
+      className={["material-symbols-rounded", filled && "is-filled", className].filter(Boolean).join(" ")}
       style={{ fontSize: size }}
     >
       {name}

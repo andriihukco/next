@@ -9,7 +9,7 @@ const TooltipContent = ({ className, sideOffset = 4, ...props }: React.Component
   <TooltipPrimitive.Portal>
     <TooltipPrimitive.Content
       sideOffset={sideOffset}
-      className={cn("z-[1100] overflow-hidden rounded-md border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-xs text-white shadow-lg animate-in fade-in-0 zoom-in-95", className)}
+      className={cn("tooltip-content z-[1100] max-w-64 overflow-hidden rounded-sm bg-foreground px-2.5 py-1.5 text-xs font-semibold text-background shadow-[var(--shadow-raised)]", className)}
       {...props}
     />
   </TooltipPrimitive.Portal>

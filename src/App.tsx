@@ -32,9 +32,12 @@ import {
   ZoomIn,
   ZoomOut,
 } from "./components/ui/material-icon";
+import { AnimatePresence, MotionConfig, motion, type MotionStyle } from "motion/react";
 import { BrandLogo } from "./components/ui/brand-logo";
-import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
+import { IconButton } from "./components/ui/icon-button";
+import { useBottomSheet } from "./components/ui/use-bottom-sheet";
+import { useMediaQuery } from "./lib/use-media-query";
 import { Card } from "./components/ui/card";
 import { AdminPanel, type AdminDataset } from "./components/admin-panel";
 import { BuildingModelEditor } from "./components/building-model-editor";
@@ -50,14 +53,7 @@ import {
   StatGrid,
 } from "./components/ui/detail-layout";
 import { Input } from "./components/ui/input";
-import { Slider } from "./components/ui/slider";
-import { Switch } from "./components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./components/ui/tooltip";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { apiUrl } from "./lib/api";
 import {
   createVehicle3DLayer,
@@ -118,6 +114,17 @@ import {
   type CityPlace,
 } from "./lib/city-places";
 import { cityNames, ukraineCityRegions } from "./lib/ukraine-city-regions";
+import { BenefitsDialog } from "./features/onboarding/benefits-dialog";
+import { OnboardingDialog } from "./features/onboarding/onboarding-dialog";
+import { ONBOARDING_STEPS, type OnboardingProfile } from "./features/onboarding/steps";
+import {
+  BENEFITS_DISMISSED_KEY,
+  ONBOARDING_COMPLETE_KEY,
+  ONBOARDING_PREVIEW_KEY,
+  ONBOARDING_PROFILE_KEY,
+  readOnboardingValue,
+  saveOnboardingValue,
+} from "./features/onboarding/storage";
 
 type VehicleType = "tram" | "trolleybus" | "bus" | "taxi";
 type AppView = "city" | "map" | "admin";
@@ -192,12 +199,6 @@ type Shelter = {
   lng: number;
 };
 type ShelterLoadState = "loading" | "ready" | "error";
-type SpotlightRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
 
 type AdminDatasetId =
   | "vehicles"
@@ -412,25 +413,6 @@ const TELEGRAM_CHANNEL_URL = (() => {
   console.error("The Telegram channel URL must be an HTTPS t.me link.");
   return "";
 })();
-const ONBOARDING_COMPLETE_KEY = "un-onboarding-complete";
-const ONBOARDING_PREVIEW_KEY = "un-onboarding-preview";
-const BENEFITS_DISMISSED_KEY = "un-benefits-dismissed";
-const ONBOARDING_PROFILE_KEY = "un-onboarding-profile";
-const readOnboardingValue = (key: string): string | null => {
-  try {
-    return localStorage.getItem(key);
-  } catch (error) {
-    console.error(`Could not read ${key} from local storage.`, error);
-    return null;
-  }
-};
-const saveOnboardingValue = (key: string, value: string): void => {
-  try {
-    localStorage.setItem(key, value);
-  } catch (error) {
-    console.error(`Could not save ${key} to local storage.`, error);
-  }
-};
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const cityPlacePinImage = async (
   category: CityPlaceCategory,
@@ -697,8 +679,6 @@ export default function App() {
   const [onboardingPhase, setOnboardingPhase] = useState<
     "welcome" | "profile" | "tour"
   >("welcome");
-  const [heardAboutUs, setHeardAboutUs] = useState("");
-  const [visitorType, setVisitorType] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const shouldPreview =
       isDevRouteActive() &&
@@ -709,7 +689,6 @@ export default function App() {
     );
   });
   const [onboardingStep, setOnboardingStep] = useState(0);
-  const [spotlightRect, setSpotlightRect] = useState<SpotlightRect | null>(null);
   const [showBenefits, setShowBenefits] = useState(
     () =>
       readOnboardingValue(ONBOARDING_COMPLETE_KEY) === "true" &&
@@ -812,34 +791,6 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [waypoints, setWaypoints] = useState(["Моє місцезнаходження", ""]);
-  const onboardingSteps = [
-    {
-      target: "city-sections",
-      title: "Місто в одному місці",
-      body: "Перемикайтеся між транспортом, місцями, освітою та міськими послугами.",
-    },
-    {
-      target: "place-search",
-      title: "Знаходьте потрібне поруч",
-      body: "Шукайте адресу чи заклад і відкривайте місця на мапі.",
-    },
-    {
-      target: "city-events",
-      title: "Плануйте наперед",
-      body: "В афіші зібрані події Львова — відкрийте деталі та місце проведення.",
-    },
-    {
-      target: "map-controls",
-      title: "Керуйте мапою",
-      body: "Переміщуйте карту, змінюйте масштаб і обертайте її за всіма осями. Перемикач 2D повертає вигляд строго зверху.",
-    },
-    {
-      target: "map-location",
-      title: "Ваше місце — за бажанням",
-      body: "Знайдіть себе на мапі, щоб швидше зорієнтуватися. Доступ до геолокації можна не надавати.",
-    },
-  ] as const;
-  const currentOnboardingStep = onboardingSteps[onboardingStep];
 
   useEffect(() => {
     const dialog = cityLaunchDialogRef.current;
@@ -890,42 +841,6 @@ export default function App() {
     if (!developmentToolsAvailable) return;
     if (activeViewRef.current === "city") setActiveView("map");
   }, [developmentToolsAvailable]);
-
-  useEffect(() => {
-    if (!showOnboarding || onboardingPhase !== "tour") {
-      setSpotlightRect(null);
-      return;
-    }
-    const targetName = currentOnboardingStep.target;
-    const target = document.querySelector<HTMLElement>(
-      `[data-tour="${targetName}"]`,
-    );
-    if (!target) {
-      setSpotlightRect(null);
-      return;
-    }
-    target.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    const updateRect = (): void => {
-      const rect = target.getBoundingClientRect();
-      setSpotlightRect({
-        left: rect.left - 6,
-        top: rect.top - 6,
-        width: rect.width + 12,
-        height: rect.height + 12,
-      });
-    };
-    const frame = window.requestAnimationFrame(updateRect);
-    const observer = new ResizeObserver(updateRect);
-    observer.observe(target);
-    window.addEventListener("resize", updateRect);
-    window.addEventListener("scroll", updateRect, true);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      observer.disconnect();
-      window.removeEventListener("resize", updateRect);
-      window.removeEventListener("scroll", updateRect, true);
-    };
-  }, [activeView, currentOnboardingStep.target, onboardingPhase, showOnboarding]);
 
   const refreshCityPlaces = (): void => {
     if (activeViewRef.current !== "city") return;
@@ -2185,6 +2100,20 @@ export default function App() {
   const inspectorOpen = Boolean(
     transitFlow || selectedVehicle || selectedStop || selectedPlace,
   );
+  const isMobileLayout = useMediaQuery("(max-width: 800px)");
+  const railRef = useRef<HTMLElement>(null);
+  const [railHeight, setRailHeight] = useState(0);
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const observer = new ResizeObserver(() => setRailHeight(rail.offsetHeight));
+    observer.observe(rail);
+    return () => observer.disconnect();
+  }, []);
+  const sheet = useBottomSheet({
+    enabled: isMobileLayout && !inspectorOpen && activeView !== "admin",
+    sheetHeight: railHeight,
+  });
   const flowStops = useMemo(() => {
     if (!transitFlow || transitFlow === "menu") return [];
     const candidate =
@@ -2244,22 +2173,20 @@ export default function App() {
     setShowOnboarding(false);
     setShowBenefits(readOnboardingValue(BENEFITS_DISMISSED_KEY) !== "true");
   };
-  const startOnboardingTour = (): void => {
-    saveOnboardingValue(
-      ONBOARDING_PROFILE_KEY,
-      JSON.stringify({ heardAboutUs, visitorType }),
-    );
+  const startOnboardingTour = (profile: OnboardingProfile): void => {
+    saveOnboardingValue(ONBOARDING_PROFILE_KEY, JSON.stringify(profile));
     setOnboardingPhase("tour");
     setOnboardingStep(0);
     setActiveView("city");
   };
   const goToOnboardingStep = (step: number): void => {
-    if (step >= onboardingSteps.length) {
+    if (step >= ONBOARDING_STEPS.length) {
       finishOnboarding();
       return;
     }
-    setActiveView(step >= 3 ? "map" : "city");
-    setOnboardingStep(Math.max(0, step));
+    const next = Math.max(0, step);
+    setActiveView(ONBOARDING_STEPS[next].view);
+    setOnboardingStep(next);
   };
   const dismissBenefits = (): void => {
     saveOnboardingValue(BENEFITS_DISMISSED_KEY, "true");
@@ -2334,49 +2261,6 @@ export default function App() {
     setShowBenefits(false);
     setShowOnboarding(true);
   };
-  useEffect(() => {
-    if (!showOnboarding && !showBenefits) return;
-    const dialog = document.querySelector<HTMLElement>(
-      showOnboarding ? ".onboarding-card" : ".benefits-card",
-    );
-    const focusable = (): HTMLElement[] =>
-      Array.from(
-        dialog?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      );
-    focusable()[0]?.focus();
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        if (showOnboarding) {
-          saveOnboardingValue(ONBOARDING_COMPLETE_KEY, "true");
-          setShowOnboarding(false);
-          setShowBenefits(
-            readOnboardingValue(BENEFITS_DISMISSED_KEY) !== "true",
-          );
-        } else {
-          saveOnboardingValue(BENEFITS_DISMISSED_KEY, "true");
-          setShowBenefits(false);
-        }
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const elements = focusable();
-      if (!elements.length) return;
-      const first = elements[0];
-      const last = elements[elements.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onboardingPhase, onboardingStep, showBenefits, showOnboarding]);
   const updateFixtureSettings = (un: FixtureSettings): void => {
     setFixtureSettings(un);
     saveFixtureSettings(un);
@@ -2658,23 +2542,41 @@ export default function App() {
       setCityUpdateSubmitting(false);
     }
   };
-  const onboardingCardStyle: React.CSSProperties = spotlightRect
-    ? {
-        left: Math.max(
-          16,
-          Math.min(spotlightRect.left, window.innerWidth - 410),
-        ),
-        top:
-          spotlightRect.top + spotlightRect.height + 310 <= window.innerHeight
-            ? spotlightRect.top + spotlightRect.height + 16
-            : Math.max(16, spotlightRect.top - 310),
-      }
-    : {};
+  const sheetEnabled = isMobileLayout && !inspectorOpen && activeView !== "admin";
   return (
+    <MotionConfig reducedMotion="user">
     <TooltipProvider delayDuration={300}>
     <main className="un-shell">
       <div ref={mapNode} className="map-canvas" />
-      <aside className={`brand-rail${activeView === "city" || inspectorOpen ? " city-mode" : ""}${inspectorOpen ? " inspector-open" : ""}`}>
+      <motion.aside
+        ref={railRef}
+        className={`brand-rail${activeView === "city" || inspectorOpen ? " city-mode" : ""}${inspectorOpen ? " inspector-open" : ""}${sheetEnabled ? " is-sheet" : ""}`}
+        style={sheetEnabled ? { y: sheet.y, "--sheet-hidden": `${sheet.hiddenHeight}px` } as unknown as MotionStyle : undefined}
+      >
+        {sheetEnabled && (
+          <button
+            type="button"
+            className="sheet-handle"
+            aria-label={sheet.detent === "full" ? "Згорнути панель" : "Розгорнути панель"}
+            aria-expanded={sheet.detent === "full"}
+            {...sheet.handleProps}
+            onClick={(event) => {
+              // Pointer taps are handled in onPointerUp; this is the keyboard path.
+              if (event.detail === 0) sheet.setDetent(sheet.detent === "full" ? "half" : "full");
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowUp") {
+                event.preventDefault();
+                sheet.setDetent(sheet.detent === "peek" ? "half" : "full");
+              } else if (event.key === "ArrowDown") {
+                event.preventDefault();
+                sheet.setDetent(sheet.detent === "full" ? "half" : "peek");
+              }
+            }}
+          >
+            <span aria-hidden="true" />
+          </button>
+        )}
         {activeView === "city" && cityPageOpen && !inspectorOpen ? (
           <header className="brand-header page-back-header">
             <Button
@@ -2709,16 +2611,17 @@ export default function App() {
                 <BrandLogo className="brand-logo" />
               </div>
               {!searchExpanded ? (
-                <button
-                  type="button"
+                <IconButton
+                  label="Пошук"
+                  tooltipSide="bottom"
                   className="search-compact-toggle"
-                  aria-label="Пошук"
+                  data-tour="place-search"
                   onClick={() => setSearchExpanded(true)}
                 >
-                  <Search size={17} aria-hidden="true" />
-                </button>
+                  <Search size={17} />
+                </IconButton>
               ) : (
-                <label className="search-inline-field search-inline-field-expanded">
+                <label className="search-inline-field search-inline-field-expanded" data-tour="place-search">
                   <Search size={17} className="search-inline-icon" aria-hidden="true" />
                   <input
                     ref={(el) => el?.focus()}
@@ -2732,29 +2635,17 @@ export default function App() {
                       if (!search) setSearchExpanded(false);
                     }}
                   />
-                  {search && (
-                    <button
-                      type="button"
-                      className="search-close"
-                      aria-label="Очистити пошук"
-                      onClick={() => {
-                        setSearch("");
-                        setSearchExpanded(false);
-                      }}
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                  {!search && (
-                    <button
-                      type="button"
-                      className="search-close"
-                      aria-label="Закрити пошук"
-                      onClick={() => setSearchExpanded(false)}
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
+                  <IconButton
+                    label={search ? "Очистити пошук" : "Закрити пошук"}
+                    tooltipSide="bottom"
+                    className="search-close"
+                    onClick={() => {
+                      setSearch("");
+                      setSearchExpanded(false);
+                    }}
+                  >
+                    <X size={16} />
+                  </IconButton>
                 </label>
               )}
             </header>
@@ -3613,7 +3504,7 @@ export default function App() {
             </div>
           </section>
         )}
-      </aside>
+      </motion.aside>
       {airAlert.status === "active" && (
       <section
         className={`air-alert active level-${airAlert.level ?? "red"}${airAlertExpanded ? " expanded" : ""}`}
@@ -3991,263 +3882,29 @@ export default function App() {
           }}
         />
       )}
-      {showOnboarding && (
-        <>
-          {onboardingPhase === "tour" && spotlightRect ? (
-            <div
-              className="onboarding-spotlight"
-              aria-hidden="true"
-              style={{
-                left: spotlightRect.left,
-                top: spotlightRect.top,
-                width: spotlightRect.width,
-                height: spotlightRect.height,
-              }}
-            />
-          ) : (
-            <div className="onboarding-veil" aria-hidden="true" />
-          )}
-          <section
-            key={`${onboardingPhase}-${onboardingStep}`}
-            className={`onboarding-card${onboardingPhase === "tour" ? "" : " onboarding-card-centered"}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="onboarding-title"
-            style={onboardingPhase === "tour" ? onboardingCardStyle : undefined}
-          >
-            {onboardingPhase === "welcome" ? (
-              <>
-                <h2 id="onboarding-title">
-                  <span>Місто ближче з</span>
-                  <BrandLogo className="onboarding-brand-logo" />
-                </h2>
-                <p className="onboarding-intro">
-                  Дізнавайтеся, коли приїде транспорт, знаходьте корисні місця
-                  поруч і плануйте міські події — усе на одній мапі.
-                </p>
-                <ul className="onboarding-feature-list" aria-label="Розділи застосунку">
-                  {[
-                    { icon: "directions_transit", label: "Транспорт" },
-                    { icon: "explore", label: "Місця" },
-                    { icon: "event", label: "Події" },
-                  ].map((feature, index) => (
-                    <li
-                      key={feature.label}
-                      className="onboarding-feature-chip"
-                      style={{ "--chip-index": index } as React.CSSProperties}
-                    >
-                      <MaterialIcon name={feature.icon} size={17} />
-                      <span>{feature.label}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="onboarding-actions">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={finishOnboarding}
-                  >
-                    Не зараз
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setOnboardingPhase("profile")}
-                  >
-                    Почати короткий тур
-                    <ChevronRight size={17} />
-                  </Button>
-                </div>
-              </>
-            ) : onboardingPhase === "profile" ? (
-              <>
-                <div className="onboarding-progress">
-                  <span>Перед стартом</span>
-                  <span>Необов’язково</span>
-                </div>
-                <h2 id="onboarding-title">Кілька слів про вас</h2>
-                <p className="onboarding-intro">
-                  Допоможіть нам краще розуміти, кому стане в пригоді un.
-                  Можна пропустити.
-                </p>
-                <fieldset className="onboarding-question">
-                  <legend>Як ви дізналися про нас?</legend>
-                  <div className="onboarding-options">
-                    {["Соцмережі", "Порада друзів", "Пошук в інтернеті", "Інше"].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        className={heardAboutUs === option ? "selected" : ""}
-                        aria-pressed={heardAboutUs === option}
-                        onClick={() => setHeardAboutUs(option)}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-                <fieldset className="onboarding-question">
-                  <legend>Що найкраще описує вас?</legend>
-                  <div className="onboarding-options">
-                    {["Місцевий житель", "Студент", "Турист", "Працюю у Львові", "Інше"].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        className={visitorType === option ? "selected" : ""}
-                        aria-pressed={visitorType === option}
-                        onClick={() => setVisitorType(option)}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-                <div className="onboarding-actions">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setOnboardingPhase("welcome")}
-                  >
-                    Назад
-                  </Button>
-                  <div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={startOnboardingTour}
-                    >
-                      Пропустити
-                    </Button>
-                    <Button type="button" onClick={startOnboardingTour}>
-                      Почати тур
-                      <ChevronRight size={17} />
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="onboarding-progress">
-                  <span>Знайомство з un</span>
-                  <span>{onboardingStep + 1} / {onboardingSteps.length}</span>
-                </div>
-                <div
-                  className="onboarding-progress-track"
-                  role="progressbar"
-                  aria-label="Кроки знайомства"
-                  aria-valuemin={1}
-                  aria-valuemax={onboardingSteps.length}
-                  aria-valuenow={onboardingStep + 1}
-                >
-                  <span
-                    style={{
-                      width: `${((onboardingStep + 1) / onboardingSteps.length) * 100}%`,
-                    }}
-                  />
-                </div>
-                <div className="onboarding-copy">
-                  <span className="onboarding-icon" aria-hidden="true">
-                    <MaterialIcon
-                      name={
-                        onboardingStep === 0
-                          ? "explore"
-                          : onboardingStep === 1
-                            ? "search"
-                            : onboardingStep === 2
-                              ? "event"
-                              : onboardingStep === 3
-                                ? "3d_rotation"
-                                : "my_location"
-                      }
-                      size={22}
-                    />
-                  </span>
-                  <h2 id="onboarding-title">{currentOnboardingStep.title}</h2>
-                  <p>{currentOnboardingStep.body}</p>
-                </div>
-                <div className="onboarding-actions">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={finishOnboarding}
-                  >
-                    Пропустити тур
-                  </Button>
-                  <div>
-                    {onboardingStep > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => goToOnboardingStep(onboardingStep - 1)}
-                      >
-                        Назад
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      onClick={() => goToOnboardingStep(onboardingStep + 1)}
-                    >
-                      {onboardingStep === onboardingSteps.length - 1
-                        ? "До переваг"
-                        : "Далі"}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
-        </>
-      )}
-      {showBenefits && (
-        <div className="benefits-overlay">
-          <section
-            className="benefits-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="benefits-title"
-          >
-            <span className="benefits-icon" aria-hidden="true">
-              <MaterialIcon name="near_me" size={24} />
-            </span>
-            <span className="benefits-eyebrow">ВАШЕ МІСТО, БЛИЖЧЕ</span>
-            <h2 id="benefits-title">Більше корисного поруч</h2>
-            <p className="benefits-intro">
-              Геолокація допоможе знайти найближчі місця. Дозвіл можна не
-              надавати — мапа й інші розділи залишаться доступними.
-            </p>
-            <ul className="benefits-list">
-              <li><MaterialIcon name="directions_transit" size={19} /> Прибуття транспорту поруч</li>
-              <li><MaterialIcon name="event" size={19} /> Майбутні події у Львові</li>
-              <li><MaterialIcon name="local_offer" size={19} /> Місцеві знижки й пропозиції</li>
-            </ul>
-            <div className="benefits-actions">
-              <Button type="button" onClick={requestLocation}>
-                <LocateFixed size={17} />
-                Дозволити геолокацію
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={requestNotificationPermission}
-              >
-                <MaterialIcon name="notifications_active" size={18} />
-                Увімкнути сповіщення
-              </Button>
-            </div>
-            <p className="benefits-note" role="status" aria-live="polite">
-              {notificationMessage ||
-                "Сповіщення про ці теми з’являться після підключення відповідних джерел."}
-            </p>
-            <Button
-              type="button"
-              variant="ghost"
-              className="benefits-dismiss"
-              onClick={dismissBenefits}
-            >
-              Не зараз
-            </Button>
-          </section>
-        </div>
-      )}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingDialog
+            key="onboarding"
+            phase={onboardingPhase}
+            step={onboardingStep}
+            viewKey={activeView}
+            onPhaseChange={setOnboardingPhase}
+            onStartTour={startOnboardingTour}
+            onStepChange={goToOnboardingStep}
+            onFinish={finishOnboarding}
+          />
+        )}
+        {showBenefits && (
+          <BenefitsDialog
+            key="benefits"
+            notificationMessage={notificationMessage}
+            onRequestLocation={requestLocation}
+            onRequestNotifications={requestNotificationPermission}
+            onDismiss={dismissBenefits}
+          />
+        )}
+      </AnimatePresence>
     </main>
     <dialog
       ref={cityLaunchDialogRef}
@@ -4413,5 +4070,6 @@ export default function App() {
       </div>
     </dialog>
     </TooltipProvider>
+    </MotionConfig>
   );
 }

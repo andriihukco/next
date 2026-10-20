@@ -1,0 +1,311 @@
+/* Onboarding and benefits dialogs (DESIGN.md §10). Motion is driven by
+   `motion` springs in the components; this file holds layout and color only. */
+
+.onboarding-veil,
+.benefits-overlay {
+  position: fixed;
+  z-index: 1600;
+  inset: 0;
+  background: var(--scrim);
+}
+
+.onboarding-veil {
+  pointer-events: none;
+}
+
+.onboarding-spotlight {
+  position: fixed;
+  z-index: 1601;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.onboarding-spotlight-scrim {
+  fill: var(--scrim);
+}
+
+.onboarding-spotlight-ring {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+}
+
+.onboarding-card,
+.benefits-card {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  box-shadow: var(--shadow-overlay);
+  color: var(--foreground);
+}
+
+.onboarding-card {
+  position: fixed;
+  z-index: 1602;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+}
+
+/* Centered by layout, so springs can own `transform`. */
+.onboarding-card.is-centered {
+  inset: 0;
+  width: min(460px, calc(100vw - 32px));
+  height: fit-content;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 32px;
+}
+
+.onboarding-card.is-tour {
+  inset: auto 16px max(16px, env(safe-area-inset-bottom)) 16px;
+  width: auto;
+  max-height: min(360px, calc(100dvh - 32px));
+  padding: 24px;
+}
+
+.onboarding-card.is-anchored {
+  inset: 0 auto auto 0;
+  width: min(390px, calc(100vw - 32px));
+}
+
+@media (min-width: 801px) {
+  /* A tour step whose target is missing stays readable in the center. */
+  .onboarding-card.is-tour:not(.is-anchored) {
+    inset: 0;
+    width: min(390px, calc(100vw - 32px));
+    height: fit-content;
+    margin: auto;
+  }
+}
+
+.onboarding-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.onboarding-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 8px;
+  font-size: var(--type-display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.onboarding-title-logo {
+  display: inline-flex;
+  color: var(--foreground);
+  transform-origin: left center;
+}
+
+.onboarding-title-logo svg {
+  width: auto;
+  height: 32px;
+}
+
+.onboarding-heading {
+  margin: 12px 0 8px;
+  font-size: var(--type-inspector);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.onboarding-progress + .onboarding-heading {
+  margin-top: 16px;
+}
+
+.onboarding-intro,
+.onboarding-copy p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+
+.onboarding-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.onboarding-features .material-symbols-rounded {
+  color: var(--primary);
+}
+
+.onboarding-features [aria-pressed="true"] .material-symbols-rounded {
+  color: inherit;
+}
+
+.onboarding-feature-detail {
+  display: grid;
+  min-height: 72px;
+  margin-top: 12px;
+}
+
+.onboarding-feature-detail p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--secondary-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.onboarding-feature-detail .material-symbols-rounded {
+  color: var(--primary);
+}
+
+.onboarding-question {
+  min-width: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.onboarding-question legend {
+  margin-bottom: 8px;
+  color: var(--secondary-foreground);
+  font-size: var(--type-small);
+  font-weight: 700;
+}
+
+.onboarding-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.onboarding-progress {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+
+.onboarding-progress-track {
+  height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+}
+
+.onboarding-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transform-origin: left center;
+}
+
+.onboarding-copy {
+  padding-top: 16px;
+}
+
+.onboarding-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.onboarding-actions > div {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.onboarding-actions button {
+  min-height: 44px;
+}
+
+.benefits-overlay {
+  z-index: 1603;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+.benefits-card {
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.benefits-list {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.benefits-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--type-body);
+  font-weight: 600;
+}
+
+.benefits-list .material-symbols-rounded {
+  color: var(--primary);
+}
+
+.benefits-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.benefits-note {
+  min-height: 40px;
+  margin: 12px 0 4px;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.benefits-dismiss {
+  width: 100%;
+  min-height: 44px;
+}
+
+@media (max-width: 800px) {
+  .onboarding-card.is-centered {
+    padding: 24px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .onboarding-card,
+  .benefits-card {
+    border-color: var(--border);
+  }
+}

@@ -128,7 +128,7 @@ const UnifiedCardHeader = ({
 const UnifiedCardImage = ({
   src,
   alt = "",
-  category,
+  category: _category,
   fallbackIcon,
   className,
 }: UnifiedCardImageProps) => {
