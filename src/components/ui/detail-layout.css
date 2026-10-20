@@ -1,4 +1,6 @@
-/* Shared detail-sheet layout: iOS/Material-style nav bar, hero, actions, sections, list rows. */
+/* Shared detail-sheet layout: nav bar, hero, actions, sections, list rows.
+   Every entity detail (vehicle, stop, place, service, job, event) uses these
+   blocks so they read the same and differ only in their actions. Tokens only. */
 
 .sheet-nav {
   position: sticky;
@@ -9,9 +11,10 @@
   align-items: center;
   min-height: 52px;
   padding: 4px 12px;
-  border-bottom: 1px solid #e5ebe7;
-  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .sheet-nav-back {
@@ -23,23 +26,24 @@
   min-height: 44px;
   padding: 0 8px 0 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: none;
-  color: #087a50;
-  font: 600 16px/1 inherit;
+  color: var(--primary);
+  font: 600 var(--type-input) / 1 inherit;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .sheet-nav-back:focus-visible {
-  outline: 2px solid #11835b;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
 .sheet-nav-title {
   overflow: hidden;
   max-width: 180px;
-  color: #172133;
-  font-size: 15px;
+  color: var(--foreground);
+  font-size: var(--type-body);
   font-weight: 700;
   text-align: center;
   text-overflow: ellipsis;
@@ -47,18 +51,18 @@
 }
 
 .sheet-nav-trailing {
-  justify-self: end;
   display: inline-flex;
   min-width: 44px;
   min-height: 44px;
   align-items: center;
   justify-content: flex-end;
+  justify-self: end;
 }
 
 .detail-hero {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 16px;
   padding: 16px;
 }
 
@@ -71,82 +75,91 @@
 }
 
 .detail-hero-copy h2 {
-  margin: 2px 0 0;
-  color: #172133;
-  font-size: 22px;
-  font-weight: 700;
+  margin: 4px 0 0;
+  color: var(--foreground);
+  font-size: var(--type-inspector);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
 .detail-hero-copy p {
   margin: 4px 0 0;
-  color: #5f6f83;
-  font-size: 14px;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
   line-height: 1.4;
 }
 
 .detail-eyebrow {
-  color: #6b7a8c;
-  font-size: 11px;
+  color: var(--muted-foreground);
+  font-size: var(--type-caption);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  line-height: 1.4;
 }
 
 .detail-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .detail-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 26px;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: #eef2f6;
-  color: #334155;
-  font-size: 12px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--foreground);
+  font-size: var(--type-caption);
   font-weight: 600;
 }
 
 .detail-chip.is-live {
-  background: #e6f7ee;
-  color: #0b6b43;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .detail-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 8px;
-  padding: 0 16px 14px;
+  padding: 0 16px 16px;
 }
 
 .detail-action {
   display: flex;
+  min-height: 64px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 72px;
-  padding: 10px 6px;
+  gap: 4px;
+  padding: 8px 4px;
   border: 0;
-  border-radius: 14px;
-  background: #f1f5f3;
-  color: #1f2d26;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.1;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--foreground);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
   cursor: pointer;
-  transition: transform 120ms ease, background-color 120ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-press) var(--ease), background-color var(--duration-press) var(--ease);
 }
 
 .detail-action:active {
   transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .detail-action:hover {
+    background: var(--accent);
+  }
 }
 
 .detail-action:disabled {
@@ -155,32 +168,42 @@
 }
 
 .detail-action:focus-visible {
-  outline: 2px solid #11835b;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
 .detail-action-icon {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   place-items: center;
-  border-radius: 50%;
-  background: #ffffff;
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  color: var(--accent-foreground);
 }
 
+/* The entity's main action (directions, order, book…) is filled. */
+.detail-action.is-primary,
 .detail-action.is-pressed {
-  background: #087a50;
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
+.detail-action.is-primary .detail-action-icon,
 .detail-action.is-pressed .detail-action-icon {
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--primary-foreground) 18%, transparent);
+  color: var(--primary-foreground);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .detail-action.is-primary:hover {
+    background: var(--primary-hover);
+  }
 }
 
 .detail-section {
-  padding: 14px 16px;
-  border-top: 1px solid #eef2ef;
+  padding: 16px;
+  border-top: 1px solid var(--border);
 }
 
 .detail-section-head {
@@ -188,14 +211,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .detail-section-head h3 {
   margin: 0;
-  color: #172133;
-  font-size: 15px;
-  font-weight: 700;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  font-weight: 800;
 }
 
 .detail-stats {
@@ -207,79 +230,84 @@
 
 .detail-stat {
   min-width: 0;
-  padding: 10px;
-  border-radius: 12px;
-  background: #f6f8f7;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
 }
 
 .detail-stat dt {
-  color: #6b7a8c;
-  font-size: 12px;
+  color: var(--muted-foreground);
+  font-size: var(--type-caption);
 }
 
 .detail-stat dd {
-  margin: 2px 0 0;
-  color: #172133;
-  font-size: 16px;
+  margin: 4px 0 0;
+  color: var(--foreground);
+  font-size: var(--type-title);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .detail-note {
-  margin: 10px 0 0;
-  color: #55655c;
-  font-size: 13px;
-  line-height: 1.45;
+  margin: 12px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
 }
 
 .list-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
   width: 100%;
   min-height: 56px;
+  align-items: center;
+  gap: 12px;
   padding: 8px 0;
   border: 0;
   background: none;
   color: inherit;
   font: inherit;
   text-align: left;
+  touch-action: manipulation;
 }
 
 button.list-row {
   cursor: pointer;
 }
 
+.list-row + .list-row {
+  border-top: 1px solid var(--border);
+}
+
 .list-row-leading {
   display: inline-flex;
   flex-shrink: 0;
+  color: var(--muted-foreground);
 }
 
 .list-row-copy {
   display: flex;
-  flex: 1;
   min-width: 0;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
 }
 
 .list-row-title {
   overflow: hidden;
-  color: #172133;
-  font-size: 15px;
+  color: var(--foreground);
+  font-size: var(--type-body);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Subtitles carry status ("Незабаром", permission state), so they wrap instead of truncating. */
 .list-row-subtitle {
-  overflow: hidden;
-  color: #6b7a8c;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
 }
 
 .list-row-chevron {
-  color: #9aa7a0;
+  color: var(--muted-foreground);
 }

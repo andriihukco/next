@@ -1,0 +1,234 @@
+/* Entity detail (DESIGN.md §7): hero, action bar, inline flow, sections. Tokens only. */
+
+.entity-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.entity-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 8px 16px 16px;
+}
+
+.entity-icon,
+.entity-date {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  place-items: center;
+  border-radius: var(--radius-md);
+}
+
+.entity-icon {
+  background: color-mix(in srgb, var(--entity-color, var(--primary)) 14%, var(--card));
+  color: var(--entity-color, var(--accent-foreground));
+}
+
+.entity-date {
+  align-content: center;
+  gap: 0;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.entity-date strong {
+  font-size: var(--type-inspector);
+  font-weight: 800;
+}
+
+.entity-date span {
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+
+.entity-hero-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.entity-hero-copy h2 {
+  margin: 4px 0 0;
+  color: var(--foreground);
+  font-size: var(--type-inspector);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.entity-hero-copy p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.entity-hero-tools {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  margin: -4px -8px 0 0;
+  color: var(--muted-foreground);
+}
+
+.entity-flow {
+  display: grid;
+  gap: 12px;
+  margin: 0 16px 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.entity-flow-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.entity-flow-head h3 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--type-title);
+  font-weight: 800;
+}
+
+.entity-flow-empty {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.entity-menu {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entity-menu li {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.entity-menu li + li {
+  border-top: 1px solid var(--border);
+}
+
+.entity-menu-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.entity-menu-copy strong {
+  color: var(--foreground);
+  font-size: var(--type-body);
+  font-weight: 700;
+}
+
+.entity-menu-copy span {
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.entity-menu-copy .entity-menu-price {
+  color: var(--foreground);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.entity-stepper {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.entity-stepper output {
+  min-width: 20px;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.entity-form {
+  display: grid;
+  gap: 12px;
+}
+
+.entity-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.entity-field {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.entity-field > span,
+.entity-field > legend {
+  padding: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  font-weight: 600;
+}
+
+.entity-field input {
+  height: 44px;
+}
+
+.entity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.entity-form-error {
+  margin: 0;
+  color: var(--destructive);
+  font-size: var(--type-small);
+}
+
+.entity-flow-submit {
+  width: 100%;
+}
+
+.entity-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 16px 16px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.entity-description {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  line-height: 1.55;
+}

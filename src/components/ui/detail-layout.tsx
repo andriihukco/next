@@ -91,13 +91,15 @@ type ActionBarButtonProps = {
   onClick: () => void;
   pressed?: boolean;
   disabled?: boolean;
+  /** The entity's main action (directions, order, book). One per bar. */
+  primary?: boolean;
 };
 
-export function ActionBarButton({ icon, label, onClick, pressed, disabled }: ActionBarButtonProps) {
+export function ActionBarButton({ icon, label, onClick, pressed, disabled, primary }: ActionBarButtonProps) {
   return (
     <button
       type="button"
-      className={cn("detail-action", pressed && "is-pressed")}
+      className={cn("detail-action", pressed && "is-pressed", primary && "is-primary")}
       aria-pressed={pressed}
       disabled={disabled}
       onClick={onClick}

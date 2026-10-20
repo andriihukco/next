@@ -1,0 +1,232 @@
+/* Profile and settings (DESIGN.md §5, §7). Side panel on desktop, full-height sheet on mobile. */
+
+.settings-overlay {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: var(--scrim);
+}
+
+.settings-panel {
+  position: relative;
+  display: flex;
+  width: min(420px, 100%);
+  height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+  box-shadow: var(--shadow-overlay);
+}
+
+.settings-view {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(12px + env(safe-area-inset-top)) 12px 4px 16px;
+}
+
+.settings-header h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--type-inspector);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.settings-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--foreground);
+  text-align: left;
+  touch-action: manipulation;
+  transition: border-color var(--duration-press) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-profile-card:hover {
+    border-color: var(--primary-border);
+  }
+}
+
+.settings-avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: var(--type-inspector);
+  font-weight: 800;
+}
+
+.settings-profile-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 4px;
+}
+
+.settings-profile-copy strong {
+  font-size: var(--type-title);
+  line-height: 1.3;
+}
+
+.settings-profile-copy span {
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.settings-view .detail-section {
+  margin: 0 16px;
+}
+
+.settings-confirm {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.settings-confirm span {
+  color: var(--muted-foreground);
+}
+
+.settings-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.settings-status {
+  margin: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.settings-form,
+.settings-account {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-field > span,
+.settings-field > legend {
+  padding: 0;
+  color: var(--foreground);
+  font-size: var(--type-small);
+  font-weight: 700;
+}
+
+.settings-field input {
+  height: 44px;
+  background: var(--card);
+}
+
+.settings-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.settings-account {
+  justify-items: center;
+  padding-top: 32px;
+  text-align: center;
+}
+
+.settings-account-icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.settings-account h3 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--type-inspector);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.settings-account p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+
+.settings-account .inline-flex {
+  width: 100%;
+}
+
+@media (max-width: 800px) {
+  .settings-overlay {
+    align-items: flex-end;
+  }
+
+  .settings-panel {
+    width: 100%;
+    height: calc(100dvh - max(16px, env(safe-area-inset-top)) - 8px);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .settings-header {
+    padding-top: 12px;
+  }
+}

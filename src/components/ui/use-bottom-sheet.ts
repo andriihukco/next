@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { animate, useMotionValue, type MotionValue } from "motion/react";
 import { nearest, projectMomentum, rubberband, spring } from "../../lib/motion";
 
@@ -21,8 +21,11 @@ type Sample = { y: number; t: number };
 export function useBottomSheet({ enabled, sheetHeight }: { enabled: boolean; sheetHeight: number }): {
   y: MotionValue<number>;
   detent: SheetDetent;
-  /** Bottom padding that keeps the end of the scroll content above the screen edge. */
-  hiddenHeight: number;
+  /**
+   * Bottom padding that keeps the end of the scroll content above the screen edge.
+   * A motion value, so settling the sheet never re-renders the tree around it.
+   */
+  hiddenHeight: MotionValue<number>;
   setDetent: (detent: SheetDetent) => void;
   handleProps: {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
@@ -33,7 +36,7 @@ export function useBottomSheet({ enabled, sheetHeight }: { enabled: boolean; she
 } {
   const y = useMotionValue(0);
   const [detent, setDetentState] = useState<SheetDetent>("half");
-  const [hiddenHeight, setHiddenHeight] = useState(0);
+  const hiddenHeight = useMotionValue(0);
   const drag = useRef<{ startY: number; origin: number; samples: Sample[]; moved: boolean } | null>(null);
 
   const offsets = useCallback((): Record<SheetDetent, number> => {
@@ -54,21 +57,21 @@ export function useBottomSheet({ enabled, sheetHeight }: { enabled: boolean; she
       const transition = reduced
         ? { duration: 0 }
         : { ...(Math.abs(velocity) > 200 ? spring.momentum : spring.default), velocity };
-      void animate(y, to, transition).then(() => setHiddenHeight(to));
+      void animate(y, to, transition).then(() => hiddenHeight.set(to));
     },
-    [offsets, y],
+    [offsets, y, hiddenHeight],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) {
       y.stop();
       y.set(0);
-      setHiddenHeight(0);
+      hiddenHeight.set(0);
       return;
     }
     const to = offsets()[detent];
     y.set(to);
-    setHiddenHeight(to);
+    hiddenHeight.set(to);
     // Re-snap only when the sheet or viewport size changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, sheetHeight]);

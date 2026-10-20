@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import {
   GeoJSONSource,
@@ -12,33 +12,27 @@ import type {
   Position,
 } from "geojson";
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   Bus,
   ChevronRight,
-  Crosshair,
   LocateFixed,
   MapPin,
   MaterialIcon,
   Navigation,
   Plus,
-  RotateCcw,
-  RotateCw,
   Search,
   TriangleAlert,
   X,
   ZoomIn,
   ZoomOut,
 } from "./components/ui/material-icon";
-import { AnimatePresence, MotionConfig, motion, type MotionStyle } from "motion/react";
+import { AnimatePresence, MotionConfig, motion, useTransform, type MotionStyle } from "motion/react";
 import { BrandLogo } from "./components/ui/brand-logo";
 import { Button } from "./components/ui/button";
 import { IconButton } from "./components/ui/icon-button";
 import { useBottomSheet } from "./components/ui/use-bottom-sheet";
 import { useMediaQuery } from "./lib/use-media-query";
 import { Card } from "./components/ui/card";
+import { Chip } from "./components/ui/chip";
 import { AdminPanel, type AdminDataset } from "./components/admin-panel";
 import { BuildingModelEditor } from "./components/building-model-editor";
 import { CityGuide } from "./components/city-guide";
@@ -115,6 +109,7 @@ import {
 } from "./lib/city-places";
 import { cityNames, ukraineCityRegions } from "./lib/ukraine-city-regions";
 import { BenefitsDialog } from "./features/onboarding/benefits-dialog";
+import { SettingsDialog } from "./features/settings/settings-dialog";
 import { OnboardingDialog } from "./features/onboarding/onboarding-dialog";
 import { ONBOARDING_STEPS, type OnboardingProfile } from "./features/onboarding/steps";
 import {
@@ -790,6 +785,9 @@ export default function App() {
   );
   const [search, setSearch] = useState("");
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Inputs stay instant; list filtering runs at lower priority so typing never stalls.
+  const deferredSearch = useDeferredValue(search);
   const [waypoints, setWaypoints] = useState(["Моє місцезнаходження", ""]);
 
   useEffect(() => {
@@ -2051,11 +2049,11 @@ export default function App() {
         .filter((vehicle) =>
           `${vehicle.route} ${vehicle.destination} ${vehicle.plate}`
             .toLowerCase()
-            .includes(search.toLowerCase()),
+            .includes(deferredSearch.toLowerCase()),
         )
         .filter((vehicle) => vehicle.type === vehicleFilter)
         .slice(0, 24),
-    [vehicles, search, vehicleFilter],
+    [vehicles, deferredSearch, vehicleFilter],
   );
   const arrivals = useMemo(
     () =>
@@ -2103,9 +2101,11 @@ export default function App() {
   const isMobileLayout = useMediaQuery("(max-width: 800px)");
   const railRef = useRef<HTMLElement>(null);
   const [railHeight, setRailHeight] = useState(0);
-  useEffect(() => {
+  // Measured before paint so the sheet never flashes fully open on load.
+  useLayoutEffect(() => {
     const rail = railRef.current;
     if (!rail) return;
+    setRailHeight(rail.offsetHeight);
     const observer = new ResizeObserver(() => setRailHeight(rail.offsetHeight));
     observer.observe(rail);
     return () => observer.disconnect();
@@ -2114,6 +2114,7 @@ export default function App() {
     enabled: isMobileLayout && !inspectorOpen && activeView !== "admin",
     sheetHeight: railHeight,
   });
+  const sheetHiddenPx = useTransform(sheet.hiddenHeight, (value) => `${value}px`);
   const flowStops = useMemo(() => {
     if (!transitFlow || transitFlow === "menu") return [];
     const candidate =
@@ -2221,20 +2222,6 @@ export default function App() {
         console.error("Could not request notification permission.", error);
         setNotificationMessage("Не вдалося запросити дозвіл на сповіщення.");
       });
-  };
-  const panMap = (x: number, y: number): void => {
-    mapRef.current?.panBy([x * 120, y * 120], { duration: 220 });
-  };
-  const rotateMap = (axis: "bearing" | "pitch" | "roll", direction: number): void => {
-    const map = mapRef.current;
-    if (!map) return;
-    const options =
-      axis === "bearing"
-        ? { bearing: map.getBearing() + direction * 15 }
-        : axis === "pitch"
-          ? { pitch: Math.max(0, Math.min(75, map.getPitch() + direction * 10)) }
-          : { roll: map.getRoll() + direction * 10 };
-    map.easeTo({ ...options, duration: 220 });
   };
   const resetMapOrientation = (): void => {
     mapRef.current?.easeTo({
@@ -2470,6 +2457,15 @@ export default function App() {
     setActiveView("map");
     map.flyTo({ center: coordinates, zoom: 16, duration: 650 });
   };
+  // "Маршрут" from any detail page: pin the destination and open the planner with it.
+  const openDirections = (coordinates: [number, number], placeName: string): void => {
+    showCityPlace(coordinates, placeName);
+    setSelectedPlace(null);
+    setCityPageOpen(false);
+    setWaypoints((current) => [current[0] || "Моє місцезнаходження", placeName]);
+    // Lower the mobile sheet so the pinned destination is visible above it.
+    if (isMobileLayout) sheet.setDetent("half");
+  };
   const showTransitVehicle = (vehicleId: string): void => {
     // Special signal from the Nearby tab when user hasn't granted location yet
     if (vehicleId === "__locate__") {
@@ -2551,7 +2547,7 @@ export default function App() {
       <motion.aside
         ref={railRef}
         className={`brand-rail${activeView === "city" || inspectorOpen ? " city-mode" : ""}${inspectorOpen ? " inspector-open" : ""}${sheetEnabled ? " is-sheet" : ""}`}
-        style={sheetEnabled ? { y: sheet.y, "--sheet-hidden": `${sheet.hiddenHeight}px` } as unknown as MotionStyle : undefined}
+        style={sheetEnabled ? { y: sheet.y, "--sheet-hidden": sheetHiddenPx } as unknown as MotionStyle : undefined}
       >
         {sheetEnabled && (
           <button
@@ -2591,46 +2587,64 @@ export default function App() {
             </Button>
           </header>
         ) : activeView !== "map" && !inspectorOpen ? (
-            <header className="brand-header">
-              <button
-                type="button"
-                className="city-picker"
-                aria-label="Обрати місто"
-                aria-haspopup="dialog"
-                aria-expanded={cityLaunchModalOpen}
-                onClick={() => {
-                  setCityUpdateStatus("");
-                  setCityLaunchModalOpen(true);
-                }}
-              >
-                Львів
-                <span className="city-picker-beta">Beta</span>
-                <MaterialIcon name="chevron_right" size={16} className="opacity-50" />
-              </button>
-              <div className="brand-lockup">
-                <BrandLogo className="brand-logo" />
-              </div>
+            <header className={`brand-header${searchExpanded ? " is-searching" : ""}`}>
               {!searchExpanded ? (
-                <IconButton
-                  label="Пошук"
-                  tooltipSide="bottom"
-                  className="search-compact-toggle"
-                  data-tour="place-search"
-                  onClick={() => setSearchExpanded(true)}
-                >
-                  <Search size={17} />
-                </IconButton>
+                <>
+                  <BrandLogo className="brand-logo" />
+                  <button
+                    type="button"
+                    className="city-picker"
+                    aria-label="Місто: Львів. Обрати місто"
+                    aria-haspopup="dialog"
+                    aria-expanded={cityLaunchModalOpen}
+                    onClick={() => {
+                      setCityUpdateStatus("");
+                      setCityLaunchModalOpen(true);
+                    }}
+                  >
+                    <span className="city-picker-name">Львів</span>
+                    <span className="city-picker-beta">Beta</span>
+                    <MaterialIcon name="expand_more" size={16} />
+                  </button>
+                  <span className="brand-header-spacer" aria-hidden="true" />
+                  <IconButton
+                    label="Пошук"
+                    tooltipSide="bottom"
+                    className="brand-header-action"
+                    data-tour="place-search"
+                    onClick={() => setSearchExpanded(true)}
+                  >
+                    <Search size={18} />
+                  </IconButton>
+                  <IconButton
+                    label="Профіль і налаштування"
+                    tooltipSide="bottom"
+                    className="brand-header-action"
+                    aria-haspopup="dialog"
+                    aria-expanded={settingsOpen}
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    <MaterialIcon name="account_circle" size={22} />
+                  </IconButton>
+                </>
               ) : (
-                <label className="search-inline-field search-inline-field-expanded" data-tour="place-search">
-                  <Search size={17} className="search-inline-icon" aria-hidden="true" />
+                <label className="search-inline-field" data-tour="place-search">
+                  <Search size={18} className="search-inline-icon" aria-hidden="true" />
                   <input
-                    ref={(el) => el?.focus()}
+                    autoFocus
                     aria-label="Пошук"
-                    role="searchbox"
+                    type="search"
+                    enterKeyHint="search"
                     className="search-inline-input"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Пошук"
+                    placeholder="Місця, транспорт, події"
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        setSearch("");
+                        setSearchExpanded(false);
+                      }
+                    }}
                     onBlur={() => {
                       if (!search) setSearchExpanded(false);
                     }}
@@ -2658,6 +2672,7 @@ export default function App() {
             userLocation={userLocation}
             locationError={locationError}
             onShowOnMap={showCityPlace}
+            onDirections={openDirections}
             onSelectTransportVehicle={showTransitVehicle}
             onPageNavigationChange={(isSubpage, onBack) => {
               setCityPageOpen(isSubpage);
@@ -2677,7 +2692,7 @@ export default function App() {
             onUseLiveTransit={() =>
               updateFixtureSettings({ ...fixtureSettings, enabled: false })
             }
-            searchQuery={search}
+            searchQuery={deferredSearch}
           />
         </div>
         {activeView === "admin" && developmentToolsAvailable && (
@@ -2692,20 +2707,17 @@ export default function App() {
         <Button
           type="button"
           variant="ghost"
+          size="sm"
           className="return-city-button"
           onClick={() => {
             setCityPageOpen(false);
             setActiveView("city");
           }}
         >
-          <MaterialIcon name="arrow_back" size={19} />
+          <MaterialIcon name="arrow_back" size={18} />
           Назад
         </Button>
         <Card className="journey-card">
-          <div className="journey-heading">
-            <Navigation size={14} />
-            Маршрут до 5 точок
-          </div>
           {waypoints.map((point, index) => (
             <label className="waypoint" key={index}>
               <span className={index === 0 ? "point-origin" : "point-stop"}>
@@ -2767,7 +2779,7 @@ export default function App() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Маршрут, місце або борт"
           />
-          <span>{filtered.length}</span>
+          <span className="search-count" aria-label={`Знайдено: ${filtered.length}`}>{filtered.length}</span>
         </label>
         <div className="transport-category-row" role="group" aria-label="Тип транспорту">
           {([
@@ -2776,26 +2788,23 @@ export default function App() {
             { id: "trolleybus", label: "Тролейбуси", icon: "electric_bolt" },
             { id: "taxi", label: "Таксі", icon: "local_taxi" },
           ] as const).map((filter) => (
-            <button
-              type="button"
+            <Chip
               key={filter.id}
-              className={`transport-category${vehicleFilter === filter.id ? " active" : ""}`}
+              icon={filter.icon}
+              selected={vehicleFilter === filter.id}
+              className="transport-category"
               style={
                 {
                   "--transport-color": COLORS[filter.id],
                 } as React.CSSProperties
               }
-              aria-pressed={vehicleFilter === filter.id}
               onClick={() => {
                 setVehicleFilter(filter.id);
                 localStorage.setItem("eway-last-vehicle-filter", filter.id);
               }}
             >
-              <span className={`transport-category-orb ${filter.id}`}>
-                <MaterialIcon name={filter.icon} size={19} />
-              </span>
-              <span>{filter.label}</span>
-            </button>
+              {filter.label}
+            </Chip>
           ))}
         </div>
         <div className="routes-heading">
@@ -3732,33 +3741,12 @@ export default function App() {
         data-tour="map-controls"
         hidden={activeView !== "map"}
       >
-        <div className="map-control-set map-pan-pad" role="group" aria-label="Переміщення">
-          <span aria-hidden="true" />
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити вгору" title="Перемістити вгору" onClick={() => panMap(0, -1)}><ArrowUp size={22} /></Button>
-          <span aria-hidden="true" />
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити вліво" title="Перемістити вліво" onClick={() => panMap(-1, 0)}><ArrowLeft size={22} /></Button>
-          <span className="map-control-center" aria-hidden="true"><Crosshair size={20} /></span>
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити вправо" title="Перемістити вправо" onClick={() => panMap(1, 0)}><ArrowRight size={22} /></Button>
-          <span aria-hidden="true" />
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити вниз" title="Перемістити вниз" onClick={() => panMap(0, 1)}><ArrowDown size={22} /></Button>
-          <span aria-hidden="true" />
+        <div className="map-control-set map-zoom-controls" role="group" aria-label="Масштаб">
+          <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={() => mapRef.current?.zoomIn()}><ZoomIn size={20} /></Button>
+          <Button type="button" variant="ghost" className="map-control" aria-label="Зменшити масштаб" title="Зменшити масштаб" onClick={() => mapRef.current?.zoomOut()}><ZoomOut size={20} /></Button>
         </div>
-        <div className="map-control-set map-camera-pad" role="group" aria-label={mapPitch >= 0.5 ? "Поворот і нахил 3D-мапи" : "Обертання 2D-мапи"}>
-          <Button type="button" variant="ghost" className="map-control" aria-label="Повернути карту проти годинникової стрілки" title="Повернути карту проти годинникової стрілки" onClick={() => rotateMap("bearing", -1)}><RotateCcw size={21} /></Button>
-          <Button type="button" variant="ghost" className="map-control" aria-label="Повернути карту за годинниковою стрілкою" title="Повернути карту за годинниковою стрілкою" onClick={() => rotateMap("bearing", 1)}><RotateCw size={21} /></Button>
-          {mapPitch >= 0.5 && (
-            <>
-              <Button type="button" variant="ghost" className="map-control" aria-label="Нахилити карту вгору" title="Нахилити карту вгору" onClick={() => rotateMap("pitch", -1)}><ArrowUp size={21} /></Button>
-              <Button type="button" variant="ghost" className="map-control" aria-label="Нахилити карту вниз" title="Нахилити карту вниз" onClick={() => rotateMap("pitch", 1)}><ArrowDown size={21} /></Button>
-              <Button type="button" variant="ghost" className="map-control" aria-label="Обертати 3D-мапу вліво" title="Обертати 3D-мапу вліво" onClick={() => rotateMap("roll", -1)}><RotateCcw size={21} /></Button>
-              <Button type="button" variant="ghost" className="map-control" aria-label="Обертати 3D-мапу вправо" title="Обертати 3D-мапу вправо" onClick={() => rotateMap("roll", 1)}><RotateCw size={21} /></Button>
-            </>
-          )}
-        </div>
-        <div className="map-control-set map-utility-controls" role="group" aria-label="Додаткові дії">
-          <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={() => mapRef.current?.zoomIn()}><ZoomIn size={21} /></Button>
-          <Button type="button" variant="ghost" className="map-control" aria-label="Зменшити масштаб" title="Зменшити масштаб" onClick={() => mapRef.current?.zoomOut()}><ZoomOut size={21} /></Button>
-          <Button type="button" variant="ghost" className="map-control" aria-label="Вирівняти карту на північ" title="Вирівняти карту на північ" onClick={resetMapOrientation}><MaterialIcon name="explore" size={21} /></Button>
+        <div className="map-control-set" role="group" aria-label="Вигляд мапи">
+          <Button type="button" variant="ghost" className="map-control" aria-label="Вирівняти карту на північ" title="Вирівняти карту на північ" onClick={resetMapOrientation}><MaterialIcon name="explore" size={20} /></Button>
           <Button
             type="button"
             variant="ghost"
@@ -3768,7 +3756,7 @@ export default function App() {
             title={mapPitch < 0.5 ? "Перейти до 3D-вигляду" : "Перейти до вигляду 2D зверху"}
             onClick={toggleMapMode}
           >
-            {mapPitch < 0.5 ? <MaterialIcon name="3d_rotation" size={21} /> : <MaterialIcon name="map" size={21} />}
+            {mapPitch < 0.5 ? <MaterialIcon name="3d_rotation" size={20} /> : <MaterialIcon name="map" size={20} />}
           </Button>
           {mapPitch >= 0.5 && (
             <Button
@@ -3780,10 +3768,12 @@ export default function App() {
               title={terrainEnabled ? "Вимкнути рельєф і лісові масиви" : "Увімкнути рельєф і лісові масиви"}
               onClick={() => setTerrainEnabled((enabled) => !enabled)}
             >
-              <MaterialIcon name="terrain" size={21} />
+              <MaterialIcon name="terrain" size={20} />
             </Button>
           )}
-          <Button type="button" variant="ghost" className="map-control" aria-label="Моє місцезнаходження" title="Моє місцезнаходження" data-tour="map-location" onClick={requestLocation}><LocateFixed size={21} /></Button>
+        </div>
+        <div className="map-control-set" role="group" aria-label="Додаткові дії">
+          <Button type="button" variant="ghost" className="map-control" aria-label="Моє місцезнаходження" title="Моє місцезнаходження" data-tour="map-location" onClick={requestLocation}><LocateFixed size={20} /></Button>
           <div className="map-settings-wrap" ref={mapSettingsRef}>
             <Button
               type="button"
@@ -3795,7 +3785,7 @@ export default function App() {
               title="Шари мапи"
               onClick={() => setMapSettingsOpen((o) => !o)}
             >
-              <MaterialIcon name="layers" size={21} />
+              <MaterialIcon name="layers" size={20} />
               {mapLayerCategories.size > 0 && (
                 <span className="map-settings-badge">{mapLayerCategories.size}</span>
               )}
@@ -3809,13 +3799,15 @@ export default function App() {
                 <div className="map-settings-header">
                   <span className="map-settings-title">Що показувати</span>
                   {mapLayerCategories.size > 0 && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       className="map-settings-clear"
                       onClick={() => setMapLayerCategories(new Set())}
                     >
                       Скинути
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <p className="map-settings-hint">
@@ -3826,14 +3818,12 @@ export default function App() {
                     const isActive = mapLayerCategories.has(cat.id);
                     const atLimit = !isActive && mapLayerCategories.size >= 3;
                     return (
-                      <button
+                      <Chip
                         key={cat.id}
-                        type="button"
-                        role="checkbox"
-                        aria-checked={isActive}
-                        aria-disabled={atLimit}
+                        size="sm"
+                        selected={isActive}
                         disabled={atLimit}
-                        className={`map-layer-chip${isActive ? " active" : ""}${atLimit ? " disabled" : ""}`}
+                        className="map-layer-chip"
                         style={{ "--chip-color": CITY_PLACE_CATEGORY_COLORS[cat.id] } as React.CSSProperties}
                         onClick={() => {
                           setMapLayerCategories((prev) => {
@@ -3852,7 +3842,7 @@ export default function App() {
                           aria-hidden="true"
                         />
                         {cat.label}
-                      </button>
+                      </Chip>
                     );
                   })}
                 </div>
@@ -3902,6 +3892,21 @@ export default function App() {
             onRequestLocation={requestLocation}
             onRequestNotifications={requestNotificationPermission}
             onDismiss={dismissBenefits}
+          />
+        )}
+        {settingsOpen && (
+          <SettingsDialog
+            key="settings"
+            cityName="Львів"
+            notificationMessage={notificationMessage}
+            onClose={() => setSettingsOpen(false)}
+            onOpenCityPicker={() => {
+              setCityUpdateStatus("");
+              setCityLaunchModalOpen(true);
+            }}
+            onRequestLocation={requestLocation}
+            onRequestNotifications={requestNotificationPermission}
+            onReplayOnboarding={startOnboarding}
           />
         )}
       </AnimatePresence>

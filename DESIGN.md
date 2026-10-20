@@ -77,7 +77,8 @@ Rules:
 ## 5. Layout
 
 - **Desktop:** planning rail on the left, map overlays next to the rail, one contextual inspector on the right.
-- **Mobile (≤ 800px):** the rail is a draggable bottom sheet with three detents: peek (152px), half (55% of the viewport), full. Drag the handle, tap it, or use Enter / Arrow Up / Arrow Down. The open inspector uses the full-height card. Map controls and alerts stay above the sheet with safe-area spacing.
+- **Mobile (≤ 800px):** the rail is a draggable bottom sheet with three detents: peek (152px), half (55% of the viewport), full. Drag the handle, tap it, or use Enter / Arrow Up / Arrow Down. The open inspector uses the full-height card. Map controls dock top-right below the safe area, so no sheet detent covers them; alerts stay above the sheet with safe-area spacing.
+- **Rail header:** one row: wordmark, city picker (with «Beta»), spacer, search, profile. Search expands in place and takes the whole row; Escape closes it.
 - Test every UI change at **375px wide** with no horizontal page scroll, and at 1440px.
 - On short screens, compress the planner before hiding route results.
 
@@ -96,8 +97,30 @@ Rules:
 - `IconButton` requires `label`, which becomes `aria-label` and the tooltip. On touch screens its hit area grows to 44px without changing the 36px visual size.
 - Do not add raw `<button>` controls with bespoke classes when a primitive fits. Existing raw buttons are migration debt (see the audit backlog).
 - **Chips** (filter/category pills such as Transport, Places, Events) are one primitive, `Chip` (`src/components/ui/chip.tsx`). Required states: default, hover, pressed/selected, focus-visible, disabled. Selection uses `aria-pressed` or `role="tab"` with `aria-selected`, never color alone.
+- **Category filters** in every section use `CategoryChips` (`src/components/ui/category-chips.tsx`): one horizontally scrolling `Chip` row with the category color on the icon only. The selected chip scrolls into view. No orb grids and no «Усі категорії» toggle.
+- **List items** use `UnifiedCard`: header (icon or date badge, sentence-case category, title, one-line subtitle), optional meta rows, then one row of pill actions. A card that opens a detail does it through its title button, which stretches over the card, so it works with the keyboard and never nests buttons.
+- **Detail pages** for every entity (place, school, service, job, home, event) use `EntityDetail` (`src/components/entity-detail.tsx`): hero, action bar, inline flow, then «Опис» and «Інформація» sections. Share and save are icon buttons in the hero. The action bar holds at most four actions: the kind's flows (`flowsForKind`), «Маршрут», then «Дзвінок» or «На мапі». The first flow is the filled primary; with no flow, «Маршрут» is primary.
+
+  | Kind | Flows (primary first) |
+  |---|---|
+  | food | Замовити (menu and cart), Столик |
+  | groceries, flowers, pharmacy | Замовити |
+  | stay | Номер |
+  | health, beauty, veterinary, car services, services | Записатися |
+  | culture, tourism, sports, event | Квитки |
+  | job | Відгукнутися |
+  | home | Перегляд |
+  | library, education | Каталог |
+
+  No flow is connected to a provider yet. Each flow carries a «Демо» chip, and its confirmation says nothing was sent.
+- «Маршрут» pins the destination, fills the map planner's last point, and lowers the mobile sheet to half.
+- Saved items are kept on the device (`src/lib/use-saved-items.ts`).
+- **Profile and settings** (`src/features/settings/`): profile card, account (sign-in labeled «Незабаром»), city, permissions with live status, replay onboarding, data sources, and clearing device data with a confirmation. Desktop side panel; full-height sheet on mobile. The profile (name, role, home, work) is stored on the device only.
 - Section navigation: the horizontally scrollable section rail stays visible while switching content. Only an opened item detail uses a back-only header, with a breadcrumb back to its list.
 - Map actions (zoom, location, orientation, 2D/3D toggle) use `Button` with `variant="ghost"` and the `map-control` class. They stay individually labeled and are not grouped in a bulky arrow-pad container.
+  - One column of small groups (`map-control-set`): zoom, view (north, 2D/3D, terrain), then location and layers. Buttons are 36px on desktop and 40px on mobile. The column docks bottom-right on desktop and top-right on mobile.
+  - There are no pan or rotate buttons. Drag, pinch, and the MapLibre keyboard handler cover those (arrows pan, Shift+arrows rotate and tilt). Mobile hides the zoom pair because pinch zooms.
+  - The layers popover uses `Chip` (size `sm`) with `aria-pressed`. It opens beside the column.
 - Vehicle and stop details open in the contextual inspector. Route selection highlights its GTFS geometry.
 - Named buildings and places open dismissible detail inspectors. Show only attributes present in the source data.
 
@@ -188,7 +211,7 @@ Tracked gaps. Close each with a normal change and tick it here.
 1. ✅ **Duplicate tokens.** Fixed: one `:root` block. `index.css` has 6 `:root` blocks. `--muted` means surface in one and text in another. `--primary` changes value between blocks. Merge into one block.
 2. ✅ **Missing tour targets.** Fixed: `place-search` is on the header search, and missing targets fall back to a centered card. Onboarding step 2 targets `data-tour="place-search"`, which does not exist. Step 3 (`city-events`) only renders when the events section is mounted. Add the attributes or drop the steps.
 3. ✅ **Duplicate CSS rules.** Fixed: 1,122 overridden declarations removed; reduced-motion rules merged into one block. `.transport-category` is defined in at least three places, and `.onboarding-feature-list` and `.city-section-nav` are repeated. Keep the last intended one and delete the rest.
-4. ◐ **Raw buttons.** Search and category controls migrated; region cities, category tiles and detail actions remain. About 37 raw `<button>` elements in `App.tsx` and `city-guide.tsx` bypass the primitives. Migrate when touched.
+4. ◐ **Raw buttons.** Search and category controls migrated. Transport filters and map layer chips now use `Chip`; region cities, category tiles and detail actions remain. About 37 raw `<button>` elements in `App.tsx` and `city-guide.tsx` bypass the primitives. Migrate when touched.
 5. ✅ **Stray `!important`.** Fixed: only the reduced-motion block uses it. 21 uses in `index.css`. Remove outside the reduced-motion block.
 6. ◐ **Hard-coded hex.** Literals equal to a token now use the token. About 840 one-off tints and grays remain in `index.css`; map each to a token when you touch its component.
 7. **Monolith files.** `App.tsx` is 4,408 lines and `index.css` is 12,488 lines. Split by feature when touched, not in a bulk rewrite.
@@ -199,3 +222,6 @@ Tracked gaps. Close each with a normal change and tick it here.
 12. **Admin auth is dev-only.** The admin password check runs in the Vite dev server only. Production has no admin login. Keep it that way unless a real auth design is approved.
 13. **Dead «Фільтри» button.** It had no handler in five category headers and was removed. Bring it back only together with a working filter panel.
 14. **Map layer colors.** User location and route lines on the map use a blue (`#0874df`, `#1688ef`) set in `App.tsx`. That is outside the token system; decide whether map paint follows tokens.
+15. **User accounts.** Sign-in and registration need an auth backend and a privacy policy. The UI shows «Незабаром» until both exist; do not add a sign-in form that cannot work.
+16. **Debug files in `public/`.** `__analysis.png`, `__analysis2.png` and `transit-3d.html` ship with every build. Decide whether to delete them.
+17. **Sticky hover on touch.** New components wrap `:hover` in `(hover: hover) and (pointer: fine)`. Older rules in `index.css` do not; fix them when you touch them.

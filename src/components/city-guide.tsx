@@ -11,7 +11,9 @@
  */
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -42,6 +44,9 @@ import {
   cityServiceListings,
 } from "../lib/city-fixtures";
 import { Button } from "./ui/button";
+import { CategoryChips } from "./ui/category-chips";
+import { EntityDetail, flowsForKind, type InfoRow } from "./entity-detail";
+import { useSavedItems } from "../lib/use-saved-items";
 import { UnifiedCard } from "./ui/unified-card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -79,6 +84,8 @@ type CityGuideProps = {
   userLocation: [number, number] | null;
   locationError: string | null;
   onShowOnMap: (coordinates: [number, number], placeName: string) => void;
+  /** Opens the map planner with this place as the destination. */
+  onDirections: (coordinates: [number, number], placeName: string) => void;
   onSelectTransportVehicle: (vehicleId: string) => void;
   onPageNavigationChange: (isDetailPage: boolean, onBack: () => void) => void;
   places: CityPlace[];
@@ -150,6 +157,13 @@ const EDUCATION_KIND_LABELS: Record<CityEducationKind, string> = {
   library: "Бібліотека",
 };
 
+const EVENT_FILTERS = [
+  { id: "all",        label: "Усі події",  icon: "event" },
+  { id: "Для родини", label: "Для родини", icon: "family_restroom" },
+  { id: "Діти",       label: "Діти",       icon: "child_care" },
+  { id: "Зустріч",    label: "Зустріч",    icon: "groups" },
+] as const;
+
 const EDUCATION_FILTERS: { id: CityEducationKind; label: string; icon: string }[] = [
   { id: "school",       label: "Школи",       icon: "school" },
   { id: "kindergarten", label: "Садочки",     icon: "child_care" },
@@ -183,17 +197,6 @@ const REAL_ESTATE_FILTERS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** "All categories" disclosure above a category row. */
-function CategoryHeading({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
-  return (
-    <div className="city-category-heading">
-      <Button type="button" variant="ghost" size="sm" aria-expanded={expanded} onClick={onToggle}>
-        Усі категорії
-        <MaterialIcon name={expanded ? "keyboard_arrow_up" : "keyboard_arrow_down"} size={20} />
-      </Button>
-    </div>
-  );
-}
-
 /** Haversine approximation using flat-earth for short distances */
 function distanceToPlace(place: CityPlace, origin: [number, number]): number {
   const latDiff = (place.lat - origin[1]) * 111_000;
@@ -219,40 +222,12 @@ function formatPlaceDistance(meters: number): string {
     : `${Math.round(meters / 10) * 10} м`;
 }
 
-type PlaceActionKind = "cart" | "books" | "hotel" | "reservation" | "tickets" | "save";
 type DemoProduct = {
   id: string;
   name: string;
   description: string;
   price: number;
 };
-
-function placeActionFor(place: CityPlace): {
-  kind: PlaceActionKind;
-  title: string;
-  description: string;
-  buttonLabel: string;
-} {
-  switch (place.category) {
-    case "groceries":
-      return { kind: "cart", title: "Замовлення", description: "Демо-кошик для цього магазину.", buttonLabel: "Оформити" };
-    case "food":
-      return { kind: "cart", title: "Меню та замовлення", description: "Демонстраційне меню закладу.", buttonLabel: "Замовити" };
-    case "education":
-      return { kind: "books", title: "Каталог", description: "Доступні книги та матеріали.", buttonLabel: "Зарезервувати" };
-    case "stay":
-      return { kind: "hotel", title: "Бронювання номера", description: "Демо-форма для готелю.", buttonLabel: "Забронювати" };
-    case "health":
-      return { kind: "reservation", title: "Запис на прийом", description: "Демо-запис до фахівця.", buttonLabel: "Записатися" };
-    case "sports":
-      return { kind: "tickets", title: "Квитки", description: "Демо-замовлення квитків.", buttonLabel: "Придбати" };
-    case "culture":
-    case "tourism":
-      return { kind: "tickets", title: "Квитки та екскурсії", description: "Демо-замовлення квитків.", buttonLabel: "Придбати" };
-    default:
-      return { kind: "save", title: "Збережи місце", description: "Додайте до локального списку.", buttonLabel: "Зберегти" };
-  }
-}
 
 function demoProductsFor(place: CityPlace): DemoProduct[] {
   const seed = [...place.id].reduce(
@@ -286,11 +261,24 @@ function demoProductsFor(place: CityPlace): DemoProduct[] {
   return [];
 }
 
-function bookingChoicesFor(place: CityPlace): { label: string; options: string[] } | null {
-  if (place.category === "health")  return { label: "Спеціалізація", options: ["Терапевт", "Стоматолог", "Офтальмолог"] };
-  if (place.category === "sports")  return { label: "Вид спорту",    options: ["Футбол", "Теніс", "Плавання"] };
-  if (place.category === "culture") return { label: "Тип події",     options: ["Виставка", "Екскурсія", "Майстер-клас"] };
-  return null;
+const PLACE_INFO_ICONS: Record<string, string> = {
+  Графік: "schedule",
+  Email: "email",
+  "Wi-Fi": "wifi",
+  Кухня: "restaurant_menu",
+  Оператор: "domain",
+};
+
+/** Detail rows shown for a place. Phone and website are actions, not rows. */
+function placeInfoRows(place: CityPlace): InfoRow[] {
+  return Object.entries(place.details)
+    .filter(([label]) => !["Тип", "Телефон", "Мобільний", "Сайт"].includes(label))
+    .map(([label, value]) => ({
+      icon: PLACE_INFO_ICONS[label] ?? "info",
+      label,
+      value: label === "Графік" ? formatOpeningHours(value) : value,
+      href: label === "Email" ? `mailto:${value}` : undefined,
+    }));
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -360,14 +348,6 @@ function EducationCard({
         variant="outline"
         onClick={() => onShowOnMap([place.lng, place.lat], place.name)}
       />
-      {!detailPage && onOpen && (
-        <UnifiedCard.Action
-          label="Детальніше"
-          icon="chevron_right"
-          variant="secondary"
-          onClick={onOpen}
-        />
-      )}
       {detailPage && (
         <UnifiedCard.Action
           label="OpenStreetMap"
@@ -382,73 +362,74 @@ function EducationCard({
 
 function DirectoryListingPage({
   title,
+  kind,
   listings,
   filters,
+  selectedId,
+  onSelect,
+  saved,
+  onToggleSaved,
   onShowOnMap,
+  onDirections,
 }: {
   title: string;
+  kind: "service" | "job" | "home";
   listings: CityDirectoryListing[];
   filters: ReadonlyArray<{ id: string; label: string; icon: string }>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  saved: ReadonlySet<string>;
+  onToggleSaved: (id: string) => void;
   onShowOnMap: (coordinates: [number, number], name: string) => void;
+  onDirections: (coordinates: [number, number], name: string) => void;
 }) {
   const [activeFilter, setActiveFilter] = useState(filters[0]?.id ?? "");
-  const [showAllCategories, setShowAllCategories] = useState(false);
 
   const visible = useMemo(() => {
     return listings.filter((item) => item.category === activeFilter);
   }, [listings, activeFilter]);
 
 
+  const selected = listings.find((item) => item.id === selectedId);
+  if (selected) {
+    const filter = filters.find((item) => item.id === selected.category);
+    return (
+      <section className="city-section" aria-label={title}>
+        <EntityDetail
+          kind={kind === "service" && flowsForKind(selected.category).length > 0 ? selected.category : kind}
+          title={selected.name}
+          eyebrow={filter?.label ?? title}
+          subtitle={selected.summary}
+          icon={filter?.icon ?? "business"}
+          demo
+          description={selected.details}
+          info={[
+            { icon: "location_on", label: "Адреса", value: selected.location },
+            ...(selected.organization
+              ? [{ icon: "domain", label: kind === "job" ? "Роботодавець" : "Організація", value: selected.organization }]
+              : []),
+          ]}
+          coordinates={selected.coordinates}
+          saved={saved.has(selected.id)}
+          onToggleSaved={() => onToggleSaved(selected.id)}
+          onShowOnMap={() => onShowOnMap(selected.coordinates, selected.name)}
+          onDirections={() => onDirections(selected.coordinates, selected.name)}
+        />
+      </section>
+    );
+  }
+
   return (
-    <section className="city-section" aria-labelledby="directory-title">
-      <CategoryHeading expanded={showAllCategories} onToggle={() => setShowAllCategories((c) => !c)} />
-      {!showAllCategories && (
-        <div className="city-filter-row" role="group" aria-label={`Фільтр: ${title}`}>
-        {filters.map((filter) => (
-          <button
-            type="button"
-            key={filter.id}
-            data-filter={filter.id}
-            className={activeFilter === filter.id ? "active" : ""}
-            aria-pressed={activeFilter === filter.id}
-            onClick={() => setActiveFilter(filter.id)}
-          >
-            <span className="city-filter-row-orb">
-              <MaterialIcon name={filter.icon} size={34} />
-            </span>
-            <span className="city-filter-row-label">{filter.label}</span>
-          </button>
-        ))}
-      </div>
-      )}
-      {showAllCategories && (
-        <div className="city-category-grid expanded" role="group" aria-label="Усі категорії">
-          {filters.map((filter) => (
-            <button
-              type="button"
-              key={filter.id}
-              className={`city-category-tile${activeFilter === filter.id ? " active" : ""}`}
-              aria-pressed={activeFilter === filter.id}
-              onClick={() => {
-                setActiveFilter(filter.id);
-                setShowAllCategories(false);
-              }}
-            >
-              <span className="city-filter-row-orb">
-                <MaterialIcon name={filter.icon} size={34} />
-              </span>
-              <span>{filter.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+    <section className="city-section" aria-label={title}>
+      <CategoryChips label={`Фільтр: ${title}`} items={filters} value={activeFilter} onChange={setActiveFilter} />
       <div className="city-place-list">
         {visible.map((item) => (
-          <UnifiedCard key={item.id} variant="directory">
+          <UnifiedCard key={item.id} variant="directory" onClick={() => onSelect(item.id)}>
             <UnifiedCard.Header
               title={item.name}
               subtitle={item.summary}
-              icon="business"
+              category={`${item.location} · демо`}
+              icon={filters.find((filter) => filter.id === item.category)?.icon ?? "business"}
             />
             <UnifiedCard.Action
               label="На мапі"
@@ -715,6 +696,7 @@ export function CityGuide({
   userLocation,
   locationError,
   onShowOnMap,
+  onDirections,
   onPageNavigationChange,
   places,
   placesStatus,
@@ -737,24 +719,28 @@ export function CityGuide({
     const saved = localStorage.getItem("eway-last-transport-tab");
     return (saved as TransportTab) || "nearby";
   });
-  const [showAllCategories, setShowAllCategories] = useState(false);
-  const [showAllEventCategories, setShowAllEventCategories] = useState(false);
-  const [showAllTransportCategories, setShowAllTransportCategories] = useState(false);
   const [placeCategory, setPlaceCategory] = useState<
     "popular" | "nearby" | CityPlaceCategory
   >("popular");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [placeDisplayLimit, setPlaceDisplayLimit] = useState(40);
-  const [placeActionSearch, setPlaceActionSearch] = useState<Record<string, string>>({});
-  const [placeActionFeedback, setPlaceActionFeedback] = useState<Record<string, string>>({});
-  const [savedPlaces, setSavedPlaces] = useState<Set<string>>(() => new Set());
   const [educationKind, setEducationKind] = useState<CityEducationKind>("school");
   const [selectedEducationId, setSelectedEducationId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [goingEvents, setGoingEvents] = useState<Set<string>>(() => new Set());
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   const [eventCategory, setEventCategory] = useState("all");
 
   const origin = userLocation ?? CITY_CENTER;
+  const [saved, toggleSaved] = useSavedItems();
+
+  // Keep the active section tab visible when it changes or the list reopens.
+  const sectionNavRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = sectionNavRef.current;
+    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !active) return;
+    nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+  }, [section]);
 
   const availableCategories = useMemo(
     () =>
@@ -815,12 +801,13 @@ export function CityGuide({
   );
   const selectedEvent = cityEvents.find((event) => event.id === selectedEventId);
 
-  const isDetailPage = Boolean(selectedPlaceId || selectedEducationId || selectedEventId);
+  const isDetailPage = Boolean(selectedPlaceId || selectedEducationId || selectedEventId || selectedListingId);
 
   const returnToSection = (): void => {
     setSelectedPlaceId(null);
     setSelectedEducationId(null);
     setSelectedEventId(null);
+    setSelectedListingId(null);
     onPageNavigationChange(false, returnToSection);
   };
 
@@ -859,9 +846,6 @@ export function CityGuide({
     return next;
   };
 
-  const setPlaceFeedback = (placeId: string, message: string): void => {
-    setPlaceActionFeedback((current) => ({ ...current, [placeId]: message }));
-  };
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -870,6 +854,7 @@ export function CityGuide({
 
       {/* ── Section navigation ─────────────────────────────────────────────── */}
       <nav
+        ref={sectionNavRef}
         className="city-section-nav"
         aria-label="Розділи міста"
         data-tour="city-sections"
@@ -886,6 +871,7 @@ export function CityGuide({
               setSelectedPlaceId(null);
               setSelectedEducationId(null);
               setSelectedEventId(null);
+              setSelectedListingId(null);
               setSection(item.id);
               localStorage.setItem("eway-last-section", item.id);
               if (item.id === "places") setPlaceCategory("popular");
@@ -916,67 +902,18 @@ export function CityGuide({
             </p>
           ) : null}
 
-          <CategoryHeading expanded={showAllTransportCategories} onToggle={() => setShowAllTransportCategories((c) => !c)} />
-
-          {/* Transport type tab bar */}
-          {!showAllTransportCategories && (
-            <div
-              className="city-transport-tab-bar"
-              role="tablist"
-              aria-label="Тип транспорту"
-            >
-            {TRANSPORT_TABS.map((tab) => {
-              const count =
-                tab.id === "nearby"
-                  ? 0
-                  : transportVehicles.filter((v) => v.type === tab.id).length;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={transportTab === tab.id}
-                  data-filter={tab.id}
-                  className={`city-transport-tab${transportTab === tab.id ? " active" : ""}`}
-                  onClick={() => {
-                    setTransportTab(tab.id);
-                    localStorage.setItem("eway-last-transport-tab", tab.id);
-                  }}
-                >
-                  <span className="city-transport-tab-orb">
-                    <MaterialIcon name={tab.icon} size={34} />
-                  </span>
-                  <span className="city-transport-tab-label">{tab.label}</span>
-                  {count > 0 && (
-                    <span className="city-transport-tab-count">{count}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          )}
-          {showAllTransportCategories && (
-            <div className="city-category-grid expanded" role="group" aria-label="Усі категорії">
-              {TRANSPORT_TABS.map((tab) => (
-                <button
-                  type="button"
-                  key={tab.id}
-                  className={`city-category-tile${transportTab === tab.id ? " active" : ""}`}
-                  aria-pressed={transportTab === tab.id}
-                  onClick={() => {
-                    setTransportTab(tab.id);
-                    localStorage.setItem("eway-last-transport-tab", tab.id);
-                    setShowAllTransportCategories(false);
-                  }}
-                >
-                  <span className="city-transport-tab-orb">
-                    <MaterialIcon name={tab.icon} size={34} />
-                  </span>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          <CategoryChips
+            label="Тип транспорту"
+            items={TRANSPORT_TABS.map((tab) => ({
+              ...tab,
+              count: tab.id === "nearby" ? 0 : transportVehicles.filter((v) => v.type === tab.id).length,
+            }))}
+            value={transportTab}
+            onChange={(id) => {
+              setTransportTab(id as TransportTab);
+              localStorage.setItem("eway-last-transport-tab", id);
+            }}
+          />
 
           {/* Tab content */}
           {transportTab === "nearby" ? (
@@ -1011,70 +948,25 @@ export function CityGuide({
           className={`city-section city-places${selectedPlaceId ? " place-detail-page" : ""}`}
           aria-label="Місця"
         >
-          {selectedPlaceId ? (
-            <div className="city-place-detail-heading">
-              {places
-                .filter((place) => place.id === selectedPlaceId)
-                .map((place) => (
-                  <div key={place.id}>
-                    <span>{place.categoryLabel}</span>
-                    <h2 id="places-title">{place.name}</h2>
-                    <p>{place.address}</p>
-                  </div>
-                ))}
-            </div>
-          ) : null}
           {!selectedPlaceId && (
-            <CategoryHeading expanded={showAllCategories} onToggle={() => setShowAllCategories((c) => !c)} />
-          )}
-          {!selectedPlaceId && (
-            <div
-              className={`city-category-grid${showAllCategories ? " expanded" : " scrollable"}`}
-              role="group"
-              aria-label="Категорії місць"
-            >
-              <button
-                type="button"
-                className={`city-category-tile city-category-popular${placeCategory === "popular" ? " active" : ""}`}
-                aria-pressed={placeCategory === "popular"}
-                onClick={() => { setPlaceCategory("popular"); setPlaceDisplayLimit(40); }}
-              >
-                <span className="city-category-orb">
-                  <MaterialIcon name="award_star" size={34} />
-                </span>
-                <span>Популярне</span>
-              </button>
-              {userLocation && (
-                <button
-                  type="button"
-                  className={`city-category-tile city-category-nearby${placeCategory === "nearby" ? " active" : ""}`}
-                  aria-pressed={placeCategory === "nearby"}
-                  onClick={() => { setPlaceCategory("nearby"); setPlaceDisplayLimit(40); }}
-                >
-                  <span className="city-category-orb">
-                    <MaterialIcon name="near_me" size={34} />
-                  </span>
-                  <span>Поруч</span>
-                </button>
-              )}
-              {availableCategories.map((category) => (
-                <button
-                  type="button"
-                  key={category.id}
-                  className={`city-category-tile category-${category.id}${placeCategory === category.id ? " active" : ""}`}
-                  aria-pressed={placeCategory === category.id}
-                  onClick={() => { setPlaceCategory(category.id); setPlaceDisplayLimit(40); }}
-                >
-                  <span
-                    className="city-category-orb"
-                    style={{ "--category-color": CITY_PLACE_CATEGORY_COLORS[category.id] } as CSSProperties}
-                  >
-                    <MaterialIcon name={cityPlaceIcons[category.id]} size={34} />
-                  </span>
-                  <span>{category.label}</span>
-                </button>
-              ))}
-            </div>
+            <CategoryChips
+              label="Категорії місць"
+              items={[
+                { id: "popular", label: "Популярне", icon: "award_star" },
+                ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me" }] : []),
+                ...availableCategories.map((category) => ({
+                  id: category.id,
+                  label: category.label,
+                  icon: cityPlaceIcons[category.id],
+                  color: CITY_PLACE_CATEGORY_COLORS[category.id],
+                })),
+              ]}
+              value={placeCategory}
+              onChange={(id) => {
+                setPlaceCategory(id as typeof placeCategory);
+                setPlaceDisplayLimit(40);
+              }}
+            />
           )}
           {!selectedPlaceId && locationError && (
             <p className="city-location-error" role="status">
@@ -1106,11 +998,11 @@ export function CityGuide({
                   <h3>
                     {placeCategory === "nearby"
                       ? "Поруч зараз"
-                      : cityPlaceCategories.find((c) => c.id === placeCategory)?.label}
+                      : placeCategory === "popular"
+                        ? "Популярне"
+                        : cityPlaceCategories.find((c) => c.id === placeCategory)?.label}
                   </h3>
-                  <span>
-                    {placeCategory === "nearby" ? "Місця поруч" : cityPlaceCategories.find((c) => c.id === placeCategory)?.label}
-                  </span>
+                  <span>Знайдено: {visiblePlaces.length}</span>
                 </div>
               )}
               <div className={`city-place-list city-osm-place-list${selectedPlaceId ? " place-detail-list" : ""}`}>
@@ -1118,252 +1010,55 @@ export function CityGuide({
                   .filter((place) => !selectedPlaceId || place.id === selectedPlaceId)
                   .map((place) => {
                     const detailOpen = selectedPlaceId === place.id;
-                    const action = placeActionFor(place);
-                    const bookingChoice = bookingChoicesFor(place);
-                    const products = demoProductsFor(place);
-                    const actionSearch = placeActionSearch[place.id] ?? "";
-                    const filteredProducts = products.filter((product) =>
-                      `${product.name} ${product.description}`
-                        .toLocaleLowerCase("uk-UA")
-                        .includes(actionSearch.trim().toLocaleLowerCase("uk-UA")),
-                    );
-                    return (
-                      <>
-                        <UnifiedCard
+                    if (detailOpen) {
+                      const phone = place.details["Телефон"] || place.details["Мобільний"];
+                      return (
+                        <EntityDetail
                           key={place.id}
-                          variant={place.category === "food" ? "restaurant" : place.category === "stay" ? "hotel" : "place"}
-                          onClick={() => {
-                            setSelectedPlaceId(place.id);
-                            onPageNavigationChange(true, returnToSection);
-                          }}
-                          aria-label={`Відкрити сторінку ${place.name}`}
-                        >
-                          <UnifiedCard.Header
-                            title={place.name}
-                            subtitle={place.address}
-                            icon={cityPlaceIcons[place.category]}
-                            iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
-                            category={place.categoryLabel}
-                          />
+                          kind={place.category}
+                          title={place.name}
+                          eyebrow={place.categoryLabel}
+                          subtitle={[place.address, formatPlaceDistance(distanceToPlace(place, origin))].filter(Boolean).join(" · ")}
+                          icon={cityPlaceIcons[place.category]}
+                          iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
+                          info={placeInfoRows(place)}
+                          menu={demoProductsFor(place)}
+                          catalog={demoProductsFor(place)}
+                          coordinates={[place.lng, place.lat]}
+                          phone={phone}
+                          website={place.details["Сайт"]}
+                          sourceUrl={cityPlaceOsmUrl(place)}
+                          saved={saved.has(place.id)}
+                          onToggleSaved={() => toggleSaved(place.id)}
+                          onShowOnMap={() => onShowOnMap([place.lng, place.lat], place.name)}
+                          onDirections={() => onDirections([place.lng, place.lat], place.name)}
+                        />
+                      );
+                    }
+                    return (
+                      <UnifiedCard
+                        key={place.id}
+                        variant={place.category === "food" ? "restaurant" : place.category === "stay" ? "hotel" : "place"}
+                        onClick={() => {
+                          setSelectedPlaceId(place.id);
+                          onPageNavigationChange(true, returnToSection);
+                        }}
+                      >
+                        <UnifiedCard.Header
+                          title={place.name}
+                          subtitle={[formatPlaceDistance(distanceToPlace(place, origin)), place.address].filter(Boolean).join(" · ")}
+                          icon={cityPlaceIcons[place.category]}
+                          iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
+                          category={place.categoryLabel}
+                        />
+                        {place.details["Графік"] && (
                           <UnifiedCard.Meta
-                            label="Відстань"
-                            value={formatPlaceDistance(distanceToPlace(place, origin))}
-                            icon="location_on"
+                            label="Графік"
+                            value={formatOpeningHours(place.details["Графік"])}
+                            icon="schedule"
                           />
-                          {place.details["Графік"] && (
-                            <UnifiedCard.Meta
-                              label="Графік"
-                              value={formatOpeningHours(place.details["Графік"])}
-                              icon="schedule"
-                            />
-                          )}
-                          {place.details["Телефон"] && (
-                            <UnifiedCard.Meta
-                              label="Телефон"
-                              value={place.details["Телефон"]}
-                              icon="call"
-                              clickable
-                              onClick={() => {
-                                const phone = place.details["Телефон"].replace(/\D/g, "");
-                                window.open(`tel:${phone}`, "_self");
-                              }}
-                            />
-                          )}
-                        </UnifiedCard>
-                        {detailOpen && (
-                          <UnifiedCard variant="place" className="place-detail-card">
-                            <UnifiedCard.Header
-                              title="Деталі"
-                              icon="info"
-                            />
-                            {Object.entries(place.details)
-                              .filter(([l]) => l !== "Тип")
-                              .map(([l, value]) => {
-                                const isPhone = l === "Телефон" || l === "Мобільний";
-                                const isWebsite = l === "Сайт" || l === "Email";
-                                const isHours = l === "Графік";
-                                const icon =
-                                  l === "Графік" ? "schedule" :
-                                  l === "Телефон" || l === "Мобільний" ? "call" :
-                                  l === "Сайт" ? "language" :
-                                  l === "Email" ? "email" :
-                                  l === "Wi-Fi" ? "wifi" :
-                                  l === " wheelchair" ? "accessible" : "info";
-
-                                return (
-                                  <UnifiedCard.Meta
-                                    key={l}
-                                    label={l}
-                                    value={isHours ? formatOpeningHours(value) : value}
-                                    icon={icon}
-                                    clickable={isPhone || isWebsite}
-                                    onClick={() => {
-                                      if (isPhone) {
-                                        const phone = value.replace(/\D/g, "");
-                                        window.open(`tel:${phone}`, "_self");
-                                      } else if (l === "Сайт") {
-                                        window.open(value.startsWith("http") ? value : `https://${value}`, "_blank");
-                                      } else if (l === "Email") {
-                                        window.open(`mailto:${value}`, "_self");
-                                      }
-                                    }}
-                                  />
-                                );
-                              })}
-                          </UnifiedCard>
                         )}
-                        {detailOpen && (
-                          <section className="osm-place-detail">
-                            <>
-                              {action.kind === "books" && (
-                                <>
-                                  <label className="osm-place-catalog-search">
-                                    <MaterialIcon name="search" size={19} />
-                                    <input
-                                      type="search"
-                                      aria-label={`Пошук книг у ${place.name}`}
-                                      placeholder="Знайти книгу"
-                                      value={actionSearch}
-                                      onChange={(e) =>
-                                        setPlaceActionSearch((c) => ({ ...c, [place.id]: e.target.value }))
-                                      }
-                                    />
-                                  </label>
-                                  <div className="osm-place-product-list">
-                                    {filteredProducts.map((book) => (
-                                      <div className="osm-place-product" key={book.id}>
-                                        <div>
-                                          <strong>{book.name}</strong>
-                                          <span>{book.description}</span>
-                                        </div>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          className="osm-place-add-button"
-                                          onClick={() => setPlaceFeedback(place.id, `Запит на «${book.name}» збережено локально.`)}
-                                        >
-                                          Зарезервувати
-                                        </Button>
-                                      </div>
-                                    ))}
-                                    {filteredProducts.length === 0 && (
-                                      <p className="osm-place-catalog-empty">Книгу не знайдено в демо-каталозі.</p>
-                                    )}
-                                  </div>
-                                </>
-                              )}
-                            {(action.kind === "hotel" || action.kind === "reservation") && (
-                              <form
-                                className="osm-place-booking-form"
-                                onSubmit={(event) => {
-                                  event.preventDefault();
-                                  const fd = new FormData(event.currentTarget);
-                                  if (action.kind === "hotel") {
-                                    const arrival = String(fd.get("arrival"));
-                                    const departure = String(fd.get("departure"));
-                                    if (departure <= arrival) {
-                                      setPlaceFeedback(place.id, "Дата виїзду має бути пізніше за дату заїзду.");
-                                      return;
-                                    }
-                                    setPlaceFeedback(place.id, `Дати ${arrival} — ${departure} збережено локально.`);
-                                  } else {
-                                    const choice = String(fd.get("booking-choice") ?? "");
-                                    setPlaceFeedback(place.id, `${choice ? `${choice}: ` : ""}план збережено локально.`);
-                                  }
-                                }}
-                              >
-                                <div className="osm-place-form-fields">
-                                  {action.kind === "hotel" ? (
-                                    <>
-                                      <label>Заїзд<input type="date" name="arrival" required /></label>
-                                      <label>Виїзд<input type="date" name="departure" required /></label>
-                                      <label>Гості
-                                        <select name="guests" defaultValue="2">
-                                          {["1","2","3","4","5"].map((n) => (
-                                            <option key={n} value={n}>{n} {n === "1" ? "гість" : n <= "4" ? "гості" : "гостей"}</option>
-                                          ))}
-                                        </select>
-                                      </label>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <label>Дата й час<input type="datetime-local" name="visit" required /></label>
-                                      {bookingChoice && (
-                                        <label>
-                                          {bookingChoice.label}
-                                          <select name="booking-choice" defaultValue={bookingChoice.options[0]}>
-                                            {bookingChoice.options.map((opt) => (
-                                              <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                          </select>
-                                        </label>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                                <Button type="submit" className="osm-place-primary-action">
-                                  <MaterialIcon
-                                    name={action.kind === "hotel" ? "hotel" : "event_available"}
-                                    size={18}
-                                  />
-                                  {action.buttonLabel}
-                                </Button>
-                              </form>
-                            )}
-                            {action.kind === "tickets" && (
-                              <form
-                                className="osm-place-ticket-form"
-                                onSubmit={(event) => {
-                                  event.preventDefault();
-                                  const fd = new FormData(event.currentTarget);
-                                  setPlaceFeedback(place.id, `План для ${fd.get("ticket-count")} кв. збережено локально.`);
-                                }}
-                              >
-                                <label>
-                                  Кількість
-                                  <select name="ticket-count" defaultValue="2">
-                                    {["1","2","3","4"].map((n) => (
-                                      <option key={n} value={n}>{n} квиток{n === "1" ? "" : n <= "4" ? "и" : "ів"}</option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <Button type="submit" className="osm-place-primary-action">
-                                  {action.buttonLabel}
-                                </Button>
-                              </form>
-                            )}
-                            {action.kind === "save" && (
-                              <Button
-                                type="button"
-                                className={`osm-place-primary-action${savedPlaces.has(place.id) ? " is-saved" : ""}`}
-                                aria-pressed={savedPlaces.has(place.id)}
-                                onClick={() => {
-                                  setSavedPlaces((current) => toggleSetValue(current, place.id));
-                                  setPlaceFeedback(
-                                    place.id,
-                                    savedPlaces.has(place.id)
-                                      ? "Місце вилучено зі збережених."
-                                      : "Місце додано до збережених.",
-                                  );
-                                }}
-                              >
-                                <MaterialIcon
-                                  name={savedPlaces.has(place.id) ? "bookmark_added" : "bookmark_add"}
-                                  size={18}
-                                />
-                                {savedPlaces.has(place.id) ? "Збережено" : action.buttonLabel}
-                              </Button>
-                            )}
-                            {placeActionFeedback[place.id] && (
-                              <p className="osm-place-action-feedback" role="status">
-                                <MaterialIcon name="check_circle" size={18} />
-                                {placeActionFeedback[place.id]}
-                              </p>
-                            )}
-                            </>
-                          </section>
-                        )}
-                      </>
+                      </UnifiedCard>
                     );
                   })}
               </div>
@@ -1402,62 +1097,32 @@ export function CityGuide({
         <section className="city-section" aria-label="Освіта">
           {selectedEducation ? (
             <>
-              <div className="city-place-detail-heading">
-                <span>{EDUCATION_KIND_LABELS[selectedEducation.kind]}</span>
-                <h2 id="education-title">{selectedEducation.place.name}</h2>
-              </div>
-              <div className="city-nested-detail">
-                <EducationCard
-                  place={selectedEducation.place}
-                  kind={selectedEducation.kind}
-                  onShowOnMap={onShowOnMap}
-                  detailPage
-                />
-              </div>
+              <EntityDetail
+                kind={selectedEducation.kind === "library" ? "library" : selectedEducation.kind}
+                title={selectedEducation.place.name}
+                eyebrow={EDUCATION_KIND_LABELS[selectedEducation.kind]}
+                subtitle={selectedEducation.place.address}
+                icon={EDUCATION_FILTERS.find((filter) => filter.id === selectedEducation.kind)?.icon ?? "school"}
+                info={placeInfoRows(selectedEducation.place)}
+                catalog={demoProductsFor(selectedEducation.place)}
+                coordinates={[selectedEducation.place.lng, selectedEducation.place.lat]}
+                phone={selectedEducation.place.details["Телефон"] || selectedEducation.place.details["Мобільний"]}
+                website={selectedEducation.place.details["Сайт"]}
+                sourceUrl={cityPlaceOsmUrl(selectedEducation.place)}
+                saved={saved.has(selectedEducation.place.id)}
+                onToggleSaved={() => toggleSaved(selectedEducation.place.id)}
+                onShowOnMap={() => onShowOnMap([selectedEducation.place.lng, selectedEducation.place.lat], selectedEducation.place.name)}
+                onDirections={() => onDirections([selectedEducation.place.lng, selectedEducation.place.lat], selectedEducation.place.name)}
+              />
             </>
           ) : (
             <>
-              <CategoryHeading expanded={showAllCategories} onToggle={() => setShowAllCategories((c) => !c)} />
-              {!showAllCategories && (
-                <div className="city-filter-row" role="group" aria-label="Тип закладу">
-                {EDUCATION_FILTERS.map((filter) => (
-                  <button
-                    type="button"
-                    key={filter.id}
-                    data-filter={filter.id}
-                    className={educationKind === filter.id ? "active" : ""}
-                    aria-pressed={educationKind === filter.id}
-                    onClick={() => setEducationKind(filter.id)}
-                  >
-                    <span className="city-filter-row-orb">
-                      <MaterialIcon name={filter.icon} size={34} />
-                    </span>
-                    <span className="city-filter-row-label">{filter.label}</span>
-                  </button>
-                ))}
-              </div>
-              )}
-              {showAllCategories && (
-                <div className="city-category-grid expanded" role="group" aria-label="Усі категорії">
-                  {EDUCATION_FILTERS.map((filter) => (
-                    <button
-                      type="button"
-                      key={filter.id}
-                      className={`city-category-tile${educationKind === filter.id ? " active" : ""}`}
-                      aria-pressed={educationKind === filter.id}
-                      onClick={() => {
-                        setEducationKind(filter.id);
-                        setShowAllCategories(false);
-                      }}
-                    >
-                      <span className="city-filter-row-orb">
-                        <MaterialIcon name={filter.icon} size={34} />
-                      </span>
-                      <span>{filter.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <CategoryChips
+                label="Тип закладу"
+                items={EDUCATION_FILTERS}
+                value={educationKind}
+                onChange={(id) => setEducationKind(id as CityEducationKind)}
+              />
               {placesStatus === "loading" ? (
                 <div className="city-places-state" role="status">
                   <MaterialIcon name="sync" size={20} />
@@ -1501,6 +1166,15 @@ export function CityGuide({
       {section === "services" && (
         <DirectoryListingPage
           title="Послуги"
+          kind="service"
+          selectedId={selectedListingId}
+          onSelect={(id) => {
+            setSelectedListingId(id);
+            onPageNavigationChange(true, returnToSection);
+          }}
+          saved={saved}
+          onToggleSaved={toggleSaved}
+          onDirections={onDirections}
           listings={cityServiceListings}
           filters={SERVICE_FILTERS}
           onShowOnMap={onShowOnMap}
@@ -1509,6 +1183,15 @@ export function CityGuide({
       {section === "jobs" && (
         <DirectoryListingPage
           title="Робота у Львові"
+          kind="job"
+          selectedId={selectedListingId}
+          onSelect={(id) => {
+            setSelectedListingId(id);
+            onPageNavigationChange(true, returnToSection);
+          }}
+          saved={saved}
+          onToggleSaved={toggleSaved}
+          onDirections={onDirections}
           listings={cityJobListings}
           filters={JOB_FILTERS}
           onShowOnMap={onShowOnMap}
@@ -1517,6 +1200,15 @@ export function CityGuide({
       {section === "real-estate" && (
         <DirectoryListingPage
           title="Нерухомість"
+          kind="home"
+          selectedId={selectedListingId}
+          onSelect={(id) => {
+            setSelectedListingId(id);
+            onPageNavigationChange(true, returnToSection);
+          }}
+          saved={saved}
+          onToggleSaved={toggleSaved}
+          onDirections={onDirections}
           listings={cityRealEstateListings}
           filters={REAL_ESTATE_FILTERS}
           onShowOnMap={onShowOnMap}
@@ -1528,57 +1220,12 @@ export function CityGuide({
         <section className="city-section" aria-label="Події">
           {!selectedEvent && (
             <>
-              <CategoryHeading expanded={showAllEventCategories} onToggle={() => setShowAllEventCategories((c) => !c)} />
-              {!showAllEventCategories && (
-                <div className="city-filter-row" role="group" aria-label="Категорії подій">
-                {[
-                  { id: "all", label: "Усі події", icon: "event" },
-                  { id: "Для родини", label: "Для родини", icon: "family_restroom" },
-                  { id: "Діти", label: "Діти", icon: "child_care" },
-                  { id: "Зустріч", label: "Зустріч", icon: "groups" },
-                ].map((category) => (
-                  <button
-                    type="button"
-                    key={category.id}
-                    data-filter={category.id}
-                    className={eventCategory === category.id ? "active" : ""}
-                    aria-pressed={eventCategory === category.id}
-                    onClick={() => setEventCategory(category.id)}
-                  >
-                    <span className="city-filter-row-orb">
-                      <MaterialIcon name={category.icon} size={34} />
-                    </span>
-                    <span className="city-filter-row-label">{category.label}</span>
-                  </button>
-                ))}
-              </div>
-              )}
-              {showAllEventCategories && (
-                <div className="city-category-grid expanded" role="group" aria-label="Усі категорії">
-                  {[
-                    { id: "all", label: "Усі події", icon: "event" },
-                    { id: "Для родини", label: "Для родини", icon: "family_restroom" },
-                    { id: "Діти", label: "Діти", icon: "child_care" },
-                    { id: "Зустріч", label: "Зустріч", icon: "groups" },
-                  ].map((category) => (
-                    <button
-                      type="button"
-                      key={category.id}
-                      className={`city-category-tile${eventCategory === category.id ? " active" : ""}`}
-                      aria-pressed={eventCategory === category.id}
-                      onClick={() => {
-                        setEventCategory(category.id);
-                        setShowAllEventCategories(false);
-                      }}
-                    >
-                      <span className="city-filter-row-orb">
-                        <MaterialIcon name={category.icon} size={34} />
-                      </span>
-                      <span>{category.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <CategoryChips
+                label="Категорії подій"
+                items={EVENT_FILTERS}
+                value={eventCategory}
+                onChange={setEventCategory}
+              />
             </>
           )}
           <div className="city-event-list">
@@ -1590,78 +1237,51 @@ export function CityGuide({
                     eventCategory === "all" ||
                     event.category === eventCategory),
               )
-              .map((event) => {
-                const going = goingEvents.has(event.id);
-                const detailPage = event.id === selectedEventId;
-                return (
-                  <article
-                    className={`event-card${detailPage ? " event-detail-page" : ""}`}
+              .map((event) =>
+                event.id === selectedEventId ? (
+                  <EntityDetail
                     key={event.id}
+                    kind="event"
+                    title={event.name}
+                    eyebrow={event.category}
+                    subtitle={`${event.time} · ${event.venue}`}
+                    date={{ day: event.day, month: event.month }}
+                    demo
+                    description={event.summary}
+                    info={[
+                      { icon: "schedule", label: "Час", value: `${event.day} ${event.month}, ${event.time}` },
+                      { icon: "location_on", label: "Місце", value: event.venue },
+                    ]}
+                    coordinates={event.coordinates}
+                    saved={saved.has(event.id)}
+                    onToggleSaved={() => toggleSaved(event.id)}
+                    onShowOnMap={() => onShowOnMap(event.coordinates, event.venue)}
+                    onDirections={() => onDirections(event.coordinates, event.venue)}
+                  />
+                ) : (
+                  <UnifiedCard
+                    key={event.id}
+                    variant="event"
+                    onClick={() => {
+                      setSelectedEventId(event.id);
+                      onPageNavigationChange(true, returnToSection);
+                    }}
                   >
-                    <div className="event-date">
-                      <strong>{event.day}</strong>
-                      <span>{event.month}</span>
-                    </div>
-                    <div className="event-card-content">
-                      <div className="event-category">{event.category}</div>
-                      <h3>{event.name}</h3>
-                      <p>{event.summary}</p>
-                      <div className="event-meta">
-                        <span><Clock3 size={13} aria-hidden="true" />{event.time}</span>
-                        <span><MapPin size={13} aria-hidden="true" />{event.venue}</span>
-                      </div>
-                      <div className="event-actions">
-                        {detailPage ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant={going ? "default" : "outline"}
-                              className="event-going"
-                              aria-pressed={going}
-                              onClick={() => setGoingEvents((c) => toggleSetValue(c, event.id))}
-                            >
-                              <CalendarDays size={15} aria-hidden="true" />
-                              {going ? "Ви йдете" : "Піду"}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="event-map-link"
-                              onClick={() => onShowOnMap(event.coordinates, event.venue)}
-                            >
-                              Місце <ArrowUpRight size={14} aria-hidden="true" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="event-open"
-                              onClick={() => onShowOnMap(event.coordinates, event.venue)}
-                            >
-                              <MapPin size={15} aria-hidden="true" />
-                              На мапі
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="event-open"
-                              onClick={() => {
-                                setSelectedEventId(event.id);
-                                onPageNavigationChange(true, returnToSection);
-                              }}
-                            >
-                              Деталі
-                              <MaterialIcon name="chevron_right" size={19} />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+                    <UnifiedCard.Header
+                      title={event.name}
+                      subtitle={`${event.time} · ${event.venue}`}
+                      category={`${event.category} · демо`}
+                      date={{ day: event.day, month: event.month }}
+                    />
+                    <UnifiedCard.Action
+                      label="На мапі"
+                      icon="location_on"
+                      variant="outline"
+                      onClick={() => onShowOnMap(event.coordinates, event.venue)}
+                    />
+                  </UnifiedCard>
+                ),
+              )}
             {!selectedEvent &&
               !cityEvents.some(
                 (event) => eventCategory === "all" || event.category === eventCategory,
