@@ -1,0 +1,60 @@
+.live-vehicle {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vehicle-sprite {
+  position: absolute;
+  inset: 4px;
+  display: block;
+  border: 2px solid #fff;
+  border-radius: 7px 7px 4px 4px;
+  background: #16a34a;
+  box-shadow: 0 2px 6px rgba(23, 33, 51, 0.45);
+  transform: rotate(var(--heading));
+}
+
+.vehicle-sprite::before {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: 4px;
+  height: 7px;
+  content: '';
+  border-radius: 3px;
+  background: #d9f8fb;
+}
+
+.vehicle-sprite b,
+.vehicle-sprite i {
+  position: absolute;
+  bottom: -4px;
+  width: 5px;
+  height: 7px;
+  border-radius: 50%;
+  background: #172133;
+}
+
+.vehicle-sprite b { left: 3px; }
+.vehicle-sprite i { right: 3px; }
+.live-vehicle.tram .vehicle-sprite { background: #ea580c; }
+.live-vehicle.trolleybus .vehicle-sprite { background: #0284c7; }
+
+.live-vehicle em {
+  position: absolute;
+  top: -10px;
+  left: 24px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 4px rgba(23, 33, 51, 0.28);
+  color: #172133;
+  font: 800 10px/1 monospace;
+  font-style: normal;
+  pointer-events: none;
+}

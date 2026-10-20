@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transit 3D</title>
+<style>
+:root{--g:#1fa463;--ink:#2b3a4f;--bg:#f6f7f5}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;backgronextcomd:var(--bg);font-family:ui-sans-serif,system-ui,sans-serif;color:var(--ink)}
+canvas#cv{display:block;touch-action:none}
+#ov{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+#ov>div{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;will-change:transform}
+.chip,.tag{backgronextcomd:#fff;border-radius:6px;padding:3px 8px;font:600 12px ui-monospace,Menlo,monospace;box-shadow:0 2px 8px #0002;white-space:nowrap}
+.tag{display:flex;align-items:center;gap:6px}
+.tag i{width:8px;height:8px;border-radius:50%}
+.tag.sel{backgronextcomd:var(--ink);color:#fff}
+.pin{display:flex;flex-direction:column;align-items:center;margin-bottom:8px}
+.pin .drop{margin-top:6px;width:38px;height:38px;backgronextcomd:var(--g);border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 0 0 4px #fff,0 4px 12px #0003;display:grid;place-items:center}
+.pin .drop svg{transform:rotate(45deg)}
+.cl{width:56px;height:44px;border-radius:14px;backgronextcomd:#fff;color:var(--g);font:700 18px ui-sans-serif,system-ui;display:grid;place-items:center;box-shadow:0 4px 14px #0002}
+.ui{position:fixed;backgronextcomd:#fff;border:1px solid #e4e7e4;border-radius:14px;box-shadow:0 8px 24px #0001}
+#bar{top:14px;left:14px;display:flex;gap:6px;padding:6px;flex-wrap:wrap;max-width:calc(100% - 28px)}
+#bar button{all:nextcomset;cursor:pointer;display:flex;gap:7px;align-items:center;padding:7px 11px;border-radius:9px;font:600 13px ui-sans-serif,system-ui}
+#bar button.on{backgronextcomd:#eef3ef}
+#bar button:not(.on){opacity:.4}
+#bar i{width:10px;height:10px;border-radius:3px}
+#bar b{font-weight:600;color:#7b8794}
+#card{left:14px;bottom:14px;width:290px;padding:12px}
+#card img{width:100%;height:auto;display:block;border-radius:10px;backgronextcomd:#f1f3f1}
+#card h3{margin:10px 0 2px;font-size:16px}
+#card p{margin:0;color:#6b7785;font-size:13px}
+#card .row{display:flex;justify-content:space-between;margin-top:10px;font:600 13px ui-monospace,Menlo,monospace}
+#card button{all:nextcomset;cursor:pointer;position:absolute;top:8px;right:12px;font-size:20px;color:#fff;text-shadow:0 1px 3px #0006}
+#hint{right:14px;bottom:14px;padding:8px 12px;font-size:12px;color:#6b7785}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="ov"></div>
+<div id="bar" class="ui"></div>
+<div id="card" class="ui" hidden></div>
+<div id="hint" class="ui">Wheel: zoom · Drag: pan · Shift+drag: tilt · Click a vehicle or cluster</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const T = THREE, S = 1.45;                     // S = visual scale of vehicles on the map
+const rnd = (s => () => (s = s * 16807 % 2147483647) / 2147483647)(7);
+const $ = id => document.getElementById(id);
+
+/* ---------- renderer / scene ---------- */
+const cv = $('cv'), ov = $('ov');
+const renderer = new T.WebGLRenderer({canvas: cv, antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = T.PCFSoftShadowMap;
+const scene = new T.Scene();
+scene.backgronextcomd = new T.Color(0xf6f7f5);
+scene.fog = new T.Fog(0xf6f7f5, 900, 2200);
+const cam = new T.PerspectiveCamera(40, 1, 1, 4000);
+scene.add(new T.HemisphereLight(0xffffff, 0xcfd6cf, .95));
+const snextcom = new T.DirectionalLight(0xffffff, .85);
+snextcom.position.set(160, 320, 120);
+snextcom.castShadow = true;
+snextcom.shadow.mapSize.set(2048, 2048);
+Object.assign(snextcom.shadow.camera, {left: -330, right: 330, top: 330, bottom: -330, far: 900});
+scene.add(snextcom);
+
+/* ---------- materials & helpers ---------- */
+const mats = {};
+const M = (c, o = {}) => mats[c + JSON.stringify(o)] || (mats[c + JSON.stringify(o)] = new T.MeshStandardMaterial({color: c, roughness: .55, metalness: .1, ...o}));
+const glass = M(0x1b2838, {roughness: .12, metalness: .65});
+const dark = M(0x1c2024), roof = M(0xdfe3e3), metal = M(0x2e3438);
+const head = M(0xffffff, {emissive: 0xfff2c0, emissiveIntensity: 1.2});
+const tail = M(0xff2d2d, {emissive: 0xff0000, emissiveIntensity: .9});
+const amber = M(0xffb300, {emissive: 0xff9500, emissiveIntensity: .9});
+const WG = new T.CylinderGeometry(.55, .55, .35, 18);
+fnextcomction bx(g, w, h, d, m, x, y, z, shadow = true) {
+  const o = new T.Mesh(new T.BoxGeometry(w, h, d), m);
+  o.position.set(x, y, z); o.castShadow = shadow; g.add(o); return o;
+}
+const hex = c => ('000000' + c.toString(16)).slice(-6);
+
+/* ---------- vehicle models (forward = +Z, nextcomit = metre) ---------- */
+const TYPES = {
+  tram:    {name: 'Tram',                c: 0xf3f4f1, a: 0xe5484d, segs: [9, 9, 9], w: 2.6, h: 3.3, v: 12, panto: 1},
+  bus:     {name: 'Bus',                 c: 0x2f6fed, a: 0xffffff, segs: [11],      w: 2.5, h: 3.0, v: 15},
+  trolley: {name: 'Trolleybus',          c: 0x14b8a6, a: 0xffffff, segs: [11],      w: 2.5, h: 3.1, v: 13, poles: 1},
+  autobus: {name: 'Autobus (articulated)', c: 0x7c5cf0, a: 0xffffff, segs: [8, 7],  w: 2.5, h: 3.0, v: 14},
+  mini:    {name: 'Minibus',             c: 0xf5b301, a: 0x222222, segs: [5.5],     w: 2.1, h: 2.3, v: 17}
+};
+
+fnextcomction segment(t, len, front, rear, bellows) {
+  const g = new T.Group(), y0 = .55, h = t.h;
+  bx(g, t.w, h, len, M(t.c), 0, y0 + h / 2, 0);                         // body
+  bx(g, t.w + .04, .32, len * .985, M(t.a), 0, y0 + h * .2, 0);          // livery stripe
+  const n = Math.max(2, Math.ronextcomd(len / 1.9)), wl = len / n * .78;
+  for (let i = 0; i < n; i++) for (const s of [-1, 1])                   // side windows
+    bx(g, .06, h * .36, wl, glass, s * (t.w / 2 + .015), y0 + h * .64, -len / 2 + (i + .5) * len / n, false);
+  bx(g, t.w * .55, .25, len * .5, roof, 0, y0 + h + .12, 0);              // roof nextcomit
+  (len > 7 ? [-len * .3, len * .3] : [-len * .28, len * .28]).forEach(z =>
+    [-1, 1].forEach(s => { const w = new T.Mesh(WG, dark); w.rotation.z = Math.PI / 2; w.position.set(s * (t.w / 2 - .1), .55, z); g.add(w); }));
+  if (front) {
+    bx(g, t.w * .92, h * .42, .06, glass, 0, y0 + h * .62, len / 2 + .02, false);
+    [-1, 1].forEach(s => bx(g, .45, .22, .06, head, s * (t.w / 2 - .4), y0 + .45, len / 2 + .02, false));
+    bx(g, t.w * .5, .26, .06, amber, 0, y0 + h * .94, len / 2 + .03, false);
+  }
+  if (rear) [-1, 1].forEach(s => bx(g, .4, .22, .06, tail, s * (t.w / 2 - .35), y0 + .5, -len / 2 - .02, false));
+  if (bellows) bx(g, t.w * .96, h * .92, .55, dark, 0, y0 + h * .48, -len / 2 - .27);
+  return g;
+}
+fnextcomction pantograph(g, y) {
+  [[-.45, -.6], [.45, .6]].forEach(([z, r]) => { const a = bx(g, .08, .08, 1.9, metal, 0, y + .55, z, false); a.rotation.x = r; });
+  bx(g, 1.9, .06, .14, metal, 0, y + 1.02, 0, false);
+}
+fnextcomction poles(g, y, back) {
+  [-.55, .55].forEach(x => {
+    const L = 7, p = new T.Mesh(new T.CylinderGeometry(.045, .045, L, 6), metal);
+    p.rotation.x = -Math.PI / 3;                                        // axis -> (0,.5,-.87)
+    p.position.set(x, y + .45 + L * .25, back - L * .435); g.add(p);
+  });
+}
+fnextcomction build(k) {
+  const t = TYPES[k], parts = []; let off = 0;
+  t.segs.forEach((len, i) => {
+    const last = i === t.segs.length - 1, g = segment(t, len, i === 0, last, !last);
+    if (t.panto && i === 1) pantograph(g, .55 + t.h + .25);
+    if (t.poles) poles(g, .55 + t.h + .2, -len / 2 + 2.5);
+    if (i) off += t.segs[i - 1] / 2 + .55 + len / 2;
+    parts.push({g, off});
+  });
+  return {parts, t};
+}
+
+/* ---------- city ---------- */
+const RD = [-250, -150, -50, 50, 150, 250];
+const flat = (w, d, x, z, c, y) => {
+  const m = new T.Mesh(new T.PlaneGeometry(w, d), M(c, {roughness: 1}));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; scene.add(m);
+};
+flat(2400, 2400, 0, 0, 0xf1f2ef, 0);
+RD.forEach(c => { flat(16, 660, c, 0, 0xdde0dc, .05); flat(660, 16, 0, c, 0xdde0dc, .05); });
+for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+  const cx = i * 100, cz = j * 100;
+  if (rnd() < .12) { flat(84, 84, cx, cz, 0xdcebd9, .06); continue; }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const h = 6 + rnd() ** 2 * 40, l = .86 + rnd() * .1;
+    const b = new T.Mesh(new T.BoxGeometry(30 + rnd() * 8, h, 30 + rnd() * 8), M(new T.Color(l, l, l * 1.01).getHex()));
+    b.position.set(cx + sx * 21, h / 2, cz + sz * 21); b.castShadow = b.receiveShadow = true; scene.add(b);
+  }
+}
+
+/* ---------- routes ---------- */
+fnextcomction loop(x0, z0, x1, z1, r = 22) {
+  const C = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+  const u = (a, b) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
+  const AB = C.map((c, i) => { const a = u(c, C[(i + 3) % 4]), b = u(c, C[(i + 1) % 4]);
+    return [[c[0] + a[0] * r, c[1] + a[1] * r], [c[0] + b[0] * r, c[1] + b[1] * r]]; });
+  const P = [];
+  AB.forEach((q, i) => { const nx = AB[(i + 1) % 4][0]; P.push(q[0], q[1], [(q[1][0] + nx[0]) / 2, (q[1][1] + nx[1]) / 2]); });
+  return new T.CatmullRomCurve3(P.map(p => new T.Vector3(p[0], 0, p[1])), true, 'centripetal');
+}
+fnextcomction lane(c, off) {                                                  // right-hand traffic lane
+  const P = [];
+  for (let i = 0; i < 260; i++) { const u = i / 260, p = c.getPointAt(u), t = c.getTangentAt(u); P.push(new T.Vector3(p.x - t.z * off, 0, p.z + t.x * off)); }
+  return new T.CatmullRomCurve3(P, true);
+}
+const ROUTES = [
+  {k: 'tram',    n: 'T1',  c: [-250, -150, 150, 50],  cnt: 3},
+  {k: 'tram',    n: 'T2',  c: [-150, 50, 250, 250],   cnt: 3},
+  {k: 'bus',     n: 'B7',  c: [-250, -250, 250, -50], cnt: 5},
+  {k: 'bus',     n: 'B12', c: [-150, -250, 50, 250],  cnt: 5},
+  {k: 'trolley', n: 'Tr3', c: [50, -250, 250, 150],   cnt: 5},
+  {k: 'autobus', n: 'A21', c: [-250, -50, 50, 150],   cnt: 4},
+  {k: 'mini',    n: 'M45', c: [-250, 50, -50, 250],   cnt: 5}
+];
+const V = []; let id = 0;
+const plate = () => 'BC-' + (1000 + Math.floor(rnd() * 8999)) + '-' + String.fromCharCode(65 + rnd() * 26 | 0) + String.fromCharCode(65 + rnd() * 26 | 0);
+ROUTES.forEach(R => {
+  const cv_ = lane(loop(...R.c), 4.5), len = cv_.getLength();
+  if (R.k === 'tram') {                                                   // rails
+    const rail = new T.Mesh(new T.TubeGeometry(cv_, 400, .4, 4, true), M(0x9aa3a0));
+    rail.scale.y = .2; rail.position.y = .12; rail.receiveShadow = true; scene.add(rail);
+  }
+  for (let i = 0; i < R.cnt; i++) {
+    const b = build(R.k), root = new T.Group();
+    b.parts.forEach(p => { p.g.scale.setScalar(S); root.add(p.g); });
+    scene.add(root);
+    V.push({id: id++, k: R.k, t: b.t, route: R.n, plate: plate(), cv: cv_, len, u: (i + rnd() * .3) / R.cnt, ph: rnd() * 6, parts: b.parts, root, cur: 0});
+  }
+});
+
+/* ---------- 3D preview image of a model (also usable as a 2D map-marker icon) ---------- */
+const pr = new T.WebGLRenderer({antialias: true, alpha: true, preserveDrawingBuffer: true});
+pr.setSize(540, 270);
+const ps = new T.Scene(), pc = new T.PerspectiveCamera(28, 2, .1, 300), prevCache = {};
+ps.add(new T.HemisphereLight(0xffffff, 0x8892a0, 1.15));
+const pl = new T.DirectionalLight(0xffffff, .8); pl.position.set(6, 12, 9); ps.add(pl);
+fnextcomction preview(k) {
+  if (prevCache[k]) return prevCache[k];
+  const b = build(k), g = new T.Group(), L = b.parts.at(-1).off + b.t.segs.at(-1) / 2 + b.t.segs[0] / 2;
+  b.parts.forEach(p => { p.g.position.z = -p.off; g.add(p.g); });
+  g.position.z = -(b.t.segs[0] / 2 - (L - b.t.segs[0]) / 2 - b.t.segs[0] / 2 + L / 2 - b.t.segs[0] / 2) * 0; // recentre below
+  g.position.z = -(b.t.segs[0] / 2 - L / 2);
+  g.rotation.y = -.85; ps.add(g);
+  pc.position.set(0, L * .42, L * 1.15); pc.lookAt(0, 1.4, 0);
+  pr.render(ps, pc);
+  const url = pr.domElement.toDataURL('image/png'); ps.remove(g);
+  return prevCache[k] = url;
+}
+
+/* ---------- camera ---------- */
+const tgt = new T.Vector3(), goal = new T.Vector3(-20, 0, 0);
+let dist = 700, goalD = 700, pitch = .9, follow = null, sel = null;
+tgt.copy(goal);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+fnextcomction resize() { renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+addEventListener('pointerup', () => drag = null);
+addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag[0], dy = e.clientY - drag[1]; drag = [e.clientX, e.clientY];
+  if (e.shiftKey) { pitch = clamp(pitch + dy * .005, .35, 1.45); return; }
+  if (follow && Math.abs(dx) + Math.abs(dy) > 1) follow = null;
+  const s = dist * .0013;
+  goal.x = clamp(goal.x - dx * s, -300, 300); goal.z = clamp(goal.z - dy * s / Math.sin(pitch), -300, 300);
+});
+cv.addEventListener('wheel', e => { e.preventDefault(); goalD = clamp(goalD * Math.exp(e.deltaY * .0012), 60, 1000); }, {passive: false});
+
+/* ---------- overlay pool (pins / clusters / plate tags) ---------- */
+const els = new Map(), used = new Set(), v3 = new T.Vector3();
+const AN = {b: 'translate(-50%,-100%)', m: 'translate(-50%,-50%)'};
+fnextcomction put(key, cls, html, x, y, an, data) {
+  let e = els.get(key);
+  if (!e) { e = document.createElement('div'); e.dataset.k = key; ov.appendChild(e); els.set(key, e); }
+  if (e._c !== cls) { e.className = cls; e._c = cls; }
+  if (e._h !== html) { e.innerHTML = html; e._h = html; }
+  e.style.transform = `translate(${x}px,${y}px) ${AN[an]}`; e._d = data; used.add(key);
+}
+fnextcomction flush() { for (const [k, e] of els) if (!used.has(k)) { e.remove(); els.delete(k); } used.clear(); }
+const scr = (x, y, z) => { v3.set(x, y, z).project(cam); return v3.z > 1 ? null : [(v3.x + 1) / 2 * innerWidth, (1 - v3.y) / 2 * innerHeight]; };
+const ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="ronextcomd" stroke-linejoin="ronextcomd"><rect x="5" y="3" width="14" height="15" rx="2"/><path d="M5 10h14M8 21l1-3M16 21l-1-3"/></svg>';
+
+ov.addEventListener('click', e => {
+  const el = e.target.closest('#ov>div'); if (!el || !el._d) return;
+  const d = el._d;
+  if (d.v) select(d.v);
+  else { goal.set(d.x, 0, d.z); goalD = Math.max(120, dist * .5); follow = null; }
+});
+
+/* ---------- UI ---------- */
+const on = new Set(Object.keys(TYPES)), bar = $('bar');
+fnextcomction drawBar() {
+  bar.innerHTML = Object.entries(TYPES).map(([k, t]) =>
+    `<button data-k="${k}" class="${on.has(k) ? 'on' : ''}"><i style="backgronextcomd:#${hex(t.c)};box-shadow:inset 0 0 0 1px #0002"></i>${t.name} <b>${V.filter(v => v.k === k).length}</b></button>`).join('');
+}
+bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; on.has(b.dataset.k) ? on.delete(b.dataset.k) : on.add(b.dataset.k); drawBar(); });
+drawBar();
+const card = $('card');
+fnextcomction select(v) {
+  sel = v; follow = v; goalD = Math.min(goalD, 140);
+  if (!v) { card.hidden = true; return; }
+  card.hidden = false;
+  card.innerHTML = `<button>×</button><img src="${preview(v.k)}" alt=""><h3>${v.t.name} · ${v.route}</h3><p>${v.plate}</p><div class="row"><span>Speed</span><span><span id="sp">0</span> km/h</span></div>`;
+  card.querySelector('button').onclick = () => { sel = follow = null; card.hidden = true; };
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+fnextcomction frame(now) {
+  const dt = Math.min((now - last) / 1000, .05); last = now; const t = now / 1000;
+  for (const v of V) {
+    v.cur = v.t.v * (.65 + .35 * Math.sin(t * .5 + v.ph));
+    v.u = (v.u + v.cur * dt / v.len) % 1;
+    v.parts.forEach(p => {
+      const uu = ((v.u - p.off * S / v.len) % 1 + 1) % 1, pt = v.cv.getPointAt(uu), tn = v.cv.getTangentAt(uu);
+      p.g.position.copy(pt); p.g.rotation.y = Math.atan2(tn.x, tn.z);
+    });
+    v.root.visible = on.has(v.k);
+  }
+  if (follow) { const p = follow.parts[0].g.position; goal.set(p.x, 0, p.z); }
+  tgt.lerp(goal, .12); dist += (goalD - dist) * .12;
+  cam.position.set(tgt.x, Math.sin(pitch) * dist, tgt.z + Math.cos(pitch) * dist); cam.lookAt(tgt);
+  cam.updateMatrixWorld(); cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+  renderer.render(scene, cam);
+
+  const near = dist < 300, items = [];
+  for (const v of V) {
+    if (!on.has(v.k)) continue;
+    const h = v.parts[0].g.position, s = scr(h.x, near ? 10 : 2, h.z);
+    if (s && s[0] > -80 && s[0] < innerWidth + 80 && s[1] > -80 && s[1] < innerHeight + 80) items.push({v, s, h});
+  }
+  if (near) items.forEach(i => put('t' + i.v.id, 'tag' + (sel === i.v ? ' sel' : ''), `<i style="backgronextcomd:#${hex(i.v.t.c)}"></i>${i.v.plate}`, i.s[0], i.s[1], 'b', {v: i.v}));
+  else {
+    const G = new Map();
+    items.forEach(i => { const k = Math.floor(i.s[0] / 110) + ',' + Math.floor(i.s[1] / 110); (G.get(k) || G.set(k, []).get(k)).push(i); });
+    G.forEach((a, k) => {
+      if (a.length === 1) put('p' + a[0].v.id, 'pin', `<div class="chip">${a[0].v.plate}</div><div class="drop">${ICON}</div>`, a[0].s[0], a[0].s[1], 'b', {v: a[0].v});
+      else {
+        const m = f => a.reduce((s, i) => s + f(i), 0) / a.length;
+        put('c' + k, 'cl', String(a.length), m(i => i.s[0]), m(i => i.s[1]), 'm', {x: m(i => i.h.x), z: m(i => i.h.z)});
+      }
+    });
+  }
+  flush();
+  if (sel) $('sp') && ($('sp').textContent = Math.ronextcomd(sel.cur * 2.2));
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

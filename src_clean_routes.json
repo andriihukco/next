@@ -1,0 +1,362 @@
+{
+  "88": {
+    "routeNum": "25",
+    "type": "bus",
+    "destination": "ТЦ Кінг Кросс - вул. Заклинських"
+  },
+  "90": {
+    "routeNum": "1",
+    "type": "bus",
+    "destination": "м. Дубляни - пл. Галицька"
+  },
+  "91": {
+    "routeNum": "7",
+    "type": "tram",
+    "destination": "вул. Ковча - Погулянка"
+  },
+  "92": {
+    "routeNum": "99",
+    "type": "bus",
+    "destination": "площа Галицька – Музей народної архітектури"
+  },
+  "93": {
+    "routeNum": "8А",
+    "type": "bus",
+    "destination": "вул. Зернова - смт. Брюховичі"
+  },
+  "94": {
+    "routeNum": "3",
+    "type": "bus",
+    "destination": "ТРЦ Кінг Кросс - пл. Різні"
+  },
+  "97": {
+    "routeNum": "92",
+    "type": "bus",
+    "destination": "АС Західна - вул. Дж. Вашингтона"
+  },
+  "99": {
+    "routeNum": "21",
+    "type": "bus",
+    "destination": "Кільцева дорога Три слони"
+  },
+  "102": {
+    "routeNum": "47",
+    "type": "bus",
+    "destination": "Санта Барбара - Рясне-2"
+  },
+  "103": {
+    "routeNum": "39А",
+    "type": "bus",
+    "destination": "пл. Галицька - вул. Богданівська"
+  },
+  "104": {
+    "routeNum": "4",
+    "type": "tram",
+    "destination": "Залізничний вокзал - вул. Вернадського"
+  },
+  "105": {
+    "routeNum": "41",
+    "type": "bus",
+    "destination": "вул. Сихівська - Галицьке перехрестя"
+  },
+  "106": {
+    "routeNum": "10",
+    "type": "bus",
+    "destination": "ТРЦ Кінг Кросс - Залізничний вокзал"
+  },
+  "107": {
+    "routeNum": "49",
+    "type": "bus",
+    "destination": "Залізничний вокзал - Рясне-2"
+  },
+  "108": {
+    "routeNum": "11",
+    "type": "bus",
+    "destination": "пр. Червоної Калини - вул. Величковського"
+  },
+  "109": {
+    "routeNum": "19",
+    "type": "bus",
+    "destination": "вул. Антонича - вул. Щурата"
+  },
+  "111": {
+    "routeNum": "6",
+    "type": "bus",
+    "destination": "Рясне-2 - пл. Галицька"
+  },
+  "112": {
+    "routeNum": "16",
+    "type": "bus",
+    "destination": "вул. Сихівська - Залізничний вокзал"
+  },
+  "113": {
+    "routeNum": "14",
+    "type": "bus",
+    "destination": "вул. Антонича - Городоцька-Кільцева"
+  },
+  "114": {
+    "routeNum": "59",
+    "type": "bus",
+    "destination": "вул. Ветеранів - с. Зарудці"
+  },
+  "115": {
+    "routeNum": "12",
+    "type": "bus",
+    "destination": "Рясне-2 - Автостанція №2"
+  },
+  "117": {
+    "routeNum": "52",
+    "type": "bus",
+    "destination": "смт. Рудно - вул. Варшавська"
+  },
+  "118": {
+    "routeNum": "60",
+    "type": "bus",
+    "destination": "площа Різні  - Ситихів"
+  },
+  "119": {
+    "routeNum": "27",
+    "type": "bus",
+    "destination": "Скнилів - Личаківська АС-6"
+  },
+  "121": {
+    "routeNum": "23",
+    "type": "bus",
+    "destination": "вул. Суботівська - вул. Тракт Глинянський"
+  },
+  "122": {
+    "routeNum": "58",
+    "type": "bus",
+    "destination": "вул. Ветеранів - с. Завадів"
+  },
+  "123": {
+    "routeNum": "32",
+    "type": "bus",
+    "destination": "пр. Червоної Калини - Залізничний вокзал"
+  },
+  "124": {
+    "routeNum": "46",
+    "type": "bus",
+    "destination": "пр.Червоної Калини - Голосківський цвинтар"
+  },
+  "125": {
+    "routeNum": "57",
+    "type": "bus",
+    "destination": "пл. Різні - вул. Максимовича"
+  },
+  "126": {
+    "routeNum": "37",
+    "type": "bus",
+    "destination": "вул. Під Голоском - вул. Хоткевича"
+  },
+  "128": {
+    "routeNum": "84",
+    "type": "bus",
+    "destination": "вул. Щурата - селище Рудно"
+  },
+  "131": {
+    "routeNum": "45",
+    "type": "bus",
+    "destination": "вул. Симоненка - вул. Барвінських"
+  },
+  "133": {
+    "routeNum": "63",
+    "type": "bus",
+    "destination": "вул. Під дубом - с. Воля-Гамулецька"
+  },
+  "137": {
+    "routeNum": "67",
+    "type": "bus",
+    "destination": "смт. Брюховичі - ТЦ Магнус"
+  },
+  "138": {
+    "routeNum": "55",
+    "type": "bus",
+    "destination": "с. Збиранка - площа Різні"
+  },
+  "143": {
+    "routeNum": "33",
+    "type": "bus",
+    "destination": "вул. Січових Стрільців - вул. Івана Пулюя"
+  },
+  "145": {
+    "routeNum": "48",
+    "type": "bus",
+    "destination": "Галицьке перехрестя - Ряшівська"
+  },
+  "146": {
+    "routeNum": "34",
+    "type": "bus",
+    "destination": "с. Білогорща - вул. Чигиринська"
+  },
+  "147": {
+    "routeNum": "31",
+    "type": "bus",
+    "destination": "Залізничний вокзал - Галицьке перехрестя"
+  },
+  "148": {
+    "routeNum": "9",
+    "type": "bus",
+    "destination": "вул. Вернадського - с. Муроване - с. Сороки-Львівські"
+  },
+  "149": {
+    "routeNum": "80",
+    "type": "bus",
+    "destination": "Площа Різні - С. Великі Грибовичі"
+  },
+  "150": {
+    "routeNum": "7",
+    "type": "bus",
+    "destination": "вул. Чигиринська - вул. Гориня"
+  },
+  "176": {
+    "routeNum": "32",
+    "type": "trolleybus",
+    "destination": "Університет - вул. Суботівська"
+  },
+  "182": {
+    "routeNum": "27",
+    "type": "trolleybus",
+    "destination": "Університет - ст. Скнилів"
+  },
+  "878": {
+    "routeNum": "6",
+    "type": "tram",
+    "destination": "Залізничний вокзал - вул. Миколайчука"
+  },
+  "881": {
+    "routeNum": "62",
+    "type": "bus",
+    "destination": "ст. Підзамче - с. Малі Грибовичі"
+  },
+  "903": {
+    "routeNum": "8",
+    "type": "tram",
+    "destination": "пл. Соборна - вул. Вернадського"
+  },
+  "972": {
+    "routeNum": "3",
+    "type": "tram",
+    "destination": "пл. Соборна - Аквапарк"
+  },
+  "977": {
+    "routeNum": "24",
+    "type": "trolleybus",
+    "destination": "вул. Шота Руставелі - проспект Червоної Калини"
+  },
+  "992": {
+    "routeNum": "39",
+    "type": "bus",
+    "destination": "вул. Грінченка - Кривчиці"
+  },
+  "1006": {
+    "routeNum": "15",
+    "type": "bus",
+    "destination": "Приміський вокзал - Медової Печери"
+  },
+  "1007": {
+    "routeNum": "18",
+    "type": "bus",
+    "destination": "вул. Суботівська - Глинянський Тракт"
+  },
+  "1014": {
+    "routeNum": "29",
+    "type": "bus",
+    "destination": "Залізничний вокзал - Винники Івасюка"
+  },
+  "1024": {
+    "routeNum": "51",
+    "type": "bus",
+    "destination": "ТЦ Вікторія Гарденс- Галицьке перехрестя"
+  },
+  "1062": {
+    "routeNum": "43",
+    "type": "bus",
+    "destination": "вул. Суботівська - вул. Раковського"
+  },
+  "1594": {
+    "routeNum": "31",
+    "type": "trolleybus",
+    "destination": "Шота Руставелі - Пульмонологічний центр"
+  },
+  "1627": {
+    "routeNum": "1",
+    "type": "tram",
+    "destination": "Залізничний вокзал - Погулянка"
+  },
+  "1628": {
+    "routeNum": "25",
+    "type": "trolleybus",
+    "destination": "Автовокзал - вул. Шота Руставелі"
+  },
+  "1630": {
+    "routeNum": "22",
+    "type": "trolleybus",
+    "destination": "Університет - Автовокзал"
+  },
+  "1631": {
+    "routeNum": "9",
+    "type": "tram",
+    "destination": "Залізничний вокзал - вул. Торф'яна"
+  },
+  "1633": {
+    "routeNum": "40",
+    "type": "bus",
+    "destination": "ТЦ Кінг Крос - Винники вул. Лисика"
+  },
+  "1734": {
+    "routeNum": "2",
+    "type": "tram",
+    "destination": "вул.Коновальця - Пасічна"
+  },
+  "2054": {
+    "routeNum": "38",
+    "type": "trolleybus",
+    "destination": "вул. Хуторівка - пл. Кропивницького"
+  },
+  "2059": {
+    "routeNum": "20",
+    "type": "bus",
+    "destination": "вул. Суботівська - вул. Польова"
+  },
+  "2285": {
+    "routeNum": "30",
+    "type": "trolleybus",
+    "destination": "Університет - вул. Любінська - вул. Ряшівська"
+  },
+  "2299": {
+    "routeNum": "22",
+    "type": "bus",
+    "destination": "\"вул. Зернова - смт. Брюховичі"
+  },
+  "2300": {
+    "routeNum": "61",
+    "type": "bus",
+    "destination": "с. Підрясне - с. Підбірці"
+  },
+  "2302": {
+    "routeNum": "56",
+    "type": "bus",
+    "destination": "вул.700-річчя Львова - с. Великі Грибовичі - м. Дубляни"
+  },
+  "2334": {
+    "routeNum": "23",
+    "type": "trolleybus",
+    "destination": "Автовокзал - вул. Ряшівська"
+  },
+  "2355": {
+    "routeNum": "5",
+    "type": "bus",
+    "destination": "пл. Різні - м. Винники вул. Забава"
+  },
+  "2460": {
+    "routeNum": "17",
+    "type": "bus",
+    "destination": "вул. Данила Апостола - вул. Щурата"
+  },
+  "2464": {
+    "routeNum": "53",
+    "type": "bus",
+    "destination": "Санта-Барбара - Галицьке перехрестя"
+  }
+}
