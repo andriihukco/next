@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { cn } from "../../lib/utils";
-import { Chip } from "./chip";
+import { MaterialIcon } from "./material-icon";
 
 export type CategoryChipItem = {
   id: string;
   label: string;
   icon: string;
-  /** Category accent for the icon only; the chip itself stays neutral (DESIGN.md §7). */
+  /** Category accent, used as the orb fill. Falls back to `--primary`. */
   color?: string;
   count?: number;
 };
@@ -20,9 +20,9 @@ type CategoryChipsProps = {
 };
 
 /**
- * One horizontally scrolling row of category filters, used by every section
- * (transport, places, education, services, jobs, real estate, events).
- * The selected chip is always scrolled into view.
+ * One horizontally scrolling row of colored category orbs, used by every
+ * section (transport, places, education, services, jobs, real estate, events).
+ * The selected orb is always scrolled into view.
  */
 export function CategoryChips({ label, items, value, onChange, className }: CategoryChipsProps) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -39,22 +39,30 @@ export function CategoryChips({ label, items, value, onChange, className }: Cate
 
   return (
     <div ref={rowRef} className={cn("category-chips", className)} role="group" aria-label={label}>
-      {items.map((item) => (
-        <Chip
-          key={item.id}
-          icon={item.icon}
-          selected={value === item.id}
-          data-filter={item.id}
-          className="category-chip"
-          style={item.color ? ({ "--chip-color": item.color } as CSSProperties) : undefined}
-          onClick={() => onChange(item.id)}
-        >
-          {item.label}
-          {item.count !== undefined && item.count > 0 && (
-            <span className="category-chip-count">{item.count}</span>
-          )}
-        </Chip>
-      ))}
+      {items.map((item) => {
+        const selected = value === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={selected}
+            data-filter={item.id}
+            className="category-tile"
+            onClick={() => onChange(item.id)}
+          >
+            <span
+              className="category-tile-orb"
+              style={{ "--category-color": item.color ?? "var(--primary)" } as CSSProperties}
+            >
+              <MaterialIcon name={item.icon} size={34} filled={selected} />
+              {item.count !== undefined && item.count > 0 && (
+                <span className="category-tile-count">{item.count}</span>
+              )}
+            </span>
+            <span className="category-tile-label">{item.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

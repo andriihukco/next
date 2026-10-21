@@ -17,13 +17,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import {
-  ArrowUpRight,
-  CalendarDays,
-  Clock3,
-  MapPin,
-  MaterialIcon,
-} from "./ui/material-icon";
+import { MaterialIcon } from "./ui/material-icon";
 import {
   CITY_PLACE_CATEGORY_COLORS,
   cityEducationKind,
@@ -103,12 +97,13 @@ type CityGuideProps = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TRANSPORT_TABS: { id: TransportTab; label: string; icon: string }[] = [
-  { id: "nearby",     label: "Поруч",       icon: "near_me" },
-  { id: "bus",        label: "Автобуси",    icon: "directions_bus" },
-  { id: "tram",       label: "Трамваї",     icon: "tram" },
-  { id: "trolleybus", label: "Тролейбуси",  icon: "electric_bolt" },
-  { id: "taxi",       label: "Таксі",       icon: "local_taxi" },
+// Orb colors for category rows (DESIGN.md §2, §7).
+const TRANSPORT_TABS: { id: TransportTab; label: string; icon: string; color: string }[] = [
+  { id: "nearby",     label: "Поруч",       icon: "near_me",         color: "#1caa63" },
+  { id: "bus",        label: "Автобуси",    icon: "directions_bus",  color: "#d89418" },
+  { id: "tram",       label: "Трамваї",     icon: "tram",            color: "#247bad" },
+  { id: "trolleybus", label: "Тролейбуси",  icon: "electric_bolt",   color: "#c64757" },
+  { id: "taxi",       label: "Таксі",       icon: "local_taxi",      color: "#bd5681" },
 ];
 
 const CITY_SECTIONS: { id: CitySection; label: string; icon: string }[] = [
@@ -158,40 +153,40 @@ const EDUCATION_KIND_LABELS: Record<CityEducationKind, string> = {
 };
 
 const EVENT_FILTERS = [
-  { id: "all",        label: "Усі події",  icon: "event" },
-  { id: "Для родини", label: "Для родини", icon: "family_restroom" },
-  { id: "Діти",       label: "Діти",       icon: "child_care" },
-  { id: "Зустріч",    label: "Зустріч",    icon: "groups" },
+  { id: "all",        label: "Усі події",  icon: "event",           color: "#176443" },
+  { id: "Для родини", label: "Для родини", icon: "family_restroom", color: "#d89418" },
+  { id: "Діти",       label: "Діти",       icon: "child_care",      color: "#d76543" },
+  { id: "Зустріч",    label: "Зустріч",    icon: "groups",          color: "#9257a5" },
 ] as const;
 
-const EDUCATION_FILTERS: { id: CityEducationKind; label: string; icon: string }[] = [
-  { id: "school",       label: "Школи",       icon: "school" },
-  { id: "kindergarten", label: "Садочки",     icon: "child_care" },
-  { id: "university",   label: "Університети", icon: "account_balance" },
-  { id: "adult-course", label: "Курси",       icon: "menu_book" },
-  { id: "library",      label: "Бібліотеки",  icon: "local_library" },
+const EDUCATION_FILTERS: { id: CityEducationKind; label: string; icon: string; color: string }[] = [
+  { id: "school",       label: "Школи",        icon: "school",          color: "#6473bf" },
+  { id: "kindergarten", label: "Садочки",      icon: "child_care",      color: "#6473bf" },
+  { id: "university",   label: "Університети", icon: "account_balance", color: "#6473bf" },
+  { id: "adult-course", label: "Курси",        icon: "menu_book",       color: "#6473bf" },
+  { id: "library",      label: "Бібліотеки",   icon: "local_library",   color: "#6473bf" },
 ];
 
 const SERVICE_FILTERS = [
-  { id: "beauty",       label: "Краса",       icon: "spa" },
-  { id: "dry-cleaning", label: "Хімчистка",   icon: "local_laundry_service" },
-  { id: "plumbing",     label: "Сантехнік",   icon: "water_drop" },
-  { id: "repair",       label: "Ремонт",      icon: "build" },
-  { id: "cleaning",     label: "Прибирання",  icon: "cleaning_services" },
+  { id: "beauty",       label: "Краса",      icon: "spa",                  color: "#bd5681" },
+  { id: "dry-cleaning", label: "Хімчистка",  icon: "local_laundry_service", color: "#60776b" },
+  { id: "plumbing",     label: "Сантехнік",  icon: "water_drop",           color: "#60776b" },
+  { id: "repair",       label: "Ремонт",     icon: "build",                color: "#60776b" },
+  { id: "cleaning",     label: "Прибирання", icon: "cleaning_services",    color: "#60776b" },
 ] as const;
 
 const JOB_FILTERS = [
-  { id: "technology",  label: "IT",           icon: "computer" },
-  { id: "hospitality", label: "Гостинність", icon: "restaurant" },
-  { id: "retail",      label: "Торгівля",    icon: "shopping_cart" },
-  { id: "education",   label: "Освіта",      icon: "school" },
+  { id: "technology",  label: "IT",          icon: "computer",      color: "#247bad" },
+  { id: "hospitality", label: "Гостинність", icon: "restaurant",    color: "#d76543" },
+  { id: "retail",      label: "Торгівля",    icon: "shopping_cart", color: "#d89418" },
+  { id: "education",   label: "Освіта",      icon: "school",        color: "#6473bf" },
 ] as const;
 
 const REAL_ESTATE_FILTERS = [
-  { id: "rent",       label: "Оренда",        icon: "home" },
-  { id: "sale",       label: "Продаж",       icon: "real_estate_agent" },
-  { id: "commercial", label: "Комерція",     icon: "business" },
-  { id: "private",    label: "Приватне житло", icon: "house" },
+  { id: "rent",       label: "Оренда",         icon: "home",               color: "#5476a5" },
+  { id: "sale",       label: "Продаж",         icon: "real_estate_agent",  color: "#7257a5" },
+  { id: "commercial", label: "Комерція",       icon: "business",           color: "#7257a5" },
+  { id: "private",    label: "Приватне житло", icon: "house",              color: "#5476a5" },
 ] as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -303,6 +298,8 @@ function EducationCard({
         subtitle={place.address}
         icon="school"
         category={EDUCATION_KIND_LABELS[kind]}
+        imageUrl={place.imageUrl}
+        rating
       />
       {detailPage && (
         <>
@@ -375,7 +372,7 @@ function DirectoryListingPage({
   title: string;
   kind: "service" | "job" | "home";
   listings: CityDirectoryListing[];
-  filters: ReadonlyArray<{ id: string; label: string; icon: string }>;
+  filters: ReadonlyArray<{ id: string; label: string; icon: string; color: string }>;
   selectedId: string | null;
   onSelect: (id: string) => void;
   saved: ReadonlySet<string>;
@@ -401,6 +398,7 @@ function DirectoryListingPage({
           eyebrow={filter?.label ?? title}
           subtitle={selected.summary}
           icon={filter?.icon ?? "business"}
+          rating={kind === "service"}
           demo
           description={selected.details}
           info={[
@@ -430,6 +428,7 @@ function DirectoryListingPage({
               subtitle={item.summary}
               category={`${item.location} · демо`}
               icon={filters.find((filter) => filter.id === item.category)?.icon ?? "business"}
+              rating={kind === "service"}
             />
             <UnifiedCard.Action
               label="На мапі"
@@ -839,12 +838,6 @@ export function CityGuide({
     }
   }, [placeCategory, userLocation]);
 
-  const toggleSetValue = (current: Set<string>, value: string): Set<string> => {
-    const next = new Set(current);
-    if (next.has(value)) next.delete(value);
-    else next.add(value);
-    return next;
-  };
 
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -952,8 +945,8 @@ export function CityGuide({
             <CategoryChips
               label="Категорії місць"
               items={[
-                { id: "popular", label: "Популярне", icon: "award_star" },
-                ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me" }] : []),
+                { id: "popular", label: "Популярне", icon: "award_star", color: "#ee8a3f" },
+                ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me", color: "#16804f" }] : []),
                 ...availableCategories.map((category) => ({
                   id: category.id,
                   label: category.label,
@@ -1021,6 +1014,8 @@ export function CityGuide({
                           subtitle={[place.address, formatPlaceDistance(distanceToPlace(place, origin))].filter(Boolean).join(" · ")}
                           icon={cityPlaceIcons[place.category]}
                           iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
+                          imageUrl={place.imageUrl}
+                          rating
                           info={placeInfoRows(place)}
                           menu={demoProductsFor(place)}
                           catalog={demoProductsFor(place)}
@@ -1050,6 +1045,8 @@ export function CityGuide({
                           icon={cityPlaceIcons[place.category]}
                           iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
                           category={place.categoryLabel}
+                          imageUrl={place.imageUrl}
+                          rating
                         />
                         {place.details["Графік"] && (
                           <UnifiedCard.Meta
@@ -1102,6 +1099,8 @@ export function CityGuide({
                 title={selectedEducation.place.name}
                 eyebrow={EDUCATION_KIND_LABELS[selectedEducation.kind]}
                 subtitle={selectedEducation.place.address}
+                imageUrl={selectedEducation.place.imageUrl}
+                rating
                 icon={EDUCATION_FILTERS.find((filter) => filter.id === selectedEducation.kind)?.icon ?? "school"}
                 info={placeInfoRows(selectedEducation.place)}
                 catalog={demoProductsFor(selectedEducation.place)}

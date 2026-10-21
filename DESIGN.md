@@ -8,7 +8,7 @@ If code and this file disagree, either fix the code or change this file in the s
 1. **Map first.** The live city map stays dominant. Panels are compact and sit beside or above it.
 2. **One visual language.** One token set, one icon font, one radius scale, one motion curve. Reuse before inventing.
 3. **Accessible by default.** WCAG 2.2 AA contrast, keyboard operation, visible focus, reduced motion respected.
-4. **Honest data.** Estimates and demo content are labeled as such. Never invent ratings, reviews, prices, or live status.
+4. **Honest data.** Estimates and demo content are labeled as such. Ratings are sample values labeled «Демо» until a review source is connected (§13). Never present a sample rating, review, price, or live status as real.
 
 ## 2. Color tokens
 
@@ -96,10 +96,13 @@ Rules:
 - `Button` gives press feedback on pointer-down (`scale 0.97`, 120ms); reduced motion keeps only the color change.
 - `IconButton` requires `label`, which becomes `aria-label` and the tooltip. On touch screens its hit area grows to 44px without changing the 36px visual size.
 - Do not add raw `<button>` controls with bespoke classes when a primitive fits. Existing raw buttons are migration debt (see the audit backlog).
-- **Chips** (filter/category pills such as Transport, Places, Events) are one primitive, `Chip` (`src/components/ui/chip.tsx`). Required states: default, hover, pressed/selected, focus-visible, disabled. Selection uses `aria-pressed` or `role="tab"` with `aria-selected`, never color alone.
-- **Category filters** in every section use `CategoryChips` (`src/components/ui/category-chips.tsx`): one horizontally scrolling `Chip` row with the category color on the icon only. The selected chip scrolls into view. No orb grids and no «Усі категорії» toggle.
+- **Chips** (filter pills that are not category rows) are one primitive, `Chip` (`src/components/ui/chip.tsx`). Required states: default, hover, pressed/selected, focus-visible, disabled. Selection uses `aria-pressed` or `role="tab"` with `aria-selected`, never color alone.
+- **Category filters** in every section use `CategoryChips` (`src/components/ui/category-chips.tsx`): one horizontally scrolling row of 56px colored orbs, each with a label below. The category color fills the orb; the icon is white and filled when selected. The selected orb has a `--primary-border` ring and a 1.04 scale, and its label uses `--accent-foreground`. Orbs and labels are `<button aria-pressed>`. The selected orb scrolls into view. Filters that are not category rows (for example a single toggle) use `Chip`. No «Усі категорії» toggle.
+- **Category palette:** orb fills come from `CITY_PLACE_CATEGORY_COLORS` (`src/lib/city-places.ts`) and the filter lists in `city-guide.tsx`. Those hex values are the only permitted category colors. Do not pick a new one inline.
 - **List items** use `UnifiedCard`: header (icon or date badge, sentence-case category, title, one-line subtitle), optional meta rows, then one row of pill actions. A card that opens a detail does it through its title button, which stretches over the card, so it works with the keyboard and never nests buttons.
-- **Detail pages** for every entity (place, school, service, job, home, event) use `EntityDetail` (`src/components/entity-detail.tsx`): hero, action bar, inline flow, then «Опис» and «Інформація» sections. Share and save are icon buttons in the hero. The action bar holds at most four actions: the kind's flows (`flowsForKind`), «Маршрут», then «Дзвінок» or «На мапі». The first flow is the filled primary; with no flow, «Маршрут» is primary.
+- **Detail pages** for every entity (place, school, service, job, home, event) use `EntityDetail` (`src/components/entity-detail.tsx`): a 184px cover, title, rating line, action bar, inline flow, then «Опис» and «Інформація» sections. The cover shows the place photo (`imageUrl` from OSM `image` or `wikimedia_commons`) or a tinted panel with the category icon. Share and save are icon buttons on the cover. Events keep their date badge and have no cover.
+- **Cards** use `UnifiedCard`: a 72px photo thumbnail when `imageUrl` exists (otherwise the icon tile), the category, the title, the subtitle, and a rating line with a «Демо» label. Only places, schools, and services show ratings. Jobs, homes, and events do not.
+- **Ratings:** the rating line is `Star` + value + count + «Демо» everywhere it appears. The value comes from `demoRatingFor` (`src/lib/demo-rating.ts`), which is deterministic per name. The action bar holds at most four actions: the kind's flows (`flowsForKind`), «Маршрут», then «Дзвінок» or «На мапі». The first flow is the filled primary; with no flow, «Маршрут» is primary.
 
   | Kind | Flows (primary first) |
   |---|---|
@@ -182,6 +185,7 @@ Run this before merging any UI change:
 - `!important` is not allowed except in the reduced-motion block.
 - Before you finish a change, run `npx tsc --noEmit` and `npm run test:fixtures`.
 - Development tools and fixtures live behind `/dev` and must not leak into production behavior.
+- **Vehicles on the map** (`src/lib/vehicle-3d-layer.ts`): one set of instanced meshes per vehicle type (body, trim, LED). Route numbers come from a shared LED atlas, so each route does not need its own model. Only vehicles in the padded viewport are packed into instances. Route labels are MapLibre layers (`wayme-vehicles-badge`, `wayme-vehicles-label`), not DOM. The only DOM vehicle element is the trip card of the selected vehicle. Do not add per-vehicle DOM back.
 
 ## 13. Data notes
 
@@ -189,6 +193,8 @@ Run this before merging any UI change:
 - Route shapes and stops come from GTFS. Place coverage depends on named OpenStreetMap features in visible tiles.
 - Education listings and map POIs may have incomplete names or details. Do not invent ratings or reviews.
 - Services, jobs, real estate, events, neighborhood posts, air-quality values, and weather are demo data and must be labeled as examples until a verified source is connected.
+- Ratings and review counts are sample values from `demoRatingFor`, labeled «Демо» on every card and detail. Replace them with a real source before showing them as real.
+- Place photos come from OSM `image` or `wikimedia_commons` tags. Missing or failing photos fall back to the category icon.
 - Passenger counts and daily charts are labeled estimates. The live GPS feed has no passenger sensors.
 - Vehicle inspectors show a generic illustrated model. The live feed does not identify manufacturer or model.
 
@@ -223,5 +229,5 @@ Tracked gaps. Close each with a normal change and tick it here.
 13. **Dead «Фільтри» button.** It had no handler in five category headers and was removed. Bring it back only together with a working filter panel.
 14. **Map layer colors.** User location and route lines on the map use a blue (`#0874df`, `#1688ef`) set in `App.tsx`. That is outside the token system; decide whether map paint follows tokens.
 15. **User accounts.** Sign-in and registration need an auth backend and a privacy policy. The UI shows «Незабаром» until both exist; do not add a sign-in form that cannot work.
-16. **Debug files in `public/`.** `__analysis.png`, `__analysis2.png` and `transit-3d.html` ship with every build. Decide whether to delete them.
+16. ✅ **Debug files in `public/`.** Removed: `__analysis.png`, `__analysis2.png`, `transit-3d.html`. Unreachable `sponsored-billboard.*` and `live-map.css` were removed too.
 17. **Sticky hover on touch.** New components wrap `:hover` in `(hover: hover) and (pointer: fine)`. Older rules in `index.css` do not; fix them when you touch them.

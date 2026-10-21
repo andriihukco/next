@@ -7589,7 +7589,7 @@ body {
   font-size: var(--type-body);
 }
 
-/* Category filters (DESIGN.md §7): one scrolling chip row in every section. */
+/* Category filters (DESIGN.md §7): one scrolling row of colored orbs in every section. */
 .category-chips {
   display: flex;
   flex: 0 0 auto;
@@ -7606,30 +7606,141 @@ body {
   display: none;
 }
 
-.category-chip .material-symbols-rounded {
-  color: var(--chip-color, var(--accent-foreground));
+.category-tile {
+  display: grid;
+  flex: 0 0 auto;
+  min-width: 92px;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  padding: 4px 4px 6px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--type-small);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-state) var(--ease),
+    transform var(--duration-press) var(--ease);
 }
 
-.category-chip[aria-pressed="true"] .material-symbols-rounded {
+.category-tile:active {
+  transform: scale(0.97);
+}
+
+.category-tile:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.category-tile-orb {
+  position: relative;
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border: 2px solid rgb(255 255 255 / 0.9);
+  border-radius: 50%;
+  background: var(--category-color);
+  color: #fff;
+  box-shadow: var(--shadow-raised);
+  transition:
+    box-shadow var(--duration-state) var(--ease),
+    transform var(--duration-state) var(--ease);
+}
+
+.category-tile[aria-pressed="true"] .category-tile-orb {
+  box-shadow: 0 0 0 3px var(--primary-border), var(--shadow-raised);
+  transform: scale(1.04);
+}
+
+.category-tile[aria-pressed="true"] .category-tile-label {
   color: var(--accent-foreground);
 }
 
-.category-chip-count {
+.category-tile-count {
+  position: absolute;
+  top: -4px;
+  right: -6px;
   min-width: 20px;
+  height: 20px;
   padding: 0 4px;
+  border: 1px solid var(--card);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--accent-foreground);
+  font-size: var(--type-caption);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .category-tile:hover {
+    background: var(--surface-muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-tile,
+  .category-tile-orb {
+    transition: none;
+  }
+
+  .category-tile:active,
+  .category-tile[aria-pressed="true"] .category-tile-orb {
+    transform: none;
+  }
+}
+
+/* Card photo and sample rating (DESIGN.md §7, §13). Rating is always labeled «Демо». */
+.unified-card__photo {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.unified-card__rating {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 0;
+  color: var(--foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.unified-card__rating .material-symbols-rounded {
+  color: var(--primary);
+}
+
+.unified-card__rating strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.unified-card__rating > span:not(.unified-card__demo) {
+  color: var(--muted-foreground);
+}
+
+.unified-card__demo {
+  padding: 0 6px;
   border-radius: var(--radius-pill);
   background: var(--surface-muted);
   color: var(--muted-foreground);
   font-size: var(--type-caption);
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 20px;
-  text-align: center;
-}
-
-.category-chip[aria-pressed="true"] .category-chip-count {
-  background: var(--card);
-  color: var(--accent-foreground);
+  line-height: 18px;
 }
 
 /* List cards (UnifiedCard): one layout for places, schools, services, jobs,

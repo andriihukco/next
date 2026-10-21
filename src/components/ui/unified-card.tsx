@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
+import { demoRatingFor, formatRating } from "../../lib/demo-rating";
 import { MaterialIcon } from "./material-icon";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +31,10 @@ export interface UnifiedCardHeaderProps {
   category?: string;
   /** Shows a date badge instead of the icon (events). */
   date?: { day: string; month: string };
+  /** Real photo thumbnail. Falls back to the icon tile if it fails to load. */
+  imageUrl?: string;
+  /** Shows a sample rating, always labeled «Демо» (DESIGN.md §13). */
+  rating?: boolean;
   className?: string;
 }
 
@@ -81,9 +86,14 @@ const UnifiedCardHeader = ({
   iconColor,
   category,
   date,
+  imageUrl,
+  rating,
   className,
 }: UnifiedCardHeaderProps) => {
   const onOpen = React.useContext(CardOpenContext);
+  const [photoFailed, setPhotoFailed] = React.useState(false);
+  const sample = rating && !date ? demoRatingFor(title) : undefined;
+  const showPhoto = Boolean(imageUrl) && !photoFailed && !date;
   return (
     <div className={cn("unified-card__header", className)}>
       {date && (
@@ -92,7 +102,16 @@ const UnifiedCardHeader = ({
           <span>{date.month}</span>
         </div>
       )}
-      {icon && !date && (
+      {showPhoto && (
+        <img
+          className="unified-card__photo"
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          onError={() => setPhotoFailed(true)}
+        />
+      )}
+      {!showPhoto && icon && !date && (
         <div
           className="unified-card__icon"
           style={iconColor ? ({ "--card-icon-color": iconColor } as React.CSSProperties) : undefined}
@@ -113,6 +132,14 @@ const UnifiedCardHeader = ({
           )}
         </h3>
         {subtitle && subtitle.trim() && <p className="unified-card__subtitle">{subtitle}</p>}
+        {sample && (
+          <p className="unified-card__rating" aria-label={`Оцінка ${formatRating(sample.value)} з 5, демо`}>
+            <MaterialIcon name="star" size={14} filled />
+            <strong>{formatRating(sample.value)}</strong>
+            <span>({sample.count})</span>
+            <span className="unified-card__demo">Демо</span>
+          </p>
+        )}
       </div>
       {onOpen && <MaterialIcon name="chevron_right" size={20} className="unified-card__chevron" />}
     </div>

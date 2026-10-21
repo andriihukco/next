@@ -7,6 +7,7 @@ import { IconButton } from "./ui/icon-button";
 import { Input } from "./ui/input";
 import { MaterialIcon } from "./ui/material-icon";
 import { exitTransition, spring } from "../lib/motion";
+import { demoRatingFor, formatRating } from "../lib/demo-rating";
 import "./entity-detail.css";
 
 /**
@@ -91,6 +92,10 @@ type EntityDetailProps = {
   iconColor?: string;
   /** Replaces the icon for dated entities (events). */
   date?: { day: string; month: string };
+  /** Real photo for the cover. Falls back to a tinted icon panel. */
+  imageUrl?: string;
+  /** Shows a sample rating, always labeled «Демо» (DESIGN.md §13). */
+  rating?: boolean;
   demo?: boolean;
   live?: string;
   description?: string;
@@ -116,6 +121,8 @@ export function EntityDetail({
   icon = "place",
   iconColor,
   date,
+  imageUrl,
+  rating,
   demo,
   live,
   description,
@@ -134,6 +141,10 @@ export function EntityDetail({
   const flows = flowsForKind(kind);
   const [openFlow, setOpenFlow] = useState<EntityFlow | null>(null);
   const [status, setStatus] = useState("");
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const sample = rating && !date ? demoRatingFor(title) : undefined;
+  const showPhoto = Boolean(imageUrl) && !photoFailed && !date;
+  const coverColor = iconColor ? ({ "--entity-color": iconColor } as CSSProperties) : undefined;
 
   const share = (): void => {
     const text = [title, subtitle].filter(Boolean).join(" · ");
@@ -158,42 +169,63 @@ export function EntityDetail({
   return (
     <article className="entity-detail" aria-labelledby="entity-detail-title">
       <header className="entity-hero">
-        {date ? (
-          <span className="entity-date" aria-hidden="true">
-            <strong>{date.day}</strong>
-            <span>{date.month}</span>
-          </span>
-        ) : (
-          <span
-            className="entity-icon"
-            style={iconColor ? ({ "--entity-color": iconColor } as CSSProperties) : undefined}
-            aria-hidden="true"
-          >
-            <MaterialIcon name={icon} size={24} />
-          </span>
+        {!date && (
+          <div className={`entity-cover${showPhoto ? " has-photo" : ""}`} style={coverColor}>
+            {showPhoto ? (
+              <img src={imageUrl} alt="" loading="lazy" onError={() => setPhotoFailed(true)} />
+            ) : (
+              <MaterialIcon name={icon} size={56} />
+            )}
+            <div className="entity-cover-tools">
+              <IconButton label="Поділитися" onClick={share}>
+                <MaterialIcon name="ios_share" size={20} />
+              </IconButton>
+              <IconButton label={saved ? "Прибрати зі збережених" : "Зберегти"} aria-pressed={saved} onClick={onToggleSaved}>
+                <MaterialIcon name={saved ? "bookmark_added" : "bookmark_add"} size={20} filled={saved} />
+              </IconButton>
+            </div>
+          </div>
         )}
-        <div className="entity-hero-copy">
-          {eyebrow && <span className="detail-eyebrow">{eyebrow}</span>}
-          <h2 id="entity-detail-title">{title}</h2>
-          {subtitle && <p>{subtitle}</p>}
-          {(demo || live) && (
-            <div className="detail-chips">
-              {live && (
-                <DetailChip icon="sensors" tone="live">
-                  {live}
-                </DetailChip>
-              )}
-              {demo && <DetailChip icon="science">Демо</DetailChip>}
+        <div className="entity-hero-row">
+          {date && (
+            <span className="entity-date" aria-hidden="true">
+              <strong>{date.day}</strong>
+              <span>{date.month}</span>
+            </span>
+          )}
+          <div className="entity-hero-copy">
+            {eyebrow && <span className="detail-eyebrow">{eyebrow}</span>}
+            <h2 id="entity-detail-title">{title}</h2>
+            {sample && (
+              <p className="entity-rating" aria-label={`Оцінка ${formatRating(sample.value)} з 5, демо`}>
+                <MaterialIcon name="star" size={16} filled />
+                <strong>{formatRating(sample.value)}</strong>
+                <span>· {sample.count} оцінок</span>
+                <span className="unified-card__demo">Демо</span>
+              </p>
+            )}
+            {subtitle && <p>{subtitle}</p>}
+            {(demo || live) && (
+              <div className="detail-chips">
+                {live && (
+                  <DetailChip icon="sensors" tone="live">
+                    {live}
+                  </DetailChip>
+                )}
+                {demo && <DetailChip icon="science">Демо</DetailChip>}
+              </div>
+            )}
+          </div>
+          {date && (
+            <div className="entity-hero-tools">
+              <IconButton label="Поділитися" onClick={share}>
+                <MaterialIcon name="ios_share" size={20} />
+              </IconButton>
+              <IconButton label={saved ? "Прибрати зі збережених" : "Зберегти"} aria-pressed={saved} onClick={onToggleSaved}>
+                <MaterialIcon name={saved ? "bookmark_added" : "bookmark_add"} size={20} filled={saved} />
+              </IconButton>
             </div>
           )}
-        </div>
-        <div className="entity-hero-tools">
-          <IconButton label="Поділитися" onClick={share}>
-            <MaterialIcon name="ios_share" size={20} />
-          </IconButton>
-          <IconButton label={saved ? "Прибрати зі збережених" : "Зберегти"} aria-pressed={saved} onClick={onToggleSaved}>
-            <MaterialIcon name={saved ? "bookmark_added" : "bookmark_add"} size={20} filled={saved} />
-          </IconButton>
         </div>
       </header>
 

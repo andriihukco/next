@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { MercatorCoordinate } from "maplibre-gl";
 import type {
   CustomLayerInterface,
@@ -29,27 +30,26 @@ export type Vehicle3DLayer = CustomLayerInterface & {
   setVehicles: (vehicles: Vehicle3DData[]) => void;
 };
 
-type PlateCardStep = { step: HTMLElement; value: HTMLElement };
-type PlateCard = {
-  route: HTMLElement;
-  start: PlateCardStep;
-  next: PlateCardStep;
-  end: PlateCardStep;
+type VehicleType = Vehicle3DData["type"];
+
+type VehicleState = {
+  data: Vehicle3DData;
+  metersInMercatorUnits: number;
+  // Absolute mercator position; instances are placed relative to the map center each frame.
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+  rotation: number;
+  targetRotation: number;
+  moving: boolean;
 };
 
-type VehicleModel = {
-  key: string;
-  group: THREE.Group;
-  plate: HTMLButtonElement;
-  plateText: HTMLSpanElement;
-  plateCard: PlateCard;
-  metersInMercatorUnits: number;
-  // Absolute mercator position; the group is placed relative to the map center each frame.
-  position: THREE.Vector3;
-  targetPosition: THREE.Vector3;
-  targetBearing: number;
-  selected: boolean;
-  placed: boolean;
+// One set of instanced meshes per vehicle type. `visible` holds the vehicles
+// inside the viewport, in instance order.
+type Fleet = {
+  body: THREE.InstancedMesh;
+  meshes: THREE.InstancedMesh[];
+  ledCells: THREE.InstancedBufferAttribute;
+  visible: VehicleState[];
 };
 
 type Face = "front" | "left" | "right";
@@ -57,8 +57,17 @@ type Face = "front" | "left" | "right";
 const TILE_SIZE = 512;
 const PLATE_HEIGHT_M = 3.6;
 const PLATE_MIN_ZOOM = 14;
-// Below this zoom, unselected vehicles show only the route number; details appear when zoomed in.
-const PLATE_DETAIL_MIN_ZOOM = 16;
+const MOVE_EASE = 0.16;
+const INSTANCE_CAPACITY = 2048;
+
+// Route numbers are drawn once into a shared LED atlas; each instance picks its cell.
+const LED_DOT = 6;
+const LED_PIXEL_W = 44;
+const LED_PIXEL_H = 12;
+const LED_CELL_W = LED_PIXEL_W * LED_DOT;
+const LED_CELL_H = LED_PIXEL_H * LED_DOT;
+const LED_GRID_COLS = 8;
+const LED_GRID_ROWS = 32;
 
 // Pixel-space readability: vehicles grow as the map zooms out, like the prototype.
 function legibilityScale(zoom: number): number {
@@ -83,6 +92,9 @@ function solid(color: number): THREE.MeshLambertMaterial {
   }
   return material;
 }
+
+// Marks LED panels while the model is built. Replaced by the atlas shader on merge.
+const LED_PLACEHOLDER = new THREE.MeshBasicMaterial();
 
 function box(
   w: number, l: number, h: number,
@@ -124,54 +136,14 @@ function panel(
   return mesh;
 }
 
-// Orange dot-matrix route display, same look as the prototype's LED boards.
-const ledCache = new Map<string, THREE.MeshBasicMaterial>();
-function ledMaterial(text: string): THREE.MeshBasicMaterial {
-  const cached = ledCache.get(text);
-  if (cached) return cached;
-  const GW = 44;
-  const GH = 12;
-  const K = 6;
-  const source = document.createElement("canvas");
-  source.width = GW;
-  source.height = GH;
-  const output = document.createElement("canvas");
-  output.width = GW * K;
-  output.height = GH * K;
-  const sourceContext = source.getContext("2d");
-  const outputContext = output.getContext("2d");
-  if (sourceContext && outputContext) {
-    sourceContext.font = "bold 11px Arial";
-    sourceContext.textAlign = "center";
-    sourceContext.fillStyle = "#fff";
-    sourceContext.fillText(text, GW / 2, GH - 1.5);
-    const pixels = sourceContext.getImageData(0, 0, GW, GH).data;
-    outputContext.fillStyle = "#07070a";
-    outputContext.fillRect(0, 0, output.width, output.height);
-    for (let y = 0; y < GH; y += 1) {
-      for (let x = 0; x < GW; x += 1) {
-        outputContext.fillStyle = pixels[(y * GW + x) * 4 + 3] > 110 ? "#ff9d1c" : "#1b1109";
-        outputContext.beginPath();
-        outputContext.arc(x * K + K / 2, y * K + K / 2, 2.3, 0, Math.PI * 2);
-        outputContext.fill();
-      }
-    }
-  }
-  const texture = new THREE.CanvasTexture(output);
-  texture.anisotropy = 4;
-  const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-  ledCache.set(text, material);
-  return material;
-}
-
-type BodyOptions = { route?: string; front?: boolean; side?: boolean };
+type BodyOptions = { led?: boolean; front?: boolean; side?: boolean };
 
 // Length runs along +x (front), width along y, height along z (meters).
 function body(
   length: number,
   width: number,
   height: number,
-  color: number,
+  material: THREE.Material,
   offset: number,
   options: BodyOptions = {},
 ): THREE.Group {
@@ -179,7 +151,7 @@ function body(
   const base = 0.55;
   const dark = solid(0x0f172a);
 
-  group.add(box(length, width, height, solid(color), offset, 0, base + height / 2));
+  group.add(box(length, width, height, material, offset, 0, base + height / 2));
   group.add(box(length * 0.94, width + 0.05, height * 0.36, solid(0x1e293b), offset, 0, base + height * 0.55));
   group.add(box(length * 0.9, width * 0.9, 0.12, solid(0xe5e7eb), offset, 0, base + height + 0.06));
   group.add(box(0.1, width * 0.88, height * 0.42, dark, offset + length / 2, 0, base + height * 0.52));
@@ -192,11 +164,10 @@ function body(
       group.add(wheel(offset + length * along, (side * width) / 2));
     }
   }
-  if (options.route) {
-    const led = ledMaterial(options.route);
+  if (options.led) {
     const ledZ = base + height * 0.86;
     if (options.front !== false) {
-      group.add(panel(width * 0.72, (width * 0.72 * 12) / 44, led, "front", [offset + length / 2 + 0.07, 0, ledZ]));
+      group.add(panel(width * 0.72, (width * 0.72 * 12) / 44, LED_PLACEHOLDER, "front", [offset + length / 2 + 0.07, 0, ledZ]));
     }
     if (options.side !== false) {
       const sides: [Face, number][] = [
@@ -204,7 +175,7 @@ function body(
         ["right", -width / 2 - 0.03],
       ];
       for (const [face, y] of sides) {
-        group.add(panel(1.9, (1.9 * 12) / 44, led, face, [offset + length * 0.3, y, ledZ]));
+        group.add(panel(1.9, (1.9 * 12) / 44, LED_PLACEHOLDER, face, [offset + length * 0.3, y, ledZ]));
       }
     }
   }
@@ -222,14 +193,10 @@ function pole(group: THREE.Group, y: number, z: number, x: number): void {
   group.add(holder);
 }
 
-function parseColor(hex: string): number {
-  return Number.parseInt(hex.replace("#", ""), 16);
-}
-
-function createTram(route: string, color: number): THREE.Group {
+function createTram(bodyMaterial: THREE.Material): THREE.Group {
   const group = new THREE.Group();
-  group.add(body(9, 2.4, 3, color, 4.8, { route }));
-  group.add(body(9, 2.4, 3, color, -4.8, { route, front: false }));
+  group.add(body(9, 2.4, 3, bodyMaterial, 4.8, { led: true }));
+  group.add(body(9, 2.4, 3, bodyMaterial, -4.8, { led: true, front: false }));
   group.add(box(1.4, 2.2, 2.6, solid(0x111827), 0, 0, 1.9));
   const pantograph = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2), solid(0x111827));
   pantograph.position.set(4.5, 0, 4.8);
@@ -238,173 +205,375 @@ function createTram(route: string, color: number): THREE.Group {
   return group;
 }
 
-function createTrolleybus(route: string, color: number): THREE.Group {
-  const group = body(12, 2.55, 2.9, color, 0, { route });
+function createTrolleybus(bodyMaterial: THREE.Material): THREE.Group {
+  const group = body(12, 2.55, 2.9, bodyMaterial, 0, { led: true });
   pole(group, 0.55, 3.6, -2.5);
   pole(group, -0.55, 3.6, -2.5);
   return group;
 }
 
-function createVehicleTemplate(type: Vehicle3DData["type"], route: string, paint: string): THREE.Group {
-  const color = parseColor(paint);
-  const group =
-    type === "tram"
-      ? createTram(route, color)
-      : type === "trolleybus"
-        ? createTrolleybus(route, color)
-        : body(12, 2.55, 2.8, color, 0, { route });
-  group.traverse((object) => {
-    object.frustumCulled = false;
-  });
-  return group;
-}
-
-// Models are built once per type/route/paint and cloned per vehicle, so geometry and materials are shared.
-const templates = new Map<string, THREE.Group>();
-function vehicleTemplate(type: Vehicle3DData["type"], route: string, paint: string): THREE.Group {
-  const key = `${type}|${route}|${paint}`;
-  let template = templates.get(key);
-  if (!template) {
-    template = createVehicleTemplate(type, route, paint);
-    templates.set(key, template);
+// Keeps only the attributes every merged part must share.
+function pickAttributes(geometry: THREE.BufferGeometry, names: string[]): THREE.BufferGeometry {
+  const picked = new THREE.BufferGeometry();
+  for (const name of names) {
+    const attribute = geometry.getAttribute(name);
+    if (attribute) picked.setAttribute(name, attribute);
   }
-  return template;
+  if (geometry.index) picked.setIndex(geometry.index);
+  return picked;
 }
 
-// "м. Дубляни - пл. Галицька" -> ["м. Дубляни", "пл. Галицька"]. Without a separator the whole text is the end.
+function withVertexColor(geometry: THREE.BufferGeometry, color: THREE.Color): THREE.BufferGeometry {
+  const count = geometry.getAttribute("position").count;
+  const colors = new Float32Array(count * 3);
+  for (let index = 0; index < count; index += 1) {
+    colors[index * 3] = color.r;
+    colors[index * 3 + 1] = color.g;
+    colors[index * 3 + 2] = color.b;
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
+function mergeParts(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const merged = mergeGeometries(parts, false);
+  if (!merged) throw new Error("Vehicle model parts do not share attributes.");
+  return merged;
+}
+
+type ModelParts = {
+  bodyMaterial: THREE.MeshLambertMaterial;
+  body: THREE.BufferGeometry;
+  trim: THREE.BufferGeometry;
+  led: THREE.BufferGeometry;
+};
+
+// Builds one vehicle type as three merged geometries: painted body, vertex-colored trim, and LED panels.
+function buildModelParts(type: VehicleType, paint: number): ModelParts {
+  const bodyMaterial = new THREE.MeshLambertMaterial({ color: paint, side: THREE.DoubleSide });
+  const root =
+    type === "tram"
+      ? createTram(bodyMaterial)
+      : type === "trolleybus"
+        ? createTrolleybus(bodyMaterial)
+        : body(12, 2.55, 2.8, bodyMaterial, 0, { led: true });
+  root.updateMatrixWorld(true);
+
+  const bodyParts: THREE.BufferGeometry[] = [];
+  const trimParts: THREE.BufferGeometry[] = [];
+  const ledParts: THREE.BufferGeometry[] = [];
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
+    if (object.material === bodyMaterial) {
+      bodyParts.push(pickAttributes(geometry, ["position", "normal"]));
+    } else if (object.material === LED_PLACEHOLDER) {
+      ledParts.push(pickAttributes(geometry, ["position", "normal", "uv"]));
+    } else {
+      const color = (object.material as THREE.MeshLambertMaterial).color;
+      trimParts.push(withVertexColor(pickAttributes(geometry, ["position", "normal"]), color));
+    }
+  });
+  return {
+    bodyMaterial,
+    body: mergeParts(bodyParts),
+    trim: mergeParts(trimParts),
+    led: mergeParts(ledParts),
+  };
+}
+
+const LED_VERTEX_SHADER = `
+attribute float ledCell;
+varying vec2 vUv;
+varying float vCell;
+void main() {
+  vUv = uv;
+  vCell = ledCell;
+  gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+}
+`;
+
+const LED_FRAGMENT_SHADER = `
+uniform sampler2D atlas;
+uniform vec2 grid;
+varying vec2 vUv;
+varying float vCell;
+void main() {
+  float column = mod(vCell, grid.x);
+  float row = floor(vCell / grid.x);
+  vec2 atlasUv = vec2((column + vUv.x) / grid.x, 1.0 - (row + 1.0 - vUv.y) / grid.y);
+  gl_FragColor = texture2D(atlas, atlasUv);
+}
+`;
+
+// Orange dot-matrix route display, same look as the prototype's LED boards.
+function drawLedCell(context: CanvasRenderingContext2D, text: string, column: number, row: number): void {
+  const source = document.createElement("canvas");
+  source.width = LED_PIXEL_W;
+  source.height = LED_PIXEL_H;
+  const sourceContext = source.getContext("2d");
+  if (!sourceContext) return;
+  sourceContext.font = "bold 11px Arial";
+  sourceContext.textAlign = "center";
+  sourceContext.fillStyle = "#fff";
+  sourceContext.fillText(text, LED_PIXEL_W / 2, LED_PIXEL_H - 1.5);
+  const pixels = sourceContext.getImageData(0, 0, LED_PIXEL_W, LED_PIXEL_H).data;
+
+  const originX = column * LED_CELL_W;
+  const originY = row * LED_CELL_H;
+  context.fillStyle = "#07070a";
+  context.fillRect(originX, originY, LED_CELL_W, LED_CELL_H);
+  for (let y = 0; y < LED_PIXEL_H; y += 1) {
+    for (let x = 0; x < LED_PIXEL_W; x += 1) {
+      context.fillStyle = pixels[(y * LED_PIXEL_W + x) * 4 + 3] > 110 ? "#ff9d1c" : "#1b1109";
+      context.beginPath();
+      context.arc(originX + x * LED_DOT + LED_DOT / 2, originY + y * LED_DOT + LED_DOT / 2, 2.3, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+}
+
+function createLedAtlas(): { texture: THREE.CanvasTexture; cellFor: (route: string) => number } {
+  const canvas = document.createElement("canvas");
+  canvas.width = LED_GRID_COLS * LED_CELL_W;
+  canvas.height = LED_GRID_ROWS * LED_CELL_H;
+  const context = canvas.getContext("2d");
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.anisotropy = 4;
+  const cells = new Map<string, number>();
+  const cellFor = (route: string): number => {
+    const existing = cells.get(route);
+    if (existing !== undefined) return existing;
+    const index = cells.size;
+    // Past the atlas capacity a route reuses cell 0. Real fleets stay well below 256 routes.
+    if (!context || index >= LED_GRID_COLS * LED_GRID_ROWS) return 0;
+    cells.set(route, index);
+    drawLedCell(context, route, index % LED_GRID_COLS, Math.floor(index / LED_GRID_COLS));
+    texture.needsUpdate = true;
+    return index;
+  };
+  return { texture, cellFor };
+}
+
 function splitTripEnds(destination: string): [string | null, string] {
   const parts = destination.split(" - ");
   if (parts.length < 2) return [null, destination];
   return [parts[0], parts.slice(1).join(" - ")];
 }
 
+function parseColor(hex: string): number {
+  return Number.parseInt(hex.replace("#", ""), 16);
+}
+
+type PlateCardStep = { step: HTMLElement; value: HTMLElement };
+type PlateCard = {
+  route: HTMLElement;
+  start: PlateCardStep;
+  next: PlateCardStep;
+  end: PlateCardStep;
+};
+
 function setPlateCardStep(step: PlateCardStep, value: string | null): void {
   step.step.hidden = !value;
   step.value.textContent = value ?? "";
 }
 
+// The only DOM vehicle element: the trip card of the selected vehicle.
+function createSelectedPlate(onSelect: () => void): {
+  plate: HTMLButtonElement;
+  plateText: HTMLSpanElement;
+  plateCard: PlateCard;
+} {
+  const plate = document.createElement("button");
+  plate.type = "button";
+  plate.className = "vehicle-plate selected";
+  plate.addEventListener("click", onSelect);
+
+  const main = document.createElement("span");
+  main.className = "vehicle-plate-main";
+  const flag = document.createElement("b");
+  flag.textContent = "UA";
+  const plateText = document.createElement("span");
+  main.append(flag, plateText);
+
+  const card = document.createElement("span");
+  card.className = "vehicle-plate-card";
+  const cardRoute = document.createElement("i");
+  cardRoute.className = "vehicle-plate-card-route";
+  const steps = document.createElement("span");
+  steps.className = "vehicle-plate-card-steps";
+  const createStep = (icon: string, label: string, modifier?: string): PlateCardStep => {
+    const step = document.createElement("span");
+    step.className = modifier ? `vehicle-plate-step ${modifier}` : "vehicle-plate-step";
+    const glyph = document.createElement("span");
+    glyph.className = "material-symbols-rounded";
+    glyph.setAttribute("aria-hidden", "true");
+    glyph.textContent = icon;
+    const text = document.createElement("span");
+    text.className = "vehicle-plate-step-text";
+    const caption = document.createElement("small");
+    caption.textContent = label;
+    const value = document.createElement("b");
+    text.append(caption, value);
+    step.append(glyph, text);
+    steps.appendChild(step);
+    return { step, value };
+  };
+  const plateCard: PlateCard = {
+    route: cardRoute,
+    start: createStep("trip_origin", "Початкова"),
+    next: createStep("location_on", "Наступна", "is-next"),
+    end: createStep("flag", "Кінцева"),
+  };
+  card.append(cardRoute, steps);
+  plate.append(card, main);
+  return { plate, plateText, plateCard };
+}
+
+const zAxis = new THREE.Vector3(0, 0, 1);
+
 export function createVehicle3DLayer(options: Vehicle3DLayerOptions = {}): Vehicle3DLayer {
   const scene = new THREE.Scene();
   const camera = new THREE.Camera();
-  const models = new Map<string, VehicleModel>();
+  const states = new Map<string, VehicleState>();
+  const fleets = new Map<VehicleType, Fleet>();
+  const originMatrix = new THREE.Matrix4();
+  const instanceMatrix = new THREE.Matrix4();
+  const tmpPosition = new THREE.Vector3();
+  const tmpQuaternion = new THREE.Quaternion();
+  const tmpScale = new THREE.Vector3();
   const plateLayer = document.createElement("div");
   plateLayer.className = "vehicle-plates";
-  const originMatrix = new THREE.Matrix4();
+  const selectedPlate = createSelectedPlate(() => {
+    if (selectedId) options.onSelect?.(selectedId);
+  });
+  plateLayer.appendChild(selectedPlate.plate);
+  let selectedId: string | null = null;
+  let selectedState: VehicleState | null = null;
   let map: MapLibreMap | null = null;
   let renderer: THREE.WebGLRenderer | null = null;
+  let dirty = true;
+  let visibleKey = "";
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.85));
   const sunlight = new THREE.DirectionalLight(0xffffff, 0.75);
   sunlight.position.set(-30, -40, 80);
   scene.add(sunlight);
 
-  const createPlate = (
-    id: string,
-    route: string,
-    paint: string,
-  ): Pick<VehicleModel, "plate" | "plateText" | "plateCard"> => {
-    const plate = document.createElement("button");
-    plate.type = "button";
-    plate.className = "vehicle-plate";
+  const atlas = createLedAtlas();
+  const ledMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      atlas: { value: atlas.texture },
+      grid: { value: new THREE.Vector2(LED_GRID_COLS, LED_GRID_ROWS) },
+    },
+    vertexShader: LED_VERTEX_SHADER,
+    fragmentShader: LED_FRAGMENT_SHADER,
+    side: THREE.DoubleSide,
+  });
+  const trimMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
 
-    const main = document.createElement("span");
-    main.className = "vehicle-plate-main";
-    const flag = document.createElement("b");
-    flag.textContent = "UA";
-    const text = document.createElement("span");
-    main.append(flag, text);
+  for (const type of ["bus", "tram", "trolleybus"] as const) {
+    const parts = buildModelParts(type, parseColor(vehicleFleetColor(type)));
+    const body = new THREE.InstancedMesh(parts.body, parts.bodyMaterial, INSTANCE_CAPACITY);
+    const trim = new THREE.InstancedMesh(parts.trim, trimMaterial, INSTANCE_CAPACITY);
+    const led = new THREE.InstancedMesh(parts.led, ledMaterial, INSTANCE_CAPACITY);
+    // All three meshes share one matrix buffer, so each frame uploads matrices once.
+    body.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    trim.instanceMatrix = body.instanceMatrix;
+    led.instanceMatrix = body.instanceMatrix;
+    const ledCells = new THREE.InstancedBufferAttribute(new Float32Array(INSTANCE_CAPACITY), 1);
+    led.geometry.setAttribute("ledCell", ledCells);
+    const meshes = [body, trim, led];
+    for (const mesh of meshes) {
+      mesh.frustumCulled = false;
+      mesh.count = 0;
+      scene.add(mesh);
+    }
+    fleets.set(type, { body, meshes, ledCells, visible: [] });
+  }
 
-    const card = document.createElement("span");
-    card.className = "vehicle-plate-card";
-    const cardRoute = document.createElement("i");
-    cardRoute.className = "vehicle-plate-card-route";
-    cardRoute.textContent = route;
-    cardRoute.style.setProperty("--route-color", paint);
-    const steps = document.createElement("span");
-    steps.className = "vehicle-plate-card-steps";
-    const createStep = (icon: string, label: string, modifier?: string): PlateCardStep => {
-      const step = document.createElement("span");
-      step.className = modifier ? `vehicle-plate-step ${modifier}` : "vehicle-plate-step";
-      const glyph = document.createElement("span");
-      glyph.className = "material-symbols-rounded";
-      glyph.setAttribute("aria-hidden", "true");
-      glyph.textContent = icon;
-      const text = document.createElement("span");
-      text.className = "vehicle-plate-step-text";
-      const caption = document.createElement("small");
-      caption.textContent = label;
-      const value = document.createElement("b");
-      text.append(caption, value);
-      step.append(glyph, text);
-      steps.appendChild(step);
-      return { step, value };
+  const createState = (vehicle: Vehicle3DData): VehicleState => {
+    const point = maplibreglMercatorPoint(vehicle.lng, vehicle.lat);
+    const rotation = (vehicle.bearing * Math.PI) / 180 - Math.PI / 2;
+    return {
+      data: vehicle,
+      metersInMercatorUnits: point.metersInMercatorUnits,
+      position: new THREE.Vector3(point.x, point.y, point.z),
+      target: new THREE.Vector3(point.x, point.y, point.z),
+      rotation,
+      targetRotation: rotation,
+      moving: false,
     };
-    const plateCard: PlateCard = {
-      route: cardRoute,
-      start: createStep("trip_origin", "Початкова"),
-      next: createStep("location_on", "Наступна", "is-next"),
-      end: createStep("flag", "Кінцева"),
-    };
-    card.append(cardRoute, steps);
+  };
 
-    plate.append(card, main);
-    plate.addEventListener("click", () => options.onSelect?.(id));
-    plateLayer.appendChild(plate);
-    return { plate, plateText: text, plateCard };
+  const updatePlateCard = (vehicle: Vehicle3DData): void => {
+    const { plate, plateText, plateCard } = selectedPlate;
+    plate.classList.add("selected");
+    plateText.textContent = vehicle.plate;
+    plateCard.route.textContent = vehicle.route;
+    plateCard.route.style.setProperty("--route-color", vehicleFleetColor(vehicle.type));
+    const [tripStart, tripEnd] = splitTripEnds(vehicle.destination);
+    setPlateCardStep(plateCard.start, tripStart);
+    setPlateCardStep(plateCard.next, vehicle.stopName ?? "—");
+    setPlateCardStep(plateCard.end, tripEnd);
   };
 
   const setVehicles = (vehicles: Vehicle3DData[]): void => {
-    if (!map) return;
-    const visibleIds = new Set(vehicles.map((vehicle) => vehicle.id));
-    for (const [id, model] of models) {
-      if (visibleIds.has(id)) continue;
-      scene.remove(model.group);
-      model.plate.remove();
-      models.delete(id);
-    }
+    const present = new Set<string>();
+    selectedId = null;
+    selectedState = null;
     for (const vehicle of vehicles) {
-      const paint = vehicleFleetColor(vehicle.type);
-      const key = `${vehicle.type}|${vehicle.route}|${paint}`;
-      let model = models.get(vehicle.id);
-      if (!model || model.key !== key) {
-        if (model) {
-          scene.remove(model.group);
-          model.plate.remove();
-        }
-        const group = vehicleTemplate(vehicle.type, vehicle.route, paint).clone();
-        scene.add(group);
-        model = {
-          key,
-          group,
-          ...createPlate(vehicle.id, vehicle.route, paint),
-          metersInMercatorUnits: 0,
-          position: new THREE.Vector3(),
-          targetPosition: new THREE.Vector3(),
-          targetBearing: 0,
-          selected: false,
-          placed: false,
-        };
-        models.set(vehicle.id, model);
-      }
+      present.add(vehicle.id);
       const point = maplibreglMercatorPoint(vehicle.lng, vehicle.lat);
-      model.metersInMercatorUnits = point.metersInMercatorUnits;
-      model.targetPosition.set(point.x, point.y, point.z);
-      // Models face +x; compass bearing is clockwise from north, and mercator y points south.
-      model.targetBearing = (vehicle.bearing * Math.PI) / 180 - Math.PI / 2;
-      model.selected = vehicle.selected;
-      model.plate.classList.toggle("selected", vehicle.selected);
-      model.plateText.textContent = vehicle.plate;
-      const [tripStart, tripEnd] = splitTripEnds(vehicle.destination);
-      setPlateCardStep(model.plateCard.start, tripStart);
-      setPlateCardStep(model.plateCard.next, vehicle.stopName ?? "—");
-      setPlateCardStep(model.plateCard.end, tripEnd);
-      if (!model.placed) {
-        model.position.copy(model.targetPosition);
-        model.group.rotation.z = model.targetBearing;
-        model.placed = true;
+      const state = states.get(vehicle.id);
+      if (state) {
+        state.data = vehicle;
+        state.metersInMercatorUnits = point.metersInMercatorUnits;
+        state.target.set(point.x, point.y, point.z);
+        state.targetRotation = (vehicle.bearing * Math.PI) / 180 - Math.PI / 2;
+      } else {
+        states.set(vehicle.id, createState(vehicle));
+      }
+      if (vehicle.selected) {
+        selectedId = vehicle.id;
+        selectedState = states.get(vehicle.id) ?? null;
       }
     }
-    map.triggerRepaint();
+    for (const id of states.keys()) {
+      if (!present.has(id)) states.delete(id);
+    }
+    if (selectedState) updatePlateCard(selectedState.data);
+    dirty = true;
+    map?.triggerRepaint();
+  };
+
+  // Packs the vehicles inside the padded viewport into each fleet's instances.
+  // The selected vehicle is always kept, so its trip card stays anchored.
+  const repack = (west: number, south: number, east: number, north: number): void => {
+    for (const fleet of fleets.values()) fleet.visible.length = 0;
+    for (const state of states.values()) {
+      const { lng, lat, selected } = state.data;
+      const inside = lng >= west && lng <= east && lat >= south && lat <= north;
+      if (!selected && !inside) continue;
+      const fleet = fleets.get(state.data.type);
+      if (!fleet || fleet.visible.length >= INSTANCE_CAPACITY) continue;
+      fleet.visible.push(state);
+    }
+    for (const fleet of fleets.values()) {
+      fleet.visible.forEach((state, index) => {
+        fleet.ledCells.setX(index, atlas.cellFor(state.data.route));
+      });
+      fleet.ledCells.needsUpdate = true;
+      for (const mesh of fleet.meshes) mesh.count = fleet.visible.length;
+    }
+  };
+
+  const ease = (state: VehicleState): void => {
+    const gap = state.position.distanceToSquared(state.target);
+    const turn = shortestAngleDelta(state.rotation, state.targetRotation);
+    state.moving = gap > 1e-16 || Math.abs(turn) > 0.001;
+    state.position.lerp(state.target, MOVE_EASE);
+    state.rotation = smoothAngle(state.rotation, state.targetRotation, MOVE_EASE);
   };
 
   const layer: Vehicle3DLayer = {
@@ -434,44 +603,58 @@ export function createVehicle3DLayer(options: Vehicle3DLayerOptions = {}): Vehic
       camera.projectionMatrix
         .fromArray(defaultProjectionData.mainMatrix)
         .multiply(originMatrix.makeTranslation(origin.x, origin.y, 0));
+
+      // Viewport culling: repack only when the padded bounds move or the data changes.
+      const bounds = map.getBounds();
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      const lngPad = (ne.lng - sw.lng) * 0.5;
+      const latPad = (ne.lat - sw.lat) * 0.5;
+      const west = sw.lng - lngPad;
+      const south = sw.lat - latPad;
+      const east = ne.lng + lngPad;
+      const north = ne.lat + latPad;
+      const key = [west, south, east, north].map((value) => value.toFixed(4)).join(",");
+      if (dirty || key !== visibleKey) {
+        visibleKey = key;
+        dirty = false;
+        repack(west, south, east, north);
+      }
+
       const sizeScale = legibilityScale(zoom);
       const pixelsPerMercatorUnit = TILE_SIZE * Math.pow(2, zoom);
-      const showPlates = zoom >= PLATE_MIN_ZOOM;
-      const showDetails = zoom >= PLATE_DETAIL_MIN_ZOOM;
       let needsRepaint = false;
 
-      for (const model of models.values()) {
-        model.position.lerp(model.targetPosition, 0.16);
-        model.group.position.set(
-          model.position.x - origin.x,
-          model.position.y - origin.y,
-          model.position.z,
-        );
-        model.group.rotation.z = smoothAngle(
-          model.group.rotation.z,
-          model.targetBearing,
-          0.16,
-        );
-        if (
-          model.position.distanceToSquared(model.targetPosition) > 1e-16 ||
-          Math.abs(shortestAngleDelta(model.group.rotation.z, model.targetBearing)) >
-            0.001
-        ) {
-          needsRepaint = true;
-        }
-        const unitScale =
-          model.metersInMercatorUnits *
-          sizeScale *
-          (model.selected ? 1.12 : 1);
-        model.group.scale.setScalar(unitScale);
+      for (const state of states.values()) ease(state);
 
+      for (const fleet of fleets.values()) {
+        fleet.visible.forEach((state, index) => {
+          if (state.moving) needsRepaint = true;
+          const unitScale =
+            state.metersInMercatorUnits * sizeScale * (state.data.selected ? 1.12 : 1);
+          tmpPosition.set(
+            state.position.x - origin.x,
+            state.position.y - origin.y,
+            state.position.z,
+          );
+          tmpQuaternion.setFromAxisAngle(zAxis, state.rotation);
+          tmpScale.setScalar(unitScale);
+          instanceMatrix.compose(tmpPosition, tmpQuaternion, tmpScale);
+          fleet.body.setMatrixAt(index, instanceMatrix);
+        });
+        fleet.body.instanceMatrix.needsUpdate = true;
+      }
+
+      if (selectedState && zoom >= PLATE_MIN_ZOOM) {
+        const unitScale = selectedState.metersInMercatorUnits * sizeScale * 1.12;
         const anchor = map.project(
-          new MercatorCoordinate(model.position.x, model.position.y).toLngLat(),
+          new MercatorCoordinate(selectedState.position.x, selectedState.position.y).toLngLat(),
         );
         const lift = PLATE_HEIGHT_M * unitScale * pixelsPerMercatorUnit * 0.75 + 8;
-        model.plate.style.display = showPlates ? "" : "none";
-        model.plate.classList.toggle("is-compact", !showDetails && !model.selected);
-        model.plate.style.transform = `translate(${anchor.x}px, ${anchor.y - lift}px) translate(-50%, -100%)`;
+        selectedPlate.plate.style.display = "";
+        selectedPlate.plate.style.transform = `translate(${anchor.x}px, ${anchor.y - lift}px) translate(-50%, -100%)`;
+      } else {
+        selectedPlate.plate.style.display = "none";
       }
 
       renderer.resetState();
@@ -480,8 +663,12 @@ export function createVehicle3DLayer(options: Vehicle3DLayerOptions = {}): Vehic
       if (needsRepaint) map.triggerRepaint();
     },
     onRemove: () => {
-      for (const model of models.values()) model.plate.remove();
-      models.clear();
+      for (const fleet of fleets.values()) {
+        for (const mesh of fleet.meshes) mesh.geometry.dispose();
+        fleet.body.dispose();
+      }
+      fleets.clear();
+      states.clear();
       scene.clear();
       plateLayer.remove();
       renderer?.dispose();

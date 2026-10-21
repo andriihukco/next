@@ -1397,6 +1397,40 @@ export default function App() {
         },
       });
       map.addLayer(vehicle3DLayerRef.current);
+      // DOM-free route labels: a colored badge and its route number, drawn by MapLibre above the models.
+      map.addLayer({
+        id: "wayme-vehicles-badge",
+        type: "circle",
+        source: "wayme-vehicles",
+        minzoom: 14,
+        paint: {
+          "circle-radius": ["case", ["get", "selected"], 13, 11],
+          "circle-color": [
+            "match",
+            ["get", "type"],
+            "bus", COLORS.bus,
+            "tram", COLORS.tram,
+            "trolleybus", COLORS.trolleybus,
+            COLORS.taxi,
+          ],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+      map.addLayer({
+        id: "wayme-vehicles-label",
+        type: "symbol",
+        source: "wayme-vehicles",
+        minzoom: 14,
+        layout: {
+          "text-field": ["get", "route"],
+          "text-font": ["Noto Sans Bold"],
+          "text-size": 12,
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+        },
+        paint: { "text-color": "#ffffff" },
+      });
       map.addLayer({
         id: "wayme-location-circle",
         type: "circle",
@@ -2586,7 +2620,7 @@ export default function App() {
               Назад
             </Button>
           </header>
-        ) : activeView !== "map" && !inspectorOpen ? (
+        ) : !inspectorOpen ? (
             <header className={`brand-header${searchExpanded ? " is-searching" : ""}`}>
               {!searchExpanded ? (
                 <>
@@ -3739,7 +3773,7 @@ export default function App() {
         role="group"
         aria-label="Керування мапою"
         data-tour="map-controls"
-        hidden={activeView !== "map"}
+        hidden={activeView === "admin"}
       >
         <div className="map-control-set map-zoom-controls" role="group" aria-label="Масштаб">
           <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={() => mapRef.current?.zoomIn()}><ZoomIn size={20} /></Button>
