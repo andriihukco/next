@@ -5,11 +5,19 @@ import path from 'path';
 import zlib from 'zlib';
 import protobuf from 'protobufjs';
 import { fileURLToPath } from 'url';
+import { createPlaceImageService } from './server/place-images.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 3001) || 3001;
+
+// Photos for places come from the local Google Maps scraper engine (Docker).
+// When it is not running, /api/place-images answers `unavailable`.
+const placeImages = createPlaceImageService({
+  baseUrl: process.env.SCRAPER_BASE_URL || 'http://127.0.0.1:8080',
+  cachePath: path.join(__dirname, 'data', 'place-images.json'),
+});
 
 // Load static route and trip dictionaries
 const routeMap = JSON.parse(fs.readFileSync(path.join(__dirname, 'src_routes_map.json'), 'utf8'));
@@ -654,6 +662,24 @@ const server = http.createServer(async (req, res) => {
       count: cachedShelters.length,
       data: cachedShelters
     }));
+    return;
+  }
+
+  if (req.url?.startsWith('/api/place-images')) {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const id = url.searchParams.get('id') || '';
+    const name = (url.searchParams.get('name') || '').trim();
+    const address = (url.searchParams.get('address') || '').trim().slice(0, 200);
+    const lat = Number(url.searchParams.get('lat'));
+    const lng = Number(url.searchParams.get('lng'));
+    if (!id || id.length > 200 || !name || name.length > 200 || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'id, name, lat and lng are required' }));
+      return;
+    }
+    const result = await placeImages.get({ id, name, address, lat, lng });
+    res.writeHead(result.status === 'pending' ? 202 : 200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result));
     return;
   }
 

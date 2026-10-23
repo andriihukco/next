@@ -194,7 +194,7 @@ Run this before merging any UI change:
 - Education listings and map POIs may have incomplete names or details. Do not invent ratings or reviews.
 - Services, jobs, real estate, events, neighborhood posts, air-quality values, and weather are demo data and must be labeled as examples until a verified source is connected.
 - Ratings and review counts are sample values from `demoRatingFor`, labeled «Демо» on every card and detail. Replace them with a real source before showing them as real.
-- Place photos come from OSM `image` or `wikimedia_commons` tags. Missing or failing photos fall back to the category icon.
+- Place photos come from OSM `image` or `wikimedia_commons` tags. When OSM has none, the place inspector looks up a photo through `/api/place-images` (the local Google Maps scraper engine) and shows it as a 16:9 `place-inspector-photo` with `radius-md`. Missing or failing photos fall back to the category icon.
 - Passenger counts and daily charts are labeled estimates. The live GPS feed has no passenger sensors.
 - Vehicle inspectors show a generic illustrated model. The live feed does not identify manufacturer or model.
 

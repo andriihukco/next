@@ -49,6 +49,7 @@ import {
 import { Input } from "./components/ui/input";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { apiUrl } from "./lib/api";
+import { fetchPlaceImages, type PlaceImageResult } from "./lib/place-images";
 import {
   createVehicle3DLayer,
   type Vehicle3DLayer,
@@ -832,6 +833,22 @@ export default function App() {
   useEffect(() => {
     setBuildingModelPreview(null);
   }, [selectedPlace?.id]);
+
+  // Places from OSM rarely carry a photo, so look one up on the server when
+  // the inspector opens. Until it answers the inspector shows the icon.
+  const [placePhoto, setPlacePhoto] = useState<PlaceImageResult | null>(null);
+  useEffect(() => {
+    setPlacePhoto(null);
+    if (!selectedPlace || selectedPlace.imageUrl) return;
+    const controller = new AbortController();
+    fetchPlaceImages(selectedPlace, controller.signal)
+      .then(setPlacePhoto)
+      .catch(() => {});
+    return () => controller.abort();
+  }, [selectedPlace]);
+  const selectedPhotoUrl =
+    selectedPlace?.imageUrl ||
+    (placePhoto?.status === "ok" ? placePhoto.imageUrl : undefined);
 
   // The developer tools live on the `/dev` route: open the map so the panel
   // is reachable right away, and leave the admin view when the route ends.
@@ -3486,6 +3503,15 @@ export default function App() {
               </div>
             </header>
             <div className="place-inspector-body">
+              {selectedPhotoUrl && (
+                <img
+                  className="place-inspector-photo"
+                  src={selectedPhotoUrl}
+                  alt=""
+                  loading="lazy"
+                  onError={() => setPlacePhoto({ status: "none" })}
+                />
+              )}
               <div className={`osm-place-icon ${selectedPlace.category}`}>
                 <MaterialIcon
                   name={cityPlaceIcons[selectedPlace.category]}

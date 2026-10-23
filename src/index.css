@@ -1024,6 +1024,14 @@ body,
   height: 48px;
 }
 
+.place-inspector-photo {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
 .place-inspector-details {
   display: grid;
   gap: 10px;
