@@ -103,8 +103,15 @@ const UnifiedCardHeader = ({
   const onOpen = React.useContext(CardOpenContext);
   const [photoFailed, setPhotoFailed] = React.useState(false);
   const [headerRef, inView] = useInView<HTMLDivElement>();
-  const lookup = usePlacePhoto(place, inView && !imageUrl && !date);
-  const sample = rating && !date ? demoRatingFor(title) : undefined;
+  const lookup = usePlacePhoto(place, inView && !date);
+  // A place card shows the scraper's rating only; with none, no rating shows.
+  // Other cards keep the labeled sample rating (DESIGN.md §13).
+  const scraped =
+    place && lookup.details?.rating !== undefined
+      ? { value: lookup.details.rating, count: lookup.details.reviewCount, demo: false }
+      : undefined;
+  const sample = rating && !date && !place ? { ...demoRatingFor(title), demo: true } : undefined;
+  const shownRating = rating && !date ? (scraped ?? sample) : undefined;
   const photoUrl = imageUrl || (lookup.status === "ok" ? lookup.imageUrl : undefined);
   const showPhoto = Boolean(photoUrl) && !photoFailed && !date;
   const showPhotoPlaceholder = Boolean(place) && !showPhoto && !date;
@@ -157,12 +164,15 @@ const UnifiedCardHeader = ({
           )}
         </h3>
         {subtitle && subtitle.trim() && <p className="unified-card__subtitle">{subtitle}</p>}
-        {sample && (
-          <p className="unified-card__rating" aria-label={`Оцінка ${formatRating(sample.value)} з 5, демо`}>
+        {shownRating && (
+          <p
+            className="unified-card__rating"
+            aria-label={`Оцінка ${formatRating(shownRating.value)} з 5${shownRating.demo ? ", демо" : ""}`}
+          >
             <MaterialIcon name="star" size={14} filled />
-            <strong>{formatRating(sample.value)}</strong>
-            <span>({sample.count})</span>
-            <span className="unified-card__demo">Демо</span>
+            <strong>{formatRating(shownRating.value)}</strong>
+            {shownRating.count !== undefined && <span>({shownRating.count})</span>}
+            {shownRating.demo && <span className="unified-card__demo">Демо</span>}
           </p>
         )}
       </div>

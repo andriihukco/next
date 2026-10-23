@@ -1032,6 +1032,80 @@ body,
   background: var(--surface-muted);
 }
 
+.place-details {
+  display: grid;
+  gap: 14px;
+}
+
+.place-details-source {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.place-details-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.place-details-contacts a,
+.place-details-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.place-details-contacts a {
+  color: var(--accent-foreground);
+  text-decoration: none;
+}
+
+.place-details-block h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.place-details-block ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-details-hours li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.place-details-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 0 0 2px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.place-details-review-meta strong {
+  color: var(--foreground);
+}
+
+.place-details-review-text {
+  margin: 0;
+  font-size: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .place-inspector-details {
   display: grid;
   gap: 10px;

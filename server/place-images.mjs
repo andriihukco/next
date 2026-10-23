@@ -16,8 +16,12 @@ import path from 'path';
 
 const MATCH_RADIUS_METERS = 150;
 const MAX_IMAGES = 6;
+const MAX_REVIEWS = 5;
 const POLL_INTERVAL_MS = 5000;
-const JOB_TIMEOUT_MS = 180000;
+const BATCH_TIMEOUT_MS = 480000;
+const BATCH_MAX_TIME_S = 420;
+const BATCH_WINDOW_MS = 3000;
+const MAX_BATCH = 25;
 const NEGATIVE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_LOOKUPS_PER_MINUTE = 30;
 const MAX_QUEUE = 200;
@@ -125,7 +129,7 @@ export function extractImages(row) {
   }
   if (Array.isArray(parsed)) {
     for (const item of parsed) {
-      const url = typeof item === 'string' ? item : item?.image ?? item?.url ?? item?.src;
+      const url = typeof item === 'string' ? item : item?.Image ?? item?.image ?? item?.url ?? item?.src;
       if (isHttpsUrl(url)) urls.push(url);
     }
   } else {
@@ -136,6 +140,39 @@ export function extractImages(row) {
   return [...new Set(urls)].slice(0, MAX_IMAGES);
 }
 
+function parseJson(value) {
+  try {
+    return JSON.parse(value || 'null');
+  } catch {
+    return null;
+  }
+}
+
+/** Contact, hours, rating and reviews from the matched listing. */
+export function extractDetails(row) {
+  const hours = parseJson(row.open_hours);
+  const reviews = parseJson(row.user_reviews);
+  const menu = parseJson(row.menu);
+  return {
+    category: row.category || undefined,
+    address: row.complete_address || row.address || undefined,
+    phone: row.phone || undefined,
+    website: row.website || undefined,
+    rating: Number(row.review_rating) || undefined,
+    reviewCount: Number(row.review_count) || undefined,
+    openHours: hours && typeof hours === 'object'
+      ? Object.entries(hours).map(([day, slots]) => ({ day, hours: Array.isArray(slots) ? slots.join(', ') : String(slots) }))
+      : [],
+    reviews: (Array.isArray(reviews) ? reviews : []).slice(0, MAX_REVIEWS).map(review => ({
+      author: review.Name || '',
+      rating: Number(review.Rating) || undefined,
+      text: review.Description || '',
+      when: review.When || '',
+    })),
+    menuLink: menu?.link || undefined,
+  };
+}
+
 export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
   let cache = {};
   try {
@@ -144,13 +181,15 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
     cache = {};
   }
 
-  const inFlight = new Map();
+  // Places waiting for the next batch, and places in a batch that is queued or running.
+  const waiting = new Map();
+  const inBatch = new Set();
   const recentStarts = [];
-  // After a failed lookup, answer `unavailable` for a while instead of making
+  // After a failed batch, answer `unavailable` for a while instead of making
   // every card poll for minutes against an engine that is not running.
   let backoffUntil = 0;
   let queueTail = Promise.resolve();
-  let queued = 0;
+  let flushTimer = null;
 
   function persist() {
     fs.mkdirSync(path.dirname(cachePath), { recursive: true });
@@ -168,23 +207,34 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
     return response;
   }
 
-  async function runScrape(place) {
-    const keyword = [place.name, place.address].filter(Boolean).join(' ');
-    const created = await (await engine('POST', '/api/v1/jobs', {
-      name: `place-image-${place.id}`.slice(0, 60),
-      keywords: [keyword],
+  /**
+   * One engine job for many places: every place is a keyword, and the search
+   * centre and radius cover all of them. Each place is then matched by name and
+   * distance from the rows, so one job answers the whole batch.
+   */
+  function batchBody(places) {
+    const lat = places.reduce((sum, place) => sum + place.lat, 0) / places.length;
+    const lng = places.reduce((sum, place) => sum + place.lng, 0) / places.length;
+    const reach = Math.max(...places.map(place => distanceMeters(lat, lng, place.lat, place.lng)));
+    return {
+      name: `place-images-${Date.now()}`.slice(0, 60),
+      keywords: places.map(place => [place.name, place.address].filter(Boolean).join(' ')),
       lang: 'en',
       zoom: 17,
-      lat: String(place.lat),
-      lon: String(place.lng),
-      fast_mode: true,
-      radius: 200,
+      lat: String(lat),
+      lon: String(lng),
+      fast_mode: false,
+      radius: Math.ceil(Math.max(1000, reach + 500)),
       depth: 1,
       email: false,
-      max_time: 120,
-    })).json();
+      max_time: BATCH_MAX_TIME_S,
+    };
+  }
 
-    const deadline = Date.now() + JOB_TIMEOUT_MS;
+  async function runBatch(places) {
+    const created = await (await engine('POST', '/api/v1/jobs', batchBody(places))).json();
+
+    const deadline = Date.now() + BATCH_TIMEOUT_MS;
     for (;;) {
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
       const job = await (await engine('GET', `/api/v1/jobs/${created.id}`)).json();
@@ -194,27 +244,53 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
     }
 
     const csv = await (await engine('GET', `/api/v1/jobs/${created.id}/download`)).text();
-    return parseCsv(csv);
-  }
-
-  async function lookup(place) {
-    const rows = await runScrape(place);
-    const match = pickMatch(place, rows);
+    const rows = parseCsv(csv);
     const now = Date.now();
-    if (!match) {
-      cache[place.id] = { status: 'none', checkedAt: now };
-    } else {
+    for (const place of places) {
+      const match = pickMatch(place, rows);
+      if (!match) {
+        cache[place.id] = { status: 'none', checkedAt: now };
+        continue;
+      }
       const images = extractImages(match);
       cache[place.id] = {
-        status: images.length ? 'ok' : 'none',
+        status: 'ok',
         imageUrl: images[0],
         images,
+        details: extractDetails(match),
         listingTitle: match.title,
         checkedAt: now,
       };
     }
     persist();
-    return cache[place.id];
+  }
+
+  function flush() {
+    flushTimer = null;
+    const places = [...waiting.values()].slice(0, MAX_BATCH);
+    for (const place of places) {
+      waiting.delete(place.id);
+      inBatch.add(place.id);
+    }
+    if (!places.length) return;
+
+    const task = queueTail.then(() => runBatch(places));
+    queueTail = task.catch(() => {});
+    task
+      .catch(error => {
+        backoffUntil = Date.now() + FAILURE_BACKOFF_MS;
+        log.error?.(`[PlaceImages] Batch of ${places.length} failed:`, error.message);
+      })
+      .finally(() => {
+        for (const place of places) inBatch.delete(place.id);
+        if (waiting.size) scheduleFlush(BATCH_WINDOW_MS);
+      });
+    if (waiting.size) scheduleFlush(BATCH_WINDOW_MS);
+  }
+
+  function scheduleFlush(delay) {
+    if (flushTimer) return;
+    flushTimer = setTimeout(flush, delay);
   }
 
   function cachedResult(id) {
@@ -231,31 +307,28 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
   }
 
   /**
-   * Resolve a place's photos. Returns `{ status: 'ok' | 'none', ... }` from the
-   * cache, `{ status: 'pending' }` while a lookup runs, or
-   * `{ status: 'unavailable' }` when the engine cannot be reached or the budget
-   * is spent.
+   * Resolve a place's photos and listing details. Returns `{ status: 'ok' | 'none', ... }`
+   * from the cache, `{ status: 'pending' }` while its batch runs, or
+   * `{ status: 'unavailable' }` when the engine is backing off or the budget is spent.
+   * Places asked for within the batch window share one engine job.
    */
   async function get(place) {
     const cached = cachedResult(place.id);
     if (cached) return cached;
-    if (inFlight.has(place.id)) return { status: 'pending' };
-    if (Date.now() < backoffUntil || queued >= MAX_QUEUE || !budgetAllows()) return { status: 'unavailable' };
+    if (waiting.has(place.id) || inBatch.has(place.id)) return { status: 'pending' };
+    if (Date.now() < backoffUntil || waiting.size + inBatch.size >= MAX_QUEUE || !budgetAllows()) {
+      return { status: 'unavailable' };
+    }
 
     recentStarts.push(Date.now());
-    queued++;
-    const task = queueTail.then(() => lookup(place));
-    queueTail = task.catch(() => {});
-    inFlight.set(place.id, task);
-    task
-      .catch(error => {
-        backoffUntil = Date.now() + FAILURE_BACKOFF_MS;
-        log.error?.(`[PlaceImages] Lookup failed for ${place.name}:`, error.message);
-      })
-      .finally(() => {
-        queued--;
-        inFlight.delete(place.id);
-      });
+    waiting.set(place.id, place);
+    if (waiting.size >= MAX_BATCH) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+      flush();
+    } else {
+      scheduleFlush(BATCH_WINDOW_MS);
+    }
     return { status: 'pending' };
   }
 

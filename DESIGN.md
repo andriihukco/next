@@ -8,7 +8,7 @@ If code and this file disagree, either fix the code or change this file in the s
 1. **Map first.** The live city map stays dominant. Panels are compact and sit beside or above it.
 2. **One visual language.** One token set, one icon font, one radius scale, one motion curve. Reuse before inventing.
 3. **Accessible by default.** WCAG 2.2 AA contrast, keyboard operation, visible focus, reduced motion respected.
-4. **Honest data.** Estimates and demo content are labeled as such. Ratings are sample values labeled «Демо» until a review source is connected (§13). Never present a sample rating, review, price, or live status as real.
+4. **Honest data.** Estimates and demo content are labeled as such. Place ratings come from the scraper listing and are shown only when one exists; other sample ratings are labeled «Демо» (§13). Never present a sample rating, review, price, or live status as real.
 
 ## 2. Color tokens
 
@@ -102,7 +102,7 @@ Rules:
 - **List items** use `UnifiedCard`: header (icon or date badge, sentence-case category, title, one-line subtitle), optional meta rows, then one row of pill actions. A card that opens a detail does it through its title button, which stretches over the card, so it works with the keyboard and never nests buttons.
 - **Detail pages** for every entity (place, school, service, job, home, event) use `EntityDetail` (`src/components/entity-detail.tsx`): a 184px cover, title, rating line, action bar, inline flow, then «Опис» and «Інформація» sections. The cover shows the place photo (`imageUrl` from OSM `image` or `wikimedia_commons`) or a tinted panel with the category icon. Share and save are icon buttons on the cover. Events keep their date badge and have no cover.
 - **Cards** use `UnifiedCard`: a 72px photo thumbnail when `imageUrl` exists (otherwise the icon tile), the category, the title, the subtitle, and a rating line with a «Демо» label. Place cards pass `place` to the header: the photo is looked up once the card nears the viewport (OSM photo first, then the scraper lookup). While that is pending the thumbnail is a neutral `surface-muted` tile with no icon. When no photo exists it stays as an empty tile with an `image` icon in `muted-foreground`, the same as a list card without a photo on Google Maps. Only places, schools, and services show ratings. Jobs, homes, and events do not.
-- **Ratings:** the rating line is `Star` + value + count + «Демо» everywhere it appears. The value comes from `demoRatingFor` (`src/lib/demo-rating.ts`), which is deterministic per name. The action bar holds at most four actions: the kind's flows (`flowsForKind`), «Маршрут», then «Дзвінок» or «На мапі». The first flow is the filled primary; with no flow, «Маршрут» is primary.
+- **Ratings:** the rating line is `Star` + value + count. A place card shows the scraper's rating with no «Демо» label, and shows no line when the lookup has none. Other cards and details show the `demoRatingFor` value (`src/lib/demo-rating.ts`) with the «Демо» label. The action bar holds at most four actions: the kind's flows (`flowsForKind`), «Маршрут», then «Дзвінок» or «На мапі». The first flow is the filled primary; with no flow, «Маршрут» is primary.
 
   | Kind | Flows (primary first) |
   |---|---|
@@ -193,8 +193,8 @@ Run this before merging any UI change:
 - Route shapes and stops come from GTFS. Place coverage depends on named OpenStreetMap features in visible tiles.
 - Education listings and map POIs may have incomplete names or details. Do not invent ratings or reviews.
 - Services, jobs, real estate, events, neighborhood posts, air-quality values, and weather are demo data and must be labeled as examples until a verified source is connected.
-- Ratings and review counts are sample values from `demoRatingFor`, labeled «Демо» on every card and detail. Replace them with a real source before showing them as real.
-- Place photos come from OSM `image` or `wikimedia_commons` tags. When OSM has none, the place inspector looks up a photo through `/api/place-images` (the local Google Maps scraper engine) and shows it as a 16:9 `place-inspector-photo` with `radius-md`. Missing or failing photos fall back to the category icon.
+- Place cards show the scraper's rating and review count (from `/api/place-images`, source «Дані з Google Maps») and show no rating when the lookup has none. Sample values from `demoRatingFor` remain only on cards and details that have no scraped listing, and they stay labeled «Демо».
+- Place photos come from OSM `image` or `wikimedia_commons` tags. When OSM has none, the place inspector looks up a photo through `/api/place-images` (the local Google Maps scraper engine) and shows it as a 16:9 `place-inspector-photo` with `radius-md`. The same lookup returns contacts, opening hours, rating and up to five reviews; `PlaceDetailsSection` shows them under the inspector with the source named «Дані з Google Maps». Missing or failing photos fall back to the category icon.
 - Passenger counts and daily charts are labeled estimates. The live GPS feed has no passenger sensors.
 - Vehicle inspectors show a generic illustrated model. The live feed does not identify manufacturer or model.
 

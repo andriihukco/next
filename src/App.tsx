@@ -50,6 +50,7 @@ import { Input } from "./components/ui/input";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { apiUrl } from "./lib/api";
 import { fetchPlaceImages, type PlaceImageResult } from "./lib/place-images";
+import { PlaceDetailsSection } from "./components/place-details-section";
 import {
   createVehicle3DLayer,
   type Vehicle3DLayer,
@@ -839,7 +840,7 @@ export default function App() {
   const [placePhoto, setPlacePhoto] = useState<PlaceImageResult | null>(null);
   useEffect(() => {
     setPlacePhoto(null);
-    if (!selectedPlace || selectedPlace.imageUrl) return;
+    if (!selectedPlace) return;
     const controller = new AbortController();
     fetchPlaceImages(selectedPlace, controller.signal)
       .then(setPlacePhoto)
@@ -849,6 +850,8 @@ export default function App() {
   const selectedPhotoUrl =
     selectedPlace?.imageUrl ||
     (placePhoto?.status === "ok" ? placePhoto.imageUrl : undefined);
+  const selectedPlaceDetails =
+    placePhoto?.status === "ok" ? placePhoto.details : undefined;
 
   // The developer tools live on the `/dev` route: open the map so the panel
   // is reachable right away, and leave the admin view when the route ends.
@@ -3541,6 +3544,9 @@ export default function App() {
                   <p>Додаткових відомостей про цей об’єкт у OpenStreetMap немає.</p>
                 )}
               </div>
+              {selectedPlaceDetails && (
+                <PlaceDetailsSection details={selectedPlaceDetails} />
+              )}
               <a
                 className="place-osm-link"
                 href={cityPlaceOsmUrl(selectedPlace)}

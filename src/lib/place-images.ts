@@ -8,14 +8,34 @@ import type { CityPlace } from "./city-places";
  * this polls until it has an answer or gives up.
  */
 
+export type PlaceReview = {
+  author: string;
+  rating?: number;
+  text: string;
+  when: string;
+};
+
+/** Contact, hours and review data for the matched listing, from the scraper. */
+export type PlaceDetails = {
+  category?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  rating?: number;
+  reviewCount?: number;
+  openHours: { day: string; hours: string }[];
+  reviews: PlaceReview[];
+  menuLink?: string;
+};
+
 export type PlaceImageResult =
-  | { status: "ok"; imageUrl: string; images: string[] }
+  | { status: "ok"; imageUrl?: string; images: string[]; details?: PlaceDetails }
   | { status: "none" }
   | { status: "pending" }
   | { status: "unavailable" };
 
 const POLL_DELAY_MS = 6000;
-const MAX_POLLS = 20;
+const MAX_POLLS = 60;
 
 const resolved = new Map<string, PlaceImageResult>();
 
@@ -65,20 +85,21 @@ export async function fetchPlaceImages(
 }
 
 export type PlacePhotoState =
-  | { status: "loading" }
-  | { status: "ok"; imageUrl: string }
-  | { status: "none" };
+  | { status: "loading"; details?: undefined }
+  | { status: "ok"; imageUrl: string; details?: PlaceDetails }
+  | { status: "none"; details?: PlaceDetails };
 
 /**
- * Photo for a list card. Uses the OSM photo when there is one, otherwise asks
- * the server once `enabled` is true (the card is in view). Stays `loading`
- * until an answer arrives, then becomes `ok` or `none` (the empty state).
+ * Photo and listing details for a list card. Uses the OSM photo when there is
+ * one, otherwise the scraper's photo. The lookup runs once `enabled` is true
+ * (the card is in view), even when OSM has a photo, so the card can show the
+ * real rating. Stays `loading` until an answer arrives.
  */
 export function usePlacePhoto(place: CityPlace | undefined, enabled: boolean): PlacePhotoState {
   const [fetched, setFetched] = useState<{ id: string; result: PlaceImageResult } | null>(null);
 
   useEffect(() => {
-    if (!place || !enabled || place.imageUrl || resolved.has(place.id)) return;
+    if (!place || !enabled || resolved.has(place.id)) return;
     const controller = new AbortController();
     fetchPlaceImages(place, controller.signal)
       .then((result) => setFetched({ id: place.id, result }))
@@ -87,10 +108,13 @@ export function usePlacePhoto(place: CityPlace | undefined, enabled: boolean): P
   }, [place, enabled]);
 
   if (!place) return { status: "none" };
-  if (place.imageUrl) return { status: "ok", imageUrl: place.imageUrl };
   const result =
     resolved.get(place.id) ?? (fetched?.id === place.id ? fetched.result : undefined);
-  if (result?.status === "ok") return { status: "ok", imageUrl: result.imageUrl };
-  if (result && result.status !== "pending") return { status: "none" };
+  const details = result?.status === "ok" ? result.details : undefined;
+  if (place.imageUrl) return { status: "ok", imageUrl: place.imageUrl, details };
+  if (result?.status === "ok" && result.imageUrl) {
+    return { status: "ok", imageUrl: result.imageUrl, details };
+  }
+  if (result && result.status !== "pending") return { status: "none", details };
   return { status: "loading" };
 }
