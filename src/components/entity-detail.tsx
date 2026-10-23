@@ -7,6 +7,9 @@ import { IconButton } from "./ui/icon-button";
 import { Input } from "./ui/input";
 import { MaterialIcon } from "./ui/material-icon";
 import { exitTransition, spring } from "../lib/motion";
+import { usePlacePhoto } from "../lib/place-images";
+import type { CityPlace } from "../lib/city-places";
+import { PlaceDetailsSection } from "./place-details-section";
 import { demoRatingFor, formatRating } from "../lib/demo-rating";
 import "./entity-detail.css";
 
@@ -96,6 +99,8 @@ type EntityDetailProps = {
   imageUrl?: string;
   /** Shows a sample rating, always labeled «Демо» (DESIGN.md §13). */
   rating?: boolean;
+  /** Real place: its photo, rating and contacts come from the scraper lookup. */
+  place?: CityPlace;
   demo?: boolean;
   live?: string;
   description?: string;
@@ -123,6 +128,7 @@ export function EntityDetail({
   date,
   imageUrl,
   rating,
+  place,
   demo,
   live,
   description,
@@ -142,8 +148,17 @@ export function EntityDetail({
   const [openFlow, setOpenFlow] = useState<EntityFlow | null>(null);
   const [status, setStatus] = useState("");
   const [photoFailed, setPhotoFailed] = useState(false);
-  const sample = rating && !date ? demoRatingFor(title) : undefined;
-  const showPhoto = Boolean(imageUrl) && !photoFailed && !date;
+  const lookup = usePlacePhoto(place, !date);
+  const photoUrl = imageUrl || (lookup.status === "ok" ? lookup.imageUrl : undefined);
+  const scrapedRating =
+    place && lookup.details?.rating !== undefined
+      ? { value: lookup.details.rating, count: lookup.details.reviewCount }
+      : undefined;
+  // A real place shows only its scraped rating, or none. Other entities keep the labeled sample.
+  const sample = rating && !date && !place ? { ...demoRatingFor(title), demo: true } : undefined;
+  const shownRating = rating && !date ? (scrapedRating ?? sample) : undefined;
+  const callPhone = phone || lookup.details?.phone;
+  const showPhoto = Boolean(photoUrl) && !photoFailed && !date;
   const coverColor = iconColor ? ({ "--entity-color": iconColor } as CSSProperties) : undefined;
 
   const share = (): void => {
@@ -172,7 +187,7 @@ export function EntityDetail({
         {!date && (
           <div className={`entity-cover${showPhoto ? " has-photo" : ""}`} style={coverColor}>
             {showPhoto ? (
-              <img src={imageUrl} alt="" loading="lazy" onError={() => setPhotoFailed(true)} />
+              <img src={photoUrl} alt="" loading="lazy" onError={() => setPhotoFailed(true)} />
             ) : (
               <MaterialIcon name={icon} size={56} />
             )}
@@ -196,12 +211,15 @@ export function EntityDetail({
           <div className="entity-hero-copy">
             {eyebrow && <span className="detail-eyebrow">{eyebrow}</span>}
             <h2 id="entity-detail-title">{title}</h2>
-            {sample && (
-              <p className="entity-rating" aria-label={`Оцінка ${formatRating(sample.value)} з 5, демо`}>
+            {shownRating && (
+              <p
+                className="entity-rating"
+                aria-label={`Оцінка ${formatRating(shownRating.value)} з 5${"demo" in shownRating ? ", демо" : ""}`}
+              >
                 <MaterialIcon name="star" size={16} filled />
-                <strong>{formatRating(sample.value)}</strong>
-                <span>· {sample.count} оцінок</span>
-                <span className="unified-card__demo">Демо</span>
+                <strong>{formatRating(shownRating.value)}</strong>
+                {shownRating.count !== undefined && <span>· {shownRating.count} оцінок</span>}
+                {"demo" in shownRating && <span className="unified-card__demo">Демо</span>}
               </p>
             )}
             {subtitle && <p>{subtitle}</p>}
@@ -241,8 +259,8 @@ export function EntityDetail({
           />
         ))}
         <ActionBarButton icon="directions" label="Маршрут" primary={flows.length === 0} onClick={onDirections} />
-        {phone ? (
-          <ActionBarButton icon="call" label="Дзвінок" onClick={() => window.open(`tel:${phone.replace(/[^\d+]/g, "")}`, "_self")} />
+        {callPhone ? (
+          <ActionBarButton icon="call" label="Дзвінок" onClick={() => window.open(`tel:${callPhone.replace(/[^\d+]/g, "")}`, "_self")} />
         ) : flows.length < 2 ? (
           <ActionBarButton icon="map" label="На мапі" onClick={onShowOnMap} />
         ) : null}
@@ -318,6 +336,12 @@ export function EntityDetail({
             />
           )}
         </DetailSection>
+      )}
+
+      {lookup.details && (
+        <section className="entity-scraped-details">
+          <PlaceDetailsSection details={lookup.details} />
+        </section>
       )}
 
       {children}

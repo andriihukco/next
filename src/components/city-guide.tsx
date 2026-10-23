@@ -1021,6 +1021,7 @@ export function CityGuide({
                           icon={cityPlaceIcons[place.category]}
                           iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
                           imageUrl={place.imageUrl}
+                          place={place}
                           rating
                           info={placeInfoRows(place)}
                           menu={demoProductsFor(place)}
