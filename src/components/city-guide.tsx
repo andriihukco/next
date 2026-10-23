@@ -511,6 +511,11 @@ function NearbyTransportTab({
       <div className="city-places-state">
         {transitDataStatus === "loading" ? (
           <span>Завантажуємо транспорт…</span>
+        ) : transitDataStatus === "error" ? (
+          <>
+            <MaterialIcon name="directions_bus_filled" size={22} />
+            <span>Не вдалося завантажити транспорт. Перевірте з’єднання.</span>
+          </>
         ) : (
           <>
             <MaterialIcon name="directions_bus_filled" size={22} />
