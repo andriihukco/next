@@ -1,6 +1,9 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 import { demoRatingFor, formatRating } from "../../lib/demo-rating";
+import type { CityPlace } from "../../lib/city-places";
+import { usePlacePhoto } from "../../lib/place-images";
+import { useInView } from "../../lib/use-in-view";
 import { MaterialIcon } from "./material-icon";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,6 +36,12 @@ export interface UnifiedCardHeaderProps {
   date?: { day: string; month: string };
   /** Real photo thumbnail. Falls back to the icon tile if it fails to load. */
   imageUrl?: string;
+  /**
+   * Place to look up a photo for when there is no `imageUrl`. The lookup
+   * starts once the card is near the viewport. Until it answers the thumbnail
+   * is a neutral loading tile; with no photo it becomes an empty tile.
+   */
+  place?: CityPlace;
   /** Shows a sample rating, always labeled «Демо» (DESIGN.md §13). */
   rating?: boolean;
   className?: string;
@@ -87,15 +96,20 @@ const UnifiedCardHeader = ({
   category,
   date,
   imageUrl,
+  place,
   rating,
   className,
 }: UnifiedCardHeaderProps) => {
   const onOpen = React.useContext(CardOpenContext);
   const [photoFailed, setPhotoFailed] = React.useState(false);
+  const [headerRef, inView] = useInView<HTMLDivElement>();
+  const lookup = usePlacePhoto(place, inView && !imageUrl && !date);
   const sample = rating && !date ? demoRatingFor(title) : undefined;
-  const showPhoto = Boolean(imageUrl) && !photoFailed && !date;
+  const photoUrl = imageUrl || (lookup.status === "ok" ? lookup.imageUrl : undefined);
+  const showPhoto = Boolean(photoUrl) && !photoFailed && !date;
+  const showPhotoPlaceholder = Boolean(place) && !showPhoto && !date;
   return (
-    <div className={cn("unified-card__header", className)}>
+    <div ref={headerRef} className={cn("unified-card__header", className)}>
       {date && (
         <div className="unified-card__date" aria-hidden="true">
           <strong>{date.day}</strong>
@@ -105,13 +119,24 @@ const UnifiedCardHeader = ({
       {showPhoto && (
         <img
           className="unified-card__photo"
-          src={imageUrl}
+          src={photoUrl}
           alt=""
           loading="lazy"
           onError={() => setPhotoFailed(true)}
         />
       )}
-      {!showPhoto && icon && !date && (
+      {showPhotoPlaceholder && (
+        <div
+          className={cn(
+            "unified-card__photo unified-card__photo--empty",
+            lookup.status === "loading" && "unified-card__photo--loading",
+          )}
+          aria-hidden="true"
+        >
+          {lookup.status !== "loading" && <MaterialIcon name="image" size={24} />}
+        </div>
+      )}
+      {!showPhoto && !showPhotoPlaceholder && icon && !date && (
         <div
           className="unified-card__icon"
           style={iconColor ? ({ "--card-icon-color": iconColor } as React.CSSProperties) : undefined}

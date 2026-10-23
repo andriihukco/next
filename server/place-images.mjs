@@ -21,6 +21,7 @@ const JOB_TIMEOUT_MS = 180000;
 const NEGATIVE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_LOOKUPS_PER_MINUTE = 30;
 const MAX_QUEUE = 200;
+const FAILURE_BACKOFF_MS = 30 * 1000;
 
 /** Parse RFC 4180 CSV into an array of row objects keyed by header. */
 export function parseCsv(text) {
@@ -145,6 +146,9 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
 
   const inFlight = new Map();
   const recentStarts = [];
+  // After a failed lookup, answer `unavailable` for a while instead of making
+  // every card poll for minutes against an engine that is not running.
+  let backoffUntil = 0;
   let queueTail = Promise.resolve();
   let queued = 0;
 
@@ -236,7 +240,7 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
     const cached = cachedResult(place.id);
     if (cached) return cached;
     if (inFlight.has(place.id)) return { status: 'pending' };
-    if (queued >= MAX_QUEUE || !budgetAllows()) return { status: 'unavailable' };
+    if (Date.now() < backoffUntil || queued >= MAX_QUEUE || !budgetAllows()) return { status: 'unavailable' };
 
     recentStarts.push(Date.now());
     queued++;
@@ -245,6 +249,7 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
     inFlight.set(place.id, task);
     task
       .catch(error => {
+        backoffUntil = Date.now() + FAILURE_BACKOFF_MS;
         log.error?.(`[PlaceImages] Lookup failed for ${place.name}:`, error.message);
       })
       .finally(() => {

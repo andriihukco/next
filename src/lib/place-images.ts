@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { apiUrl } from "./api";
 import type { CityPlace } from "./city-places";
 
@@ -61,4 +62,35 @@ export async function fetchPlaceImages(
     });
   }
   return { status: "unavailable" };
+}
+
+export type PlacePhotoState =
+  | { status: "loading" }
+  | { status: "ok"; imageUrl: string }
+  | { status: "none" };
+
+/**
+ * Photo for a list card. Uses the OSM photo when there is one, otherwise asks
+ * the server once `enabled` is true (the card is in view). Stays `loading`
+ * until an answer arrives, then becomes `ok` or `none` (the empty state).
+ */
+export function usePlacePhoto(place: CityPlace | undefined, enabled: boolean): PlacePhotoState {
+  const [fetched, setFetched] = useState<{ id: string; result: PlaceImageResult } | null>(null);
+
+  useEffect(() => {
+    if (!place || !enabled || place.imageUrl || resolved.has(place.id)) return;
+    const controller = new AbortController();
+    fetchPlaceImages(place, controller.signal)
+      .then((result) => setFetched({ id: place.id, result }))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [place, enabled]);
+
+  if (!place) return { status: "none" };
+  if (place.imageUrl) return { status: "ok", imageUrl: place.imageUrl };
+  const result =
+    resolved.get(place.id) ?? (fetched?.id === place.id ? fetched.result : undefined);
+  if (result?.status === "ok") return { status: "ok", imageUrl: result.imageUrl };
+  if (result && result.status !== "pending") return { status: "none" };
+  return { status: "loading" };
 }

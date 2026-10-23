@@ -7717,6 +7717,17 @@ body {
   background: var(--surface-muted);
 }
 
+/* Photo still loading, or none found: a neutral tile, like a list card with no photo. */
+.unified-card__photo--empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted-foreground);
+}
+
+.unified-card__photo--loading {
+  color: transparent;
+}
+
 .unified-card__rating {
   display: flex;
   align-items: center;

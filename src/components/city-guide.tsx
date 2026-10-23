@@ -299,6 +299,7 @@ function EducationCard({
         icon="school"
         category={EDUCATION_KIND_LABELS[kind]}
         imageUrl={place.imageUrl}
+        place={place}
         rating
       />
       {detailPage && (
@@ -1051,6 +1052,7 @@ export function CityGuide({
                           iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
                           category={place.categoryLabel}
                           imageUrl={place.imageUrl}
+                          place={place}
                           rating
                         />
                         {place.details["Графік"] && (
