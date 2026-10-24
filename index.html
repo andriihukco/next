@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#f8faf9" />
-  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8faf9" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1714" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="Транспорт наживо, місця, освіта, послуги, робота й афіша Львова — на одній мапі." />
   <meta name="format-detection" content="telephone=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -15,16 +16,23 @@
   <meta property="og:description" content="Транспорт наживо, місця, освіта, послуги, робота й афіша Львова — на одній мапі." />
   <meta property="og:locale" content="uk_UA" />
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>next • Місто поруч</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Only the icon axes the UI uses (DESIGN.md §6): 24px optical size, weight 400–700, fill on/off. -->
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400..700,0..1,0&display=block" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,200..700,0..1,0&display=block" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
+  <script>
+    // Apply the saved theme before first paint (D4). Failure keeps the system theme.
+    try {
+      var savedTheme = localStorage.getItem('eway-theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') document.documentElement.dataset.theme = savedTheme;
+    } catch (error) {}
+  </script>
   <noscript>Для роботи next увімкніть JavaScript.</noscript>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>

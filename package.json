@@ -9,7 +9,7 @@
     "build:staging": "tsc && vite build --mode staging",
     "build:production": "tsc && vite build --mode production",
     "preview": "vite preview",
-    "server": "node server.js",
+    "server": "node --env-file-if-exists=.env.local server.js",
     "test:fixtures": "esbuild scripts/fixture-logic.test.ts --bundle --platform=node --format=esm --loader:.json=json --outfile=node_modules/.cache/fixture-logic.test.mjs && node node_modules/.cache/fixture-logic.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\""
@@ -21,18 +21,22 @@
     "@radix-ui/react-switch": "^1.4.1",
     "@radix-ui/react-toggle-group": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.4.1",
+    "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/vite": "^4.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cn": "^0.5.0",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^6.14.0",
     "motion": "^12.43.0",
     "protobufjs": "^8.8.1",
+    "radix-ui": "^1.8.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.3.3",
-    "three": "^0.186.1"
+    "three": "^0.186.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

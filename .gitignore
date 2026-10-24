@@ -7,3 +7,4 @@ dist/
 .debug-journal.md
 static.zip
 data/place-images.json
+.vercel

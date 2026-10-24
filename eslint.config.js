@@ -4,7 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules", "public", "scripts/**/*.mjs", "google-protobuf.js"] },
+  { ignores: ["dist", "node_modules", "public", "scripts/**/*.mjs"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["src/**/*.{ts,tsx}", "scripts/**/*.ts", "vite.config.ts"],

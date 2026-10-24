@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "../../components/ui/button";
-import { Chip } from "../../components/ui/chip";
+import { Toggle } from "../../components/ui/toggle";
+import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { DetailSection, ListRow, SheetNavBar } from "../../components/ui/detail-layout";
 import { Input } from "../../components/ui/input";
+import { Switch } from "../../components/ui/switch";
 import { MaterialIcon } from "../../components/ui/material-icon";
-import { exitTransition, spring } from "../../lib/motion";
+import { panelMotion, scrimMotion, spring, exitTransition } from "../../lib/motion";
+import { disablePush, enablePush, readPushStatus, sendTestPush, type PushStatus } from "../../lib/push";
+import { authRedirectUrl, googleSignInEnabled, supabase, useSession } from "../../lib/supabase";
 import { useDialogFocus } from "../../lib/use-dialog-focus";
+import { useMediaQuery } from "../../lib/use-media-query";
+import { setThemePreference, useThemePreference, type ThemePreference } from "../../lib/use-theme";
 import {
   EMPTY_PROFILE,
   VISITOR_TYPES,
@@ -21,11 +27,9 @@ type PermissionState = "granted" | "denied" | "prompt" | "unsupported";
 
 type SettingsDialogProps = {
   cityName: string;
-  notificationMessage: string;
   onClose: () => void;
   onOpenCityPicker: () => void;
   onRequestLocation: () => void;
-  onRequestNotifications: () => void;
   onReplayOnboarding: () => void;
 };
 
@@ -61,19 +65,40 @@ function useGeolocationPermission(): PermissionState {
   return state;
 }
 
-function notificationPermission(): PermissionState {
-  if (typeof Notification === "undefined") return "unsupported";
-  return Notification.permission === "default" ? "prompt" : Notification.permission;
+const PUSH_LABEL: Record<PushStatus, string> = {
+  unsupported: "Цей браузер не підтримує push-сповіщення",
+  "ios-install": "На iPhone спершу додайте next на початковий екран: Поділитися → На початковий екран",
+  unconfigured: "Сповіщення ще не налаштовані на сервері",
+  denied: "Вимкнено в налаштуваннях браузера",
+  off: "Вимкнено",
+  on: "Увімкнено на цьому пристрої",
+};
+
+function usePushStatus(): [PushStatus | null, (status: PushStatus) => void] {
+  const [status, setStatus] = useState<PushStatus | null>(null);
+  useEffect(() => {
+    let active = true;
+    readPushStatus()
+      .then((next) => {
+        if (active) setStatus(next);
+      })
+      .catch((error: unknown) => {
+        console.error("Could not read the push subscription.", error);
+        if (active) setStatus("unsupported");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  return [status, setStatus];
 }
 
 /** Profile and settings. On mobile it is a full-height sheet; on desktop a side panel. */
 export function SettingsDialog({
   cityName,
-  notificationMessage,
   onClose,
   onOpenCityPicker,
   onRequestLocation,
-  onRequestNotifications,
   onReplayOnboarding,
 }: SettingsDialogProps) {
   const panelRef = useRef<HTMLElement>(null);
@@ -81,26 +106,70 @@ export function SettingsDialog({
   const [profile, setProfile] = useState<LocalProfile | null>(() => readLocalProfile());
   const [confirmClear, setConfirmClear] = useState(false);
   const location = useGeolocationPermission();
-  const [notifications, setNotifications] = useState<PermissionState>(() => notificationPermission());
+  const { session } = useSession();
+  const [push, setPush] = usePushStatus();
+  const [pushBusy, setPushBusy] = useState(false);
+  const [status, setStatus] = useState("");
   useDialogFocus(panelRef, {
     onEscape: () => (view === "main" ? onClose() : setView("main")),
     focusKey: view,
   });
 
-  useEffect(() => {
-    // The permission prompt resolves asynchronously and reports through this message.
-    setNotifications(notificationPermission());
-  }, [notificationMessage]);
+  const togglePush = async (enable: boolean): Promise<void> => {
+    if (enable && !session) {
+      setView("account");
+      return;
+    }
+    setPushBusy(true);
+    setStatus("");
+    try {
+      const next = enable ? await enablePush() : await disablePush();
+      setPush(next);
+      if (enable && next === "on") setStatus("Сповіщення про повітряну тривогу увімкнено.");
+      if (enable && next === "denied") setStatus("Дозвіл не надано. Його можна змінити в налаштуваннях браузера.");
+    } catch (error: unknown) {
+      console.error("Could not change the push subscription.", error);
+      setStatus(enable ? "Не вдалося увімкнути сповіщення. Спробуйте ще раз." : "Не вдалося вимкнути сповіщення.");
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
+  const testPush = async (): Promise<void> => {
+    if (!session) return;
+    setPushBusy(true);
+    try {
+      setStatus(await sendTestPush(session));
+    } catch (error: unknown) {
+      console.error("Could not request a test notification.", error);
+      setStatus("Немає з’єднання з сервером. Спробуйте пізніше.");
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const signOut = async (): Promise<void> => {
+    if (!supabase) return;
+    // The subscription row belongs to this account, so drop it while the session can still delete it.
+    if (push === "on") await disablePush().then(setPush).catch((error: unknown) => console.error("Could not remove the push subscription.", error));
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Could not sign out.", error);
+      setStatus("Не вдалося вийти. Спробуйте ще раз.");
+      return;
+    }
+    setStatus("Ви вийшли з облікового запису.");
+    setView("main");
+  };
+
+  const themePreference = useThemePreference();
   const displayName = profile?.name.trim() || "Гість";
+  const mobile = useMediaQuery("(max-width: 800px)");
 
   return (
     <motion.div
       className="settings-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: exitTransition }}
-      transition={{ duration: 0.2 }}
+      {...scrimMotion}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -111,10 +180,7 @@ export function SettingsDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 24, transition: exitTransition }}
-        transition={spring.default}
+        {...panelMotion(mobile)}
       >
         <AnimatePresence mode="popLayout" initial={false}>
           {view === "main" && (
@@ -147,9 +213,9 @@ export function SettingsDialog({
 
               <DetailSection title="Обліковий запис">
                 <ListRow
-                  leading={<MaterialIcon name="login" size={20} />}
-                  title="Увійти або зареєструватися"
-                  subtitle="Синхронізація між пристроями · Незабаром"
+                  leading={<MaterialIcon name={session ? "account_circle" : "login"} size={20} />}
+                  title={session?.user.email ?? "Увійти або зареєструватися"}
+                  subtitle={session ? "Ви увійшли" : "Для сповіщень про тривогу"}
                   onClick={() => setView("account")}
                 />
               </DetailSection>
@@ -181,18 +247,57 @@ export function SettingsDialog({
                 />
                 <ListRow
                   leading={<MaterialIcon name="notifications" size={20} />}
-                  title="Сповіщення"
+                  title="Повітряна тривога"
                   subtitle={
-                    notifications === "granted"
-                      ? "Дозволено · надходитимуть після підключення джерел"
-                      : PERMISSION_LABEL[notifications]
+                    push === null
+                      ? "Перевіряємо…"
+                      : push === "off" && !session
+                        ? "Увійдіть, щоб отримувати сповіщення"
+                        : PUSH_LABEL[push]
                   }
                   trailing={
-                    notifications === "prompt" ? (
-                      <Button type="button" size="sm" variant="outline" onClick={onRequestNotifications}>
-                        Дозволити
+                    <Switch
+                      aria-label="Сповіщення про повітряну тривогу"
+                      checked={push === "on"}
+                      disabled={pushBusy || (push !== "on" && push !== "off")}
+                      onCheckedChange={(checked) => void togglePush(checked)}
+                    />
+                  }
+                />
+                {push === "on" && session && (
+                  <ListRow
+                    leading={<MaterialIcon name="send" size={20} />}
+                    title="Тестове сповіщення"
+                    subtitle="Перевірте, чи сповіщення доходять на цей пристрій"
+                    trailing={
+                      <Button type="button" size="sm" variant="outline" disabled={pushBusy} onClick={() => void testPush()}>
+                        Надіслати
                       </Button>
-                    ) : undefined
+                    }
+                  />
+                )}
+              </DetailSection>
+
+              <DetailSection title="Вигляд">
+                <ListRow
+                  leading={<MaterialIcon name="dark_mode" size={20} />}
+                  title="Тема"
+                  subtitle="Системна, світла або темна"
+                  trailing={
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      size="sm"
+                      value={themePreference}
+                      onValueChange={(value) => {
+                        if (value) setThemePreference(value as ThemePreference);
+                      }}
+                      aria-label="Тема"
+                    >
+                      <ToggleGroupItem value="system">Системна</ToggleGroupItem>
+                      <ToggleGroupItem value="light">Світла</ToggleGroupItem>
+                      <ToggleGroupItem value="dark">Темна</ToggleGroupItem>
+                    </ToggleGroup>
                   }
                 />
               </DetailSection>
@@ -205,11 +310,6 @@ export function SettingsDialog({
                     onClose();
                     onReplayOnboarding();
                   }}
-                />
-                <ListRow
-                  leading={<MaterialIcon name="dataset" size={20} />}
-                  title="Джерела даних"
-                  subtitle="Транспорт: GPS і GTFS від UA-GIS · Місця: OpenStreetMap · Тривоги: alerts.in.ua · Афіша, послуги, робота: демо"
                 />
               </DetailSection>
 
@@ -278,28 +378,17 @@ export function SettingsDialog({
               transition={spring.default}
             >
               <SheetNavBar title="Обліковий запис" onBack={() => setView("main")} backLabel="Профіль" />
-              <div className="settings-account">
-                <span className="settings-account-icon" aria-hidden="true">
-                  <MaterialIcon name="cloud_sync" size={28} />
-                </span>
-                <h3>Обліковий запис — незабаром</h3>
-                <p>
-                  Вхід потрібен для синхронізації профілю, квитків і замовлень між пристроями. Поки
-                  що профіль зберігається лише в цьому браузері, і ми нічого не надсилаємо на сервер.
-                </p>
-                <Button type="button" size="lg" disabled>
-                  Увійти · Незабаром
-                </Button>
-                <Button type="button" size="lg" variant="outline" onClick={() => setView("profile")}>
-                  Налаштувати профіль на пристрої
-                </Button>
-              </div>
+              <AccountView
+                signedInEmail={session?.user.email ?? null}
+                onSignOut={() => void signOut()}
+                onSetUpProfile={() => setView("profile")}
+              />
             </motion.div>
           )}
         </AnimatePresence>
-        {notificationMessage && view === "main" && (
+        {status && view === "main" && (
           <p className="settings-status" role="status">
-            {notificationMessage}
+            {status}
           </p>
         )}
       </motion.section>
@@ -334,16 +423,15 @@ function ProfileForm({ initial, onSave }: { initial: LocalProfile; onSave: (prof
         <legend>Хто ви у Львові</legend>
         <div className="settings-chips">
           {VISITOR_TYPES.map((type) => (
-            <Chip
+            <Toggle variant="pill"
               key={type}
               size="sm"
-              selected={draft.visitorType === type}
+             
               onClick={() =>
                 setDraft((current) => ({ ...current, visitorType: current.visitorType === type ? "" : type }))
-              }
-            >
+              } pressed={draft.visitorType === type}>
               {type}
-            </Chip>
+            </Toggle>
           ))}
         </div>
       </fieldset>
@@ -362,6 +450,141 @@ function ProfileForm({ initial, onSave }: { initial: LocalProfile; onSave: (prof
       <Button type="submit" size="lg">
         Зберегти
       </Button>
+    </form>
+  );
+}
+
+type AccountViewProps = {
+  signedInEmail: string | null;
+  onSignOut: () => void;
+  onSetUpProfile: () => void;
+};
+
+function AccountView({ signedInEmail, onSignOut, onSetUpProfile }: AccountViewProps) {
+  const [email, setEmail] = useState("");
+  const [sentTo, setSentTo] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!supabase) {
+    return (
+      <div className="settings-account">
+        <span className="settings-account-icon" aria-hidden="true">
+          <MaterialIcon name="cloud_sync" size={28} />
+        </span>
+        <h3>Вхід тимчасово недоступний</h3>
+        <p>Обліковий запис ще не підключено на цьому сайті. Профіль зберігається лише в цьому браузері.</p>
+        <Button type="button" size="lg" variant="outline" onClick={onSetUpProfile}>
+          Налаштувати профіль на пристрої
+        </Button>
+      </div>
+    );
+  }
+
+  if (signedInEmail) {
+    return (
+      <div className="settings-account">
+        <span className="settings-account-icon" aria-hidden="true">
+          <MaterialIcon name="account_circle" size={28} />
+        </span>
+        <h3>Ви увійшли</h3>
+        <p>{signedInEmail}</p>
+        <Button type="button" size="lg" variant="outline" onClick={onSignOut}>
+          Вийти
+        </Button>
+      </div>
+    );
+  }
+
+  const sendLink = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    const address = email.trim();
+    setBusy(true);
+    setError("");
+    const { error: signInError } = await supabase.auth.signInWithOtp({
+      email: address,
+      options: { emailRedirectTo: authRedirectUrl() },
+    });
+    setBusy(false);
+    if (signInError) {
+      console.error("Could not send the sign-in link.", signInError);
+      setError(
+        signInError.status === 429
+          ? "Забагато спроб. Зачекайте хвилину й спробуйте знову."
+          : !signInError.status
+            ? "Немає з’єднання з сервером. Перевірте інтернет і спробуйте ще раз."
+            : "Не вдалося надіслати лист. Перевірте адресу й спробуйте ще раз.",
+      );
+      return;
+    }
+    setSentTo(address);
+  };
+
+  const signInWithGoogle = async (): Promise<void> => {
+    setError("");
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: authRedirectUrl() },
+    });
+    if (oauthError) {
+      console.error("Could not start Google sign-in.", oauthError);
+      setError("Не вдалося відкрити вхід через Google. Спробуйте пізніше.");
+    }
+  };
+
+  if (sentTo) {
+    return (
+      <div className="settings-account" role="status">
+        <span className="settings-account-icon" aria-hidden="true">
+          <MaterialIcon name="mark_email_read" size={28} />
+        </span>
+        <h3>Перевірте пошту</h3>
+        <p>
+          Ми надіслали посилання для входу на {sentTo}. Відкрийте його на цьому пристрої. Лист може
+          прийти за хвилину.
+        </p>
+        <Button type="button" size="lg" variant="outline" onClick={() => setSentTo("")}>
+          Змінити адресу
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form className="settings-form" onSubmit={(event) => void sendLink(event)}>
+      <p className="settings-hint">
+        <MaterialIcon name="info" size={16} />
+        Увійдіть або створіть обліковий запис, щоб отримувати сповіщення про повітряну тривогу. Пароль не потрібен.
+      </p>
+      <label className="settings-field">
+        <span>Електронна пошта</span>
+        <Input
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="name@example.com"
+          required
+          maxLength={254}
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "settings-auth-error" : undefined}
+          data-autofocus
+        />
+      </label>
+      {error && (
+        <p id="settings-auth-error" className="settings-error" role="alert">
+          {error}
+        </p>
+      )}
+      <Button type="submit" size="lg" disabled={busy}>
+        {busy ? "Надсилаємо…" : "Надіслати посилання для входу"}
+      </Button>
+      {googleSignInEnabled && (
+        <Button type="button" size="lg" variant="outline" onClick={() => void signInWithGoogle()}>
+          Продовжити з Google
+        </Button>
+      )}
     </form>
   );
 }

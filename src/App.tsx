@@ -1,4 +1,8 @@
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { resolveColor } from "./lib/design-colors";
+import { recolorMapForTheme, snapshotMapPalette } from "./lib/map-theme";
+import { FILLED_ICON_FAMILY, loadFilledIconFont } from "./lib/material-symbols-filled";
+import { useResolvedTheme } from "./lib/use-theme";
 import * as maplibregl from "maplibre-gl";
 import {
   GeoJSONSource,
@@ -22,8 +26,6 @@ import {
   Search,
   TriangleAlert,
   X,
-  ZoomIn,
-  ZoomOut,
 } from "./components/ui/material-icon";
 import { AnimatePresence, MotionConfig, motion, useTransform, type MotionStyle } from "motion/react";
 import { BrandLogo } from "./components/ui/brand-logo";
@@ -32,7 +34,7 @@ import { IconButton } from "./components/ui/icon-button";
 import { useBottomSheet } from "./components/ui/use-bottom-sheet";
 import { useMediaQuery } from "./lib/use-media-query";
 import { Card } from "./components/ui/card";
-import { Chip } from "./components/ui/chip";
+import { Toggle } from "./components/ui/toggle";
 import { AdminPanel, type AdminDataset } from "./components/admin-panel";
 import { BuildingModelEditor } from "./components/building-model-editor";
 import { CityGuide } from "./components/city-guide";
@@ -49,8 +51,8 @@ import {
 import { Input } from "./components/ui/input";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { apiUrl } from "./lib/api";
-import { fetchPlaceImages, type PlaceImageResult } from "./lib/place-images";
-import { PlaceDetailsSection } from "./components/place-details-section";
+import { EntityDetail, type InfoRow } from "./components/entity-detail";
+import { useSavedItems } from "./lib/use-saved-items";
 import {
   createVehicle3DLayer,
   type Vehicle3DLayer,
@@ -102,7 +104,6 @@ import {
 import {
   CITY_PLACE_CATEGORY_COLORS,
   cityBuildingFromMapFeature,
-  cityPlaceOsmUrl,
   cityPlaceIcons,
   cityPlaceCategories,
   cityPlacesFromMapFeatures,
@@ -126,7 +127,7 @@ import {
 type VehicleType = "tram" | "trolleybus" | "bus" | "taxi";
 type AppView = "city" | "map" | "admin";
 type DetailReturnView = "city" | "map";
-const BRAND_BLUE = "#0874df";
+const BRAND_BLUE = "var(--brand-blue)";
 type VehicleFilter = VehicleType;
 type Vehicle = {
   id: string;
@@ -411,12 +412,20 @@ const TELEGRAM_CHANNEL_URL = (() => {
   return "";
 })();
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const pinImageId = (category: string, active = false): string =>
+  active ? `wayme-place-${category}-active` : `wayme-place-${category}`;
+
+// Active pins draw the filled glyph; the rest draw the outlined one.
 const cityPlacePinImage = async (
   category: CityPlaceCategory,
+  active = false,
 ): Promise<ImageData> => {
   const iconName = cityPlaceIcons[category];
-  await document.fonts.load('500 18px "Material Symbols Rounded"', iconName);
-  if (!document.fonts.check('500 18px "Material Symbols Rounded"', iconName)) {
+  const filled = active && (await loadFilledIconFont());
+  const family = filled ? FILLED_ICON_FAMILY : "Material Symbols Rounded";
+  const font = `500 18px "${family}"`;
+  await document.fonts.load(font, iconName);
+  if (!document.fonts.check(font, iconName)) {
     throw new Error("The Material Symbols font is not available.");
   }
   const canvas = document.createElement("canvas");
@@ -428,24 +437,40 @@ const cityPlacePinImage = async (
   const pin = new Path2D(
     "M16 1C7.7 1 1 7.6 1 15.8 1 26.4 16 39 16 39s15-12.6 15-23.2C31 7.6 24.3 1 16 1Z",
   );
-  context.fillStyle = CITY_PLACE_CATEGORY_COLORS[category];
-  context.strokeStyle = "#fff";
+  context.fillStyle = resolveColor(CITY_PLACE_CATEGORY_COLORS[category]);
+  context.strokeStyle = resolveColor("var(--card)");
   context.lineWidth = 1.5;
   context.fill(pin);
   context.stroke(pin);
-  context.beginPath();
-  context.arc(16, 16, 10.5, 0, Math.PI * 2);
-  context.fillStyle = "rgba(255, 255, 255, 0.14)";
-  context.fill();
-  context.font = '500 18px "Material Symbols Rounded"';
+  context.font = font;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillStyle = "#fff";
+  context.fillStyle = resolveColor("var(--card)");
   context.fillText(iconName, 16, 16);
   return context.getImageData(0, 0, canvas.width, canvas.height);
 };
 const label = (type: VehicleType): string =>
   type === "tram" ? "Трамвай" : type === "trolleybus" ? "Тролейбус" : "Автобус";
+const PLACE_INFO_ICONS: Record<string, string> = {
+  "Адреса": "location_on",
+  "Години роботи": "schedule",
+  "Висота": "height",
+  "Поверхи": "layers",
+  "Оператор": "business",
+  "Телефон": "call",
+};
+
+/** Source tags as quick facts. Website and phone are handled by the detail layout. */
+function placeInfoRows(place: CityPlace): InfoRow[] {
+  return Object.entries(place.details)
+    .filter(([label]) => label !== "Сайт" && label !== "Телефон")
+    .map(([label, value]) => ({
+      icon: PLACE_INFO_ICONS[label] ?? "info",
+      label,
+      value,
+    }));
+}
+
 function SidebarStepHeader({
   title,
   onBack,
@@ -479,7 +504,7 @@ type ShelterFeatureProperties = Pick<Shelter, "id" | "address"> & {
 type CityPlaceFeatureProperties = Pick<
   CityPlace,
   "id" | "name" | "category" | "categoryLabel" | "address"
->;
+> & { selected: boolean };
 
 const vehicleFeatures = (
   vehicles: Vehicle[],
@@ -534,6 +559,7 @@ const shelterFeatures = (
 
 const cityPlaceFeatures = (
   places: CityPlace[],
+  selectedId?: string,
 ): FeatureCollection<Point, CityPlaceFeatureProperties> => ({
   type: "FeatureCollection",
   features: places.map((place) => ({
@@ -546,6 +572,7 @@ const cityPlaceFeatures = (
       category: place.category,
       categoryLabel: place.categoryLabel,
       address: place.address,
+      selected: place.id === selectedId,
     },
   })),
 });
@@ -659,6 +686,7 @@ export default function App() {
   const activeViewRef = useRef<AppView>("city");
   const [mapReady, setMapReady] = useState(false);
   const [mapPitch, setMapPitch] = useState(60);
+  const [mapBearing, setMapBearing] = useState(0);
   const [terrainEnabled, setTerrainEnabled] = useState(false);
   const [selectedStopTab, setSelectedStopTab] =
     useState<StopTab>("overview");
@@ -786,7 +814,6 @@ export default function App() {
     null,
   );
   const [search, setSearch] = useState("");
-  const [searchExpanded, setSearchExpanded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Inputs stay instant; list filtering runs at lower priority so typing never stalls.
   const deferredSearch = useDeferredValue(search);
@@ -835,23 +862,7 @@ export default function App() {
     setBuildingModelPreview(null);
   }, [selectedPlace?.id]);
 
-  // Places from OSM rarely carry a photo, so look one up on the server when
-  // the inspector opens. Until it answers the inspector shows the icon.
-  const [placePhoto, setPlacePhoto] = useState<PlaceImageResult | null>(null);
-  useEffect(() => {
-    setPlacePhoto(null);
-    if (!selectedPlace) return;
-    const controller = new AbortController();
-    fetchPlaceImages(selectedPlace, controller.signal)
-      .then(setPlacePhoto)
-      .catch(() => {});
-    return () => controller.abort();
-  }, [selectedPlace]);
-  const selectedPhotoUrl =
-    selectedPlace?.imageUrl ||
-    (placePhoto?.status === "ok" ? placePhoto.imageUrl : undefined);
-  const selectedPlaceDetails =
-    placePhoto?.status === "ok" ? placePhoto.details : undefined;
+  const [savedPlaceIds, toggleSavedPlace] = useSavedItems();
 
   // The developer tools live on the `/dev` route: open the map so the panel
   // is reachable right away, and leave the admin view when the route ends.
@@ -968,6 +979,27 @@ export default function App() {
         ),
     [normalizedCitySearch],
   );
+  const cityIndexGroups = useMemo(() => {
+    const collator = new Intl.Collator("uk-UA");
+    const entries = filteredCityRegions
+      .flatMap((region) => [
+        ...(region.showCenter
+          ? [{ key: `${region.name}|${region.center}`, name: region.center, isCenter: true }]
+          : []),
+        ...region.cities.map((city) => ({
+          key: `${region.name}|${city}`,
+          name: city,
+          isCenter: false,
+        })),
+      ])
+      .sort((a, b) => collator.compare(a.name, b.name));
+    const groups = new Map<string, typeof entries>();
+    for (const entry of entries) {
+      const letter = entry.name.charAt(0).toLocaleUpperCase("uk-UA");
+      groups.set(letter, [...(groups.get(letter) ?? []), entry]);
+    }
+    return [...groups].map(([letter, items]) => ({ letter, items }));
+  }, [filteredCityRegions]);
 
   useEffect(() => {
     if (!mapNode.current || mapRef.current) return;
@@ -1003,9 +1035,11 @@ export default function App() {
     };
     const updateMapPitch = (): void => setMapPitch(map.getPitch());
     map.on("pitch", updateMapPitch);
+    map.on("rotate", () => setMapBearing(map.getBearing()));
     map.on("idle", refreshCityPlaces);
     map.on("move", refreshCityPlacesWhileMoving);
     map.once("load", async () => {
+      snapshotMapPalette();
       map.addSource("wayme-vehicles", {
         type: "geojson",
         data: vehicleFeatures([]),
@@ -1040,9 +1074,18 @@ export default function App() {
       const placeCategories = Object.keys(
         CITY_PLACE_CATEGORY_COLORS,
       ) as CityPlaceCategory[];
-      let fallbackPin: ImageData | undefined;
+      const addPinImages = (
+        category: CityPlaceCategory,
+        normal: ImageData,
+        active: ImageData,
+      ): void => {
+        map.addImage(pinImageId(category), normal, { pixelRatio: 2 });
+        map.addImage(pinImageId(category, true), active, { pixelRatio: 2 });
+      };
+      let fallbackPin: { normal: ImageData; active: ImageData } | undefined;
       try {
-        fallbackPin = await cityPlacePinImage("other");
+        const normal = await cityPlacePinImage("other");
+        fallbackPin = { normal, active: await cityPlacePinImage("other", true) };
       } catch (error) {
         console.error("Could not create the fallback map pin.", error);
       }
@@ -1050,15 +1093,14 @@ export default function App() {
       const missingPinCategories: CityPlaceCategory[] = [];
       for (const category of placeCategories) {
         try {
-          const image = await cityPlacePinImage(category);
-          map.addImage(`wayme-place-${category}`, image, { pixelRatio: 2 });
-          fallbackPin ??= image;
+          const normal = await cityPlacePinImage(category);
+          const active = await cityPlacePinImage(category, true);
+          addPinImages(category, normal, active);
+          fallbackPin ??= { normal, active };
         } catch (error) {
           console.error(`Could not create the ${category} map pin.`, error);
           if (fallbackPin) {
-            map.addImage(`wayme-place-${category}`, fallbackPin, {
-              pixelRatio: 2,
-            });
+            addPinImages(category, fallbackPin.normal, fallbackPin.active);
           } else {
             missingPinCategories.push(category);
           }
@@ -1067,73 +1109,38 @@ export default function App() {
       }
       if (fallbackPin) {
         for (const category of missingPinCategories) {
-          map.addImage(`wayme-place-${category}`, fallbackPin, {
-            pixelRatio: 2,
-          });
+          addPinImages(category, fallbackPin.normal, fallbackPin.active);
         }
       } else if (missingPinCategories.length > 0) {
         console.error(
           `Could not create map pins for: ${missingPinCategories.join(", ")}.`,
         );
       }
+      // Each pin image is looked up by category; a selected place uses its active image.
+      const pinExpression = (active: boolean): maplibregl.ExpressionSpecification => {
+        const branches = placeCategories
+          .filter((category) => category !== "other")
+          .flatMap((category): [string, string] => [category, pinImageId(category, active)]);
+        const match: unknown[] = ["match", ["get", "category"], ...branches, pinImageId("other", active)];
+        return match as unknown as maplibregl.ExpressionSpecification;
+      };
       const cityPlaceIconExpression: maplibregl.ExpressionSpecification = [
-        "match",
-        ["get", "category"],
-        "groceries",
-        "wayme-place-groceries",
-        "food",
-        "wayme-place-food",
-        "health",
-        "wayme-place-health",
-        "pets",
-        "wayme-place-pets",
-        "education",
-        "wayme-place-education",
-        "parks",
-        "wayme-place-parks",
-        "sports",
-        "wayme-place-sports",
-        "culture",
-        "wayme-place-culture",
-        "tourism",
-        "wayme-place-tourism",
-        "transport",
-        "wayme-place-transport",
-        "finance",
-        "wayme-place-finance",
-        "public",
-        "wayme-place-public",
-        "religion",
-        "wayme-place-religion",
-        "shopping",
-        "wayme-place-shopping",
-        "nightlife",
-        "wayme-place-nightlife",
-        "services",
-        "wayme-place-services",
-        "jobs",
-        "wayme-place-jobs",
-        "beauty",
-        "wayme-place-beauty",
-        "real-estate",
-        "wayme-place-real-estate",
-        "stay",
-        "wayme-place-stay",
-        "buildings",
-        "wayme-place-buildings",
-        "wayme-place-other",
+        "case",
+        ["==", ["get", "selected"], true],
+        pinExpression(true),
+        pinExpression(false),
       ];
 
       const style = map.getStyle();
       const backgroundLayer = map.getLayer("background");
       if (backgroundLayer) {
-        map.setPaintProperty("background", "background-color", "#f6f7f6");
+        map.setPaintProperty("background", "background-color", resolveColor("var(--map-background)"));
       }
       for (const [layerId, color] of [
-        ["landuse_residential", "#f4f5f4"],
-        ["landcover_wood", "#dcebd8"],
-        ["landcover_grass", "#edf2ec"],
-        ["water", "#e8eff0"],
+        ["landuse_residential", resolveColor("var(--map-landuse)")],
+        ["landcover_wood", resolveColor("var(--map-wood)")],
+        ["landcover_grass", resolveColor("var(--map-grass)")],
+        ["water", resolveColor("var(--map-water)")],
       ] as const) {
         if (map.getLayer(layerId)) {
           map.setPaintProperty(layerId, "fill-color", color);
@@ -1144,7 +1151,7 @@ export default function App() {
           map.setPaintProperty(
             layer.id,
             "line-color",
-            layer.id.includes("casing") ? "#d5d9d7" : "#fbfcfb",
+            layer.id.includes("casing") ? resolveColor("var(--map-casing)") : resolveColor("var(--map-surface)"),
           );
         }
         if (layer.type === "symbol") {
@@ -1158,8 +1165,8 @@ export default function App() {
           "source" in layer,
       );
       if (buildingLayer?.type === "fill") {
-        map.setPaintProperty(buildingLayer.id, "fill-color", "#ffffff");
-        map.setPaintProperty(buildingLayer.id, "fill-outline-color", "#e3e6e4");
+        map.setPaintProperty(buildingLayer.id, "fill-color", resolveColor("var(--card)"));
+        map.setPaintProperty(buildingLayer.id, "fill-outline-color", resolveColor("var(--map-outline)"));
       }
       const buildingSourceId =
         buildingLayer && "source" in buildingLayer
@@ -1178,7 +1185,7 @@ export default function App() {
         map.setPaintProperty(
           existingExtrusion.id,
           "fill-extrusion-color",
-          "#ffffff",
+          resolveColor("var(--card)"),
         );
         map.setPaintProperty(
           existingExtrusion.id,
@@ -1195,7 +1202,7 @@ export default function App() {
             minzoom: 14,
             filter: ["any", ["has", "render_height"], ["has", "height"]],
             paint: {
-              "fill-extrusion-color": "#ffffff",
+              "fill-extrusion-color": resolveColor("var(--card)"),
               "fill-extrusion-height": [
                 "max",
                 ["to-number", ["get", "render_height"], 0],
@@ -1232,9 +1239,9 @@ export default function App() {
         source: "wayme-dem",
         layout: { visibility: "none" },
         paint: {
-          "hillshade-shadow-color": "#52634e",
-          "hillshade-highlight-color": "#fffdf2",
-          "hillshade-accent-color": "#82907a",
+          "hillshade-shadow-color": resolveColor("var(--map-hillshade-shadow)"),
+          "hillshade-highlight-color": resolveColor("var(--map-hillshade-highlight)"),
+          "hillshade-accent-color": resolveColor("var(--map-hillshade-accent)"),
           "hillshade-exaggeration": 0.35,
         },
       });
@@ -1244,7 +1251,7 @@ export default function App() {
         source: "wayme-route",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#ffffff",
+          "line-color": resolveColor("var(--card)"),
           "line-width": 10,
           "line-opacity": 0.88,
         },
@@ -1255,7 +1262,7 @@ export default function App() {
         source: "wayme-route",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#1688ef",
+          "line-color": resolveColor("var(--map-route)"),
           "line-width": 5,
           "line-opacity": 0.95,
         },
@@ -1285,8 +1292,8 @@ export default function App() {
           "text-font": ["Noto Sans Regular"],
         },
         paint: {
-          "text-color": "#334155",
-          "text-halo-color": "#ffffff",
+          "text-color": resolveColor("var(--map-label)"),
+          "text-halo-color": resolveColor("var(--card)"),
           "text-halo-width": 1.5,
         },
       });
@@ -1296,7 +1303,7 @@ export default function App() {
         source: "wayme-city-places",
         filter: ["has", "point_count"],
         paint: {
-          "circle-color": BRAND_BLUE,
+          "circle-color": resolveColor(BRAND_BLUE),
           "circle-radius": [
             "step",
             ["get", "point_count"],
@@ -1306,7 +1313,7 @@ export default function App() {
             80,
             24,
           ],
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": resolveColor("var(--card)"),
           "circle-stroke-width": 2,
         },
       });
@@ -1320,7 +1327,7 @@ export default function App() {
           "text-size": 12,
           "text-font": ["Noto Sans Bold"],
         },
-        paint: { "text-color": "#ffffff" },
+        paint: { "text-color": resolveColor("var(--card)") },
       });
       map.addLayer({
         id: "wayme-city-place-points",
@@ -1350,8 +1357,8 @@ export default function App() {
           "text-optional": true,
         },
         paint: {
-          "text-color": "#20362a",
-          "text-halo-color": "#ffffff",
+          "text-color": resolveColor("var(--map-label-strong)"),
+          "text-halo-color": resolveColor("var(--card)"),
           "text-halo-width": 1.5,
         },
       });
@@ -1365,12 +1372,12 @@ export default function App() {
           "circle-color": [
             "case",
             ["get", "nearest"],
-            "#dc2626",
+            resolveColor("var(--map-marker-alert)"),
             ["get", "readyOrRecommended"],
-            "#0f766e",
-            "#94a3b8",
+            resolveColor("var(--map-marker-teal)"),
+            resolveColor("var(--map-marker-muted)"),
           ],
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": resolveColor("var(--card)"),
           "circle-stroke-width": ["case", ["get", "nearest"], 3, 2],
         },
       });
@@ -1389,8 +1396,8 @@ export default function App() {
           "text-allow-overlap": true,
         },
         paint: {
-          "text-color": "#991b1b",
-          "text-halo-color": "#ffffff",
+          "text-color": resolveColor("var(--map-label-alert)"),
+          "text-halo-color": resolveColor("var(--card)"),
           "text-halo-width": 2,
         },
       });
@@ -1400,7 +1407,7 @@ export default function App() {
         source: "wayme-vehicles",
         paint: {
           "circle-radius": 18,
-          "circle-color": "#ffffff",
+          "circle-color": resolveColor("var(--card)"),
           "circle-opacity": 0.03,
           "circle-stroke-opacity": 0.05,
           "circle-stroke-width": 0,
@@ -1428,12 +1435,12 @@ export default function App() {
           "circle-color": [
             "match",
             ["get", "type"],
-            "bus", COLORS.bus,
-            "tram", COLORS.tram,
-            "trolleybus", COLORS.trolleybus,
-            COLORS.taxi,
+            "bus", resolveColor(COLORS.bus),
+            "tram", resolveColor(COLORS.tram),
+            "trolleybus", resolveColor(COLORS.trolleybus),
+            resolveColor(COLORS.taxi),
           ],
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": resolveColor("var(--card)"),
           "circle-stroke-width": 2,
         },
       });
@@ -1449,7 +1456,7 @@ export default function App() {
           "text-allow-overlap": true,
           "text-ignore-placement": true,
         },
-        paint: { "text-color": "#ffffff" },
+        paint: { "text-color": resolveColor("var(--card)") },
       });
       map.addLayer({
         id: "wayme-location-circle",
@@ -1457,8 +1464,8 @@ export default function App() {
         source: "wayme-location",
         paint: {
           "circle-radius": 8,
-          "circle-color": BRAND_BLUE,
-          "circle-stroke-color": "#ffffff",
+          "circle-color": resolveColor(BRAND_BLUE),
+          "circle-stroke-color": resolveColor("var(--card)"),
           "circle-stroke-width": 3,
         },
       });
@@ -1483,6 +1490,13 @@ export default function App() {
       setMapReady(false);
     };
   }, []);
+
+  const resolvedTheme = useResolvedTheme();
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    recolorMapForTheme(map);
+  }, [resolvedTheme, mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1779,8 +1793,8 @@ export default function App() {
       mapLayerCategories.size > 0
         ? mapCityPlaces.filter((p) => mapLayerCategories.has(p.category))
         : mapCityPlaces;
-    updateGeoJSONSource(map, "wayme-city-places", cityPlaceFeatures(filtered));
-  }, [mapCityPlaces, mapLayerCategories, mapReady]);
+    updateGeoJSONSource(map, "wayme-city-places", cityPlaceFeatures(filtered, selectedPlace?.id));
+  }, [mapCityPlaces, mapLayerCategories, mapReady, selectedPlace?.id]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !userLocation) return;
@@ -2254,7 +2268,7 @@ export default function App() {
     }
     if (Notification.permission === "granted") {
       setNotificationMessage(
-        "Дозвіл надано. Сповіщення про транспорт, події та знижки з’являться після підключення відповідних джерел.",
+        "Дозвіл надано. Сповіщення про повітряну тривогу вмикаються в Профілі після входу.",
       );
       return;
     }
@@ -2268,7 +2282,7 @@ export default function App() {
       .then((permission) => {
         setNotificationMessage(
           permission === "granted"
-            ? "Дозвіл надано. Сповіщення про транспорт, події та знижки з’являться після підключення відповідних джерел."
+            ? "Дозвіл надано. Сповіщення про повітряну тривогу вмикаються в Профілі після входу."
             : "Дозвіл не надано. Його можна змінити в налаштуваннях браузера.",
         );
       })
@@ -2283,6 +2297,16 @@ export default function App() {
       roll: 0,
       duration: 250,
     });
+  };
+  /** Pans the view one step in a direction (up, down, left, right). */
+  const panMap = (direction: "up" | "down" | "left" | "right"): void => {
+    const step = 120;
+    const offset: [number, number] =
+      direction === "up" ? [0, step]
+      : direction === "down" ? [0, -step]
+      : direction === "left" ? [step, 0]
+      : [-step, 0];
+    mapRef.current?.panBy(offset, { duration: 250 });
   };
   const toggleMapMode = (): void => {
     const map = mapRef.current;
@@ -2593,14 +2617,50 @@ export default function App() {
     }
   };
   const sheetEnabled = isMobileLayout && !inspectorOpen && activeView !== "admin";
+  // City and profile. Mobile floats these pills over the map;
+  // desktop keeps them in the rail header (DESIGN.md §5).
+  const cityHeaderControls = (
+    <>
+      <BrandLogo className="brand-logo" />
+      <button
+        type="button"
+        className="city-picker"
+        aria-label="Місто: Львів. Обрати місто"
+        aria-haspopup="dialog"
+        aria-expanded={cityLaunchModalOpen}
+        onClick={() => {
+          setCityUpdateStatus("");
+          setCityLaunchModalOpen(true);
+        }}
+      >
+        <span className="city-picker-name">Львів</span>
+        <span className="city-picker-beta">Beta</span>
+        <MaterialIcon name="expand_more" size={16} />
+      </button>
+      <span className="brand-header-spacer" aria-hidden="true" />
+      <IconButton
+        label="Профіль і налаштування"
+        tooltipSide="bottom"
+        className="brand-header-action"
+        aria-haspopup="dialog"
+        aria-expanded={settingsOpen}
+        onClick={() => setSettingsOpen(true)}
+      >
+        <MaterialIcon name="account_circle" size={22} />
+      </IconButton>
+    </>
+  );
   return (
     <MotionConfig reducedMotion="user">
     <TooltipProvider delayDuration={300}>
     <main className="un-shell">
       <div ref={mapNode} className="map-canvas" />
+      {sheetEnabled && !(activeView === "city" && cityPageOpen) && (
+        <header className="brand-header brand-header-floating">{cityHeaderControls}</header>
+      )}
       <motion.aside
         ref={railRef}
-        className={`brand-rail${activeView === "city" || inspectorOpen ? " city-mode" : ""}${inspectorOpen ? " inspector-open" : ""}${sheetEnabled ? " is-sheet" : ""}`}
+        className={`brand-rail${activeView === "city" || inspectorOpen ? " city-mode" : ""}${inspectorOpen ? " inspector-open" : ""}${sheetEnabled ? " is-sheet" : ""}${sheetEnabled && sheet.detent === "full" ? " is-full" : ""}`}
         style={sheetEnabled ? { y: sheet.y, "--sheet-hidden": sheetHiddenPx } as unknown as MotionStyle : undefined}
       >
         {sheetEnabled && (
@@ -2640,83 +2700,8 @@ export default function App() {
               Назад
             </Button>
           </header>
-        ) : !inspectorOpen ? (
-            <header className={`brand-header${searchExpanded ? " is-searching" : ""}`}>
-              {!searchExpanded ? (
-                <>
-                  <BrandLogo className="brand-logo" />
-                  <button
-                    type="button"
-                    className="city-picker"
-                    aria-label="Місто: Львів. Обрати місто"
-                    aria-haspopup="dialog"
-                    aria-expanded={cityLaunchModalOpen}
-                    onClick={() => {
-                      setCityUpdateStatus("");
-                      setCityLaunchModalOpen(true);
-                    }}
-                  >
-                    <span className="city-picker-name">Львів</span>
-                    <span className="city-picker-beta">Beta</span>
-                    <MaterialIcon name="expand_more" size={16} />
-                  </button>
-                  <span className="brand-header-spacer" aria-hidden="true" />
-                  <IconButton
-                    label="Пошук"
-                    tooltipSide="bottom"
-                    className="brand-header-action"
-                    data-tour="place-search"
-                    onClick={() => setSearchExpanded(true)}
-                  >
-                    <Search size={18} />
-                  </IconButton>
-                  <IconButton
-                    label="Профіль і налаштування"
-                    tooltipSide="bottom"
-                    className="brand-header-action"
-                    aria-haspopup="dialog"
-                    aria-expanded={settingsOpen}
-                    onClick={() => setSettingsOpen(true)}
-                  >
-                    <MaterialIcon name="account_circle" size={22} />
-                  </IconButton>
-                </>
-              ) : (
-                <label className="search-inline-field" data-tour="place-search">
-                  <Search size={18} className="search-inline-icon" aria-hidden="true" />
-                  <input
-                    autoFocus
-                    aria-label="Пошук"
-                    type="search"
-                    enterKeyHint="search"
-                    className="search-inline-input"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Місця, транспорт, події"
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setSearch("");
-                        setSearchExpanded(false);
-                      }
-                    }}
-                    onBlur={() => {
-                      if (!search) setSearchExpanded(false);
-                    }}
-                  />
-                  <IconButton
-                    label={search ? "Очистити пошук" : "Закрити пошук"}
-                    tooltipSide="bottom"
-                    className="search-close"
-                    onClick={() => {
-                      setSearch("");
-                      setSearchExpanded(false);
-                    }}
-                  >
-                    <X size={16} />
-                  </IconButton>
-                </label>
-              )}
-            </header>
+        ) : !inspectorOpen && !sheetEnabled ? (
+            <header className="brand-header">{cityHeaderControls}</header>
         ) : null}
         <div
           className="city-guide-frame"
@@ -2842,10 +2827,10 @@ export default function App() {
             { id: "trolleybus", label: "Тролейбуси", icon: "electric_bolt" },
             { id: "taxi", label: "Таксі", icon: "local_taxi" },
           ] as const).map((filter) => (
-            <Chip
+            <Toggle variant="pill"
               key={filter.id}
-              icon={filter.icon}
-              selected={vehicleFilter === filter.id}
+             
+             
               className="transport-category"
               style={
                 {
@@ -2855,10 +2840,9 @@ export default function App() {
               onClick={() => {
                 setVehicleFilter(filter.id);
                 localStorage.setItem("eway-last-vehicle-filter", filter.id);
-              }}
-            >
+              }} pressed={vehicleFilter === filter.id}><MaterialIcon name={filter.icon} size={18} filled={vehicleFilter === filter.id} />
               {filter.label}
-            </Chip>
+            </Toggle>
           ))}
         </div>
         <div className="routes-heading">
@@ -2949,7 +2933,7 @@ export default function App() {
                 <p>
                   {transitFlow === "menu"
                     ? "Показуємо тільки доступні у Львові типи."
-                    : "Жива GTFS лінія та ключові зупинки."}
+                    : "Жива лінія та ключові зупинки."}
                 </p>
               </div>
             </header>
@@ -2996,7 +2980,7 @@ export default function App() {
                     <strong>
                       {selectedVehicle?.route ?? "Оберіть транспорт на мапі"}
                     </strong>
-                    <p>Повний список синхронізується з GTFS.</p>
+                    <p>Повний список оновлюється з розкладу.</p>
                   </div>
                 </div>
                 <div className="arrival-list">
@@ -3119,8 +3103,8 @@ export default function App() {
               <p className="detail-note">
                 {selectedVehicle.mapMatched
                   ? selectedVehicle.dataSource === "test"
-                    ? "Тестову позицію розміщено на GTFS-геометрії."
-                    : "GPS прив’язано до GTFS-геометрії."
+                    ? "Тестову позицію розміщено на маршруті."
+                    : "GPS прив’язано до маршруту."
                   : "Показано актуальну GPS-позицію."}
               </p>
             </DetailSection>
@@ -3419,8 +3403,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="stop-empty-state">
-                      Джерело GTFS не містить даних про павільйон, доступність чи
-                      інші зручності.
+                      Про павільйон, доступність чи інші зручності даних немає.
                     </div>
                   )}
                 </div>
@@ -3496,86 +3479,56 @@ export default function App() {
               title="Місця"
               onBack={returnFromInspector}
             />
-            <header className="inspector-header">
-              <div>
-                <span className="eyebrow">
-                  OpenStreetMap · {selectedPlace.categoryLabel}
-                </span>
-                <h2>{selectedPlace.name}</h2>
-                <p>{selectedPlace.address}</p>
-              </div>
-            </header>
             <div className="place-inspector-body">
-              {selectedPhotoUrl && (
-                <img
-                  className="place-inspector-photo"
-                  src={selectedPhotoUrl}
-                  alt=""
-                  loading="lazy"
-                  onError={() => setPlacePhoto({ status: "none" })}
-                />
-              )}
-              <div className={`osm-place-icon ${selectedPlace.category}`}>
-                <MaterialIcon
-                  name={cityPlaceIcons[selectedPlace.category]}
-                  size={22}
-                />
-              </div>
-              <div className="place-inspector-details">
-                {Object.entries(selectedPlace.details).map(([label, value]) => (
-                  <div key={label}>
-                    <strong>{label}</strong>
-                    {label === "Сайт" ? (
-                      <a
-                        href={
-                          value.startsWith("http") ? value : `https://${value}`
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {value}
-                      </a>
-                    ) : (
-                      <span>{value}</span>
-                    )}
-                  </div>
-                ))}
-                {!Object.keys(selectedPlace.details).length && (
-                  <p>Додаткових відомостей про цей об’єкт у OpenStreetMap немає.</p>
-                )}
-              </div>
-              {selectedPlaceDetails && (
-                <PlaceDetailsSection details={selectedPlaceDetails} />
-              )}
-              <a
-                className="place-osm-link"
-                href={cityPlaceOsmUrl(selectedPlace)}
-                target="_blank"
-                rel="noreferrer"
+              <EntityDetail
+                kind={selectedPlace.category}
+                title={selectedPlace.name}
+                eyebrow={selectedPlace.categoryLabel}
+                subtitle={selectedPlace.address}
+                icon={cityPlaceIcons[selectedPlace.category]}
+                iconColor={CITY_PLACE_CATEGORY_COLORS[selectedPlace.category]}
+                place={selectedPlace}
+                info={placeInfoRows(selectedPlace)}
+                phone={selectedPlace.details["Телефон"]}
+                website={selectedPlace.details["Сайт"]}
+                coordinates={[selectedPlace.lng, selectedPlace.lat]}
+                saved={savedPlaceIds.has(selectedPlace.id)}
+                onToggleSaved={() => toggleSavedPlace(selectedPlace.id)}
+                onShowOnMap={() =>
+                  mapRef.current?.flyTo({
+                    center: [selectedPlace.lng, selectedPlace.lat],
+                    zoom: 17,
+                    duration: 500,
+                  })
+                }
+                onDirections={() =>
+                  openDirections(
+                    [selectedPlace.lng, selectedPlace.lat],
+                    selectedPlace.name,
+                  )
+                }
               >
-                Відкрити об’єкт в OpenStreetMap
-                <MaterialIcon name="open_in_new" size={16} />
-              </a>
-              {selectedPlace.category === "buildings" && (
-                <>
-                  <BuildingModelEditor
-                    key={selectedPlace.id}
-                    knownHeight={selectedPlace.heightMeters ?? null}
-                    model={buildingModels.find(
-                      (model) => model.id === selectedPlace.id,
+                {selectedPlace.category === "buildings" && (
+                  <>
+                    <BuildingModelEditor
+                      key={selectedPlace.id}
+                      knownHeight={selectedPlace.heightMeters ?? null}
+                      model={buildingModels.find(
+                        (model) => model.id === selectedPlace.id,
+                      )}
+                      onDelete={removeBuildingModel}
+                      onPreview={setBuildingModelPreview}
+                      onSave={persistBuildingModel}
+                      place={selectedPlace}
+                    />
+                    {buildingModelsStatus === "error" && (
+                      <p className="building-model-message error">
+                        {buildingModelsError}
+                      </p>
                     )}
-                    onDelete={removeBuildingModel}
-                    onPreview={setBuildingModelPreview}
-                    onSave={persistBuildingModel}
-                    place={selectedPlace}
-                  />
-                  {buildingModelsStatus === "error" && (
-                    <p className="building-model-message error">
-                      {buildingModelsError}
-                    </p>
-                  )}
-                </>
-              )}
+                  </>
+                )}
+              </EntityDetail>
             </div>
           </section>
         )}
@@ -3664,16 +3617,9 @@ export default function App() {
                   Жива мапа БпЛА
                 </a>
               </Button>
-              <Button asChild variant="ghost" size="sm" className="alert-action">
-                <a href="https://alerts.in.ua" target="_blank" rel="noreferrer">
-                  alerts.in.ua
-                  <MaterialIcon name="open_in_new" size={16} />
-                </a>
-              </Button>
             </div>
             <small className="air-alert-source">
-              Відкритий моніторинг alerts.in.ua. Офіційні повідомлення мають
-              пріоритет.
+              Офіційні повідомлення мають пріоритет.
             </small>
             <div className="shelter-nearest">
               {shelterLoadState === "loading" ? (
@@ -3807,22 +3753,29 @@ export default function App() {
         data-tour="map-controls"
         hidden={activeView === "admin"}
       >
-        <div className="map-control-set map-zoom-controls" role="group" aria-label="Масштаб">
-          <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={() => mapRef.current?.zoomIn()}><ZoomIn size={20} /></Button>
-          <Button type="button" variant="ghost" className="map-control" aria-label="Зменшити масштаб" title="Зменшити масштаб" onClick={() => mapRef.current?.zoomOut()}><ZoomOut size={20} /></Button>
-        </div>
         <div className="map-control-set" role="group" aria-label="Вигляд мапи">
-          <Button type="button" variant="ghost" className="map-control" aria-label="Вирівняти карту на північ" title="Вирівняти карту на північ" onClick={resetMapOrientation}><MaterialIcon name="explore" size={20} /></Button>
           <Button
             type="button"
             variant="ghost"
-            className="map-control"
+            className="map-control map-compass"
+            aria-label="Компас: повернути карту на північ"
+            title="Компас: повернути карту на північ"
+            onClick={resetMapOrientation}
+          >
+            <span className="map-compass-needle" style={{ transform: `rotate(${-mapBearing}deg)` }}>
+              <MaterialIcon name="navigation" size={20} />
+            </span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="map-control map-mode-control"
             aria-label={mapPitch < 0.5 ? "Перейти до 3D-вигляду" : "Перейти до вигляду 2D зверху"}
             aria-pressed={mapPitch >= 0.5}
             title={mapPitch < 0.5 ? "Перейти до 3D-вигляду" : "Перейти до вигляду 2D зверху"}
             onClick={toggleMapMode}
           >
-            {mapPitch < 0.5 ? <MaterialIcon name="3d_rotation" size={20} /> : <MaterialIcon name="map" size={20} />}
+            3D
           </Button>
           {mapPitch >= 0.5 && (
             <Button
@@ -3837,6 +3790,21 @@ export default function App() {
               <MaterialIcon name="terrain" size={20} />
             </Button>
           )}
+        </div>
+        <div className="map-control-set map-pan-pad" role="group" aria-label="Перемістити карту">
+          <span aria-hidden="true" />
+          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту вгору" title="Вгору" onClick={() => panMap("up")}><MaterialIcon name="keyboard_arrow_up" size={22} /></Button>
+          <span aria-hidden="true" />
+          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту ліворуч" title="Ліворуч" onClick={() => panMap("left")}><MaterialIcon name="keyboard_arrow_left" size={22} /></Button>
+          <span aria-hidden="true" className="map-pan-center" />
+          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту праворуч" title="Праворуч" onClick={() => panMap("right")}><MaterialIcon name="keyboard_arrow_right" size={22} /></Button>
+          <span aria-hidden="true" />
+          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту донизу" title="Донизу" onClick={() => panMap("down")}><MaterialIcon name="keyboard_arrow_down" size={22} /></Button>
+          <span aria-hidden="true" />
+        </div>
+        <div className="map-control-set map-zoom-controls" role="group" aria-label="Масштаб">
+          <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={() => mapRef.current?.zoomIn()}><MaterialIcon name="add" size={22} /></Button>
+          <Button type="button" variant="ghost" className="map-control" aria-label="Зменшити масштаб" title="Зменшити масштаб" onClick={() => mapRef.current?.zoomOut()}><MaterialIcon name="remove" size={22} /></Button>
         </div>
         <div className="map-control-set" role="group" aria-label="Додаткові дії">
           <Button type="button" variant="ghost" className="map-control" aria-label="Моє місцезнаходження" title="Моє місцезнаходження" data-tour="map-location" onClick={requestLocation}><LocateFixed size={20} /></Button>
@@ -3884,10 +3852,10 @@ export default function App() {
                     const isActive = mapLayerCategories.has(cat.id);
                     const atLimit = !isActive && mapLayerCategories.size >= 3;
                     return (
-                      <Chip
+                      <Toggle variant="pill"
                         key={cat.id}
                         size="sm"
-                        selected={isActive}
+                       
                         disabled={atLimit}
                         className="map-layer-chip"
                         style={{ "--chip-color": CITY_PLACE_CATEGORY_COLORS[cat.id] } as React.CSSProperties}
@@ -3901,14 +3869,13 @@ export default function App() {
                             }
                             return next;
                           });
-                        }}
-                      >
+                        }} pressed={isActive}>
                         <span
                           className="map-layer-chip-dot"
                           aria-hidden="true"
                         />
                         {cat.label}
-                      </Chip>
+                      </Toggle>
                     );
                   })}
                 </div>
@@ -3964,14 +3931,12 @@ export default function App() {
           <SettingsDialog
             key="settings"
             cityName="Львів"
-            notificationMessage={notificationMessage}
             onClose={() => setSettingsOpen(false)}
             onOpenCityPicker={() => {
               setCityUpdateStatus("");
               setCityLaunchModalOpen(true);
             }}
             onRequestLocation={requestLocation}
-            onRequestNotifications={requestNotificationPermission}
             onReplayOnboarding={startOnboarding}
           />
         )}
@@ -4033,49 +3998,48 @@ export default function App() {
         </label>
         <div
           className="city-launch-list"
-          role="list"
+          role="region"
           aria-label="Області та міста України"
         >
-          {filteredCityRegions.map((region) => (
-            <div key={region.name}>
-              {region.showCenter && (
-                <button
-                  type="button"
-                  className={`city-region-city city-region-center${interestedCities.has(region.center) ? " active" : ""}${region.center === "Львів" ? " current" : ""}`}
-                  aria-pressed={interestedCities.has(region.center)}
-                  disabled={region.center === "Львів"}
-                  onClick={() => selectInterestedCity(region.center)}
-                >
-                  <span>{region.center}</span>
-                  {region.center === "Львів" ? (
-                    <span className="city-region-badge">Доступне</span>
-                  ) : interestedCities.has(region.center) ? (
-                    <MaterialIcon name="check" size={18} />
-                  ) : (
-                    <span className="city-region-badge">Центр</span>
-                  )}
-                </button>
-              )}
-              {region.cities.length > 0 && (
-                <div className="city-region-city-grid">
-                  {region.cities.map((city) => (
-                    <button
-                      type="button"
-                      key={city}
-                      className={`city-region-city${interestedCities.has(city) ? " active" : ""}`}
-                      aria-pressed={interestedCities.has(city)}
-                      onClick={() => selectInterestedCity(city)}
-                    >
-                      <span>{city}</span>
-                      {interestedCities.has(city) && (
-                        <MaterialIcon name="check" size={18} />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          <div className="city-index">
+            {cityIndexGroups.map(({ letter, items }) => (
+              <section
+                key={letter}
+                className="city-index-section"
+                aria-labelledby={`city-index-${letter}`}
+              >
+                <h3 id={`city-index-${letter}`} className="city-index-letter">
+                  {letter}
+                </h3>
+                <ul className="city-index-items">
+                  {items.map((entry) => {
+                    const isSelected = interestedCities.has(entry.name);
+                    const isCurrent = entry.name === "Львів";
+                    return (
+                      <li key={entry.key}>
+                        <button
+                          type="button"
+                          className={`city-region-city${entry.isCenter ? " city-region-center" : ""}${isSelected ? " active" : ""}${isCurrent ? " current" : ""}`}
+                          aria-pressed={isSelected}
+                          disabled={isCurrent}
+                          onClick={() => selectInterestedCity(entry.name)}
+                        >
+                          <span>{entry.name}</span>
+                          {isCurrent ? (
+                            <span className="city-region-badge">Доступне</span>
+                          ) : isSelected ? (
+                            <MaterialIcon name="check" size={18} />
+                          ) : entry.isCenter ? (
+                            <span className="city-region-badge">Центр</span>
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
           {filteredCityRegions.length === 0 && (
             <p className="city-launch-empty" role="status">
               Місто або область не знайдено. Перевірте назву й спробуйте ще раз.

@@ -179,6 +179,13 @@
   line-height: 1.4;
 }
 
+.settings-error {
+  margin: 0;
+  color: var(--destructive);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
 .settings-account {
   justify-items: center;
   padding-top: 32px;

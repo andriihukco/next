@@ -25,6 +25,8 @@ const MAX_BATCH = 25;
 const NEGATIVE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_LOOKUPS_PER_MINUTE = 30;
 const MAX_QUEUE = 200;
+// Bump when the stored shape or the matching changes, so old results are looked up again.
+const CACHE_VERSION = 2;
 const FAILURE_BACKOFF_MS = 30 * 1000;
 
 /** Parse RFC 4180 CSV into an array of row objects keyed by header. */
@@ -148,6 +150,15 @@ function parseJson(value) {
   }
 }
 
+/** The engine writes `complete_address` as a JSON object; join its parts. */
+function formatAddress(row) {
+  const parts = parseJson(row.complete_address);
+  if (parts && typeof parts === 'object') {
+    return [parts.street, parts.city, parts.postal_code].filter(Boolean).join(', ');
+  }
+  return row.address || '';
+}
+
 /** Contact, hours, rating and reviews from the matched listing. */
 export function extractDetails(row) {
   const hours = parseJson(row.open_hours);
@@ -155,7 +166,7 @@ export function extractDetails(row) {
   const menu = parseJson(row.menu);
   return {
     category: row.category || undefined,
-    address: row.complete_address || row.address || undefined,
+    address: formatAddress(row) || undefined,
     phone: row.phone || undefined,
     website: row.website || undefined,
     rating: Number(row.review_rating) || undefined,
@@ -192,8 +203,13 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
   let flushTimer = null;
 
   function persist() {
-    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
-    fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2));
+    try {
+      fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+      fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2));
+    } catch (error) {
+      // Serverless file systems are read-only; the in-memory cache still serves this instance.
+      log.error('[place-images] Could not save the cache.', error);
+    }
   }
 
   async function engine(method, route, body) {
@@ -249,12 +265,13 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
     for (const place of places) {
       const match = pickMatch(place, rows);
       if (!match) {
-        cache[place.id] = { status: 'none', checkedAt: now };
+        cache[place.id] = { status: 'none', version: CACHE_VERSION, checkedAt: now };
         continue;
       }
       const images = extractImages(match);
       cache[place.id] = {
         status: 'ok',
+        version: CACHE_VERSION,
         imageUrl: images[0],
         images,
         details: extractDetails(match),
@@ -295,7 +312,7 @@ export function createPlaceImageService({ baseUrl, cachePath, log = console }) {
 
   function cachedResult(id) {
     const entry = cache[id];
-    if (!entry) return null;
+    if (!entry || entry.version !== CACHE_VERSION) return null;
     if (entry.status === 'none' && Date.now() - entry.checkedAt > NEGATIVE_TTL_MS) return null;
     return entry;
   }
