@@ -106,15 +106,25 @@ the GTFS archive first, which takes about 6 seconds.
 
 ### 1. Supabase
 
-1. Create a project. In **SQL Editor**, run
-   [`supabase/migrations/20261024000000_push_notifications.sql`](./supabase/migrations/20261024000000_push_notifications.sql)
-   (or `supabase db push` with the CLI).
+1. Create a project. In **SQL Editor**, run every file in
+   [`supabase/migrations`](./supabase/migrations) in name order (or `supabase db push` with the CLI).
 2. **Authentication → URL Configuration**: set **Site URL** to the production
    origin and add `https://<your-domain>/app` and `http://localhost:5173/app`
-   to **Redirect URLs**. Sign-in is a passwordless email link.
-3. Optional Google sign-in: enable the Google provider in **Authentication →
-   Providers**, then set `VITE_AUTH_GOOGLE=true`.
-4. For real users, set up custom SMTP (**Authentication → Emails**). The
+   to **Redirect URLs**. The same URL serves magic links, sign-up confirmation,
+   password reset, and Google.
+3. **Authentication → Providers → Email**: keep it enabled with **Confirm email**
+   on. Users can sign up with a password, sign in with it, reset it, or get a
+   one-time link instead.
+4. Optional Google sign-in: enable the Google provider in **Authentication →
+   Providers** (it needs a Google Cloud OAuth client), then set `VITE_AUTH_GOOGLE=true`.
+5. Optional Telegram sign-in: create a bot with [@BotFather](https://t.me/BotFather),
+   then send `/setdomain` with your production domain (without `https://`).
+   Set `TELEGRAM_BOT_TOKEN` to the token and `VITE_TELEGRAM_BOT_ID` to the digits
+   before the colon. Supabase has no Telegram provider, so `/api/auth/telegram`
+   checks Telegram's signature, creates the user with a placeholder
+   `telegram-<id>@telegram.invalid` address, and returns a one-time sign-in token.
+   Telegram login works only on the domain set in BotFather, not on localhost.
+6. For real users, set up custom SMTP (**Authentication → Emails**). The
    built-in mailer sends only a few emails per hour.
 
 ### 2. Web Push keys
@@ -138,6 +148,8 @@ the build). Add these environment variables for Production (and Preview):
 | `VITE_SUPABASE_ANON_KEY` | browser | `anon` / publishable key |
 | `VITE_VAPID_PUBLIC_KEY` | browser + server | VAPID public key |
 | `VITE_AUTH_GOOGLE` | browser | `true` to show Google sign-in |
+| `VITE_TELEGRAM_BOT_ID` | browser | Bot id, to show Telegram sign-in |
+| `TELEGRAM_BOT_TOKEN` | server only | Bot token from BotFather |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | `service_role` key. Never prefix it with `VITE_`. |
 | `VAPID_PRIVATE_KEY` | server only | VAPID private key |
 | `VAPID_SUBJECT` | server only | `mailto:you@example.com` or the site URL |
@@ -148,7 +160,10 @@ Every push to `main` deploys to production, and other branches get preview URLs.
 ### 4. Air alert notifications
 
 `GET /api/cron/air-alert` with `Authorization: Bearer $CRON_SECRET` checks the
-Lviv region status and notifies subscribers when it changes (alert and all-clear).
+alerts.in.ua report and notifies each device by the topics it picked:
+`air-alert` (alert starts), `all-clear` (alert ends) and `threats` (a new Lviv
+drone or guided-bomb entry, at most 3 per run). New devices get alert start and
+all-clear.
 It must run every minute. Vercel Cron runs once a minute only on the Pro plan.
 On Hobby, schedule it from Supabase instead. Enable the `pg_cron` and `pg_net`
 extensions, then run:
@@ -162,7 +177,7 @@ select cron.schedule('air-alert-push', '* * * * *', $$
 $$);
 ```
 
-Users turn on notifications in **Профіль → Дозволи → Повітряна тривога**. This
+Users turn on notifications in **Профіль → Сповіщення** and pick the topics there. This
 requires sign-in. On iPhone it works only after **Share → Add to Home Screen**
 (iOS 16.4+). **Тестове сповіщення** sends a test notification to that
 account's devices.

@@ -3,6 +3,7 @@ import { resolveColor } from "./lib/design-colors";
 import { recolorMapForTheme, snapshotMapPalette } from "./lib/map-theme";
 import { FILLED_ICON_FAMILY, loadFilledIconFont } from "./lib/material-symbols-filled";
 import { useResolvedTheme } from "./lib/use-theme";
+import { usePasswordRecovery } from "./lib/supabase";
 import * as maplibregl from "maplibre-gl";
 import {
   GeoJSONSource,
@@ -819,6 +820,11 @@ export default function App() {
   );
   const [search, setSearch] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const passwordRecovery = usePasswordRecovery();
+  // A password-reset link lands here signed in; open the account view to set the new password.
+  useEffect(() => {
+    if (passwordRecovery) setSettingsOpen(true);
+  }, [passwordRecovery]);
   // Inputs stay instant; list filtering runs at lower priority so typing never stalls.
   const deferredSearch = useDeferredValue(search);
   const [waypoints, setWaypoints] = useState(["Моє місцезнаходження", ""]);
@@ -3935,6 +3941,7 @@ export default function App() {
           <SettingsDialog
             key="settings"
             cityName="Львів"
+            initialView={passwordRecovery ? "account" : "main"}
             onClose={() => setSettingsOpen(false)}
             onOpenCityPicker={() => {
               setCityUpdateStatus("");

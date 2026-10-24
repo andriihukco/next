@@ -8,8 +8,17 @@ import { Input } from "../../components/ui/input";
 import { Switch } from "../../components/ui/switch";
 import { MaterialIcon } from "../../components/ui/material-icon";
 import { panelMotion, scrimMotion, spring, exitTransition } from "../../lib/motion";
-import { disablePush, enablePush, readPushStatus, sendTestPush, type PushStatus } from "../../lib/push";
-import { authRedirectUrl, googleSignInEnabled, supabase, useSession } from "../../lib/supabase";
+import {
+  disablePush,
+  enablePush,
+  readPushStatus,
+  readPushTopics,
+  savePushTopics,
+  sendTestPush,
+  type PushStatus,
+  type PushTopic,
+} from "../../lib/push";
+import { accountLabel, supabase, usePasswordRecovery, useSession } from "../../lib/supabase";
 import { useDialogFocus } from "../../lib/use-dialog-focus";
 import { useMediaQuery } from "../../lib/use-media-query";
 import { setThemePreference, useThemePreference, type ThemePreference } from "../../lib/use-theme";
@@ -21,6 +30,7 @@ import {
   saveLocalProfile,
   type LocalProfile,
 } from "./profile";
+import { AccountView } from "./account-view";
 import "./settings.css";
 
 type PermissionState = "granted" | "denied" | "prompt" | "unsupported";
@@ -31,9 +41,17 @@ type SettingsDialogProps = {
   onOpenCityPicker: () => void;
   onRequestLocation: () => void;
   onReplayOnboarding: () => void;
+  /** Opens straight on a sub-view, for example the account after a password-reset link. */
+  initialView?: View;
 };
 
-type View = "main" | "profile" | "account";
+export type View = "main" | "profile" | "account";
+
+const PUSH_TOPICS: { topic: PushTopic; icon: string; title: string; subtitle: string }[] = [
+  { topic: "air-alert", icon: "campaign", title: "Початок тривоги", subtitle: "Повітряна тривога у Львівській області" },
+  { topic: "all-clear", icon: "verified_user", title: "Відбій тривоги", subtitle: "Коли загрозу знято" },
+  { topic: "threats", icon: "radar", title: "Загрози для Львова", subtitle: "Нові повідомлення про дрони й авіабомби" },
+];
 
 const PERMISSION_LABEL: Record<PermissionState, string> = {
   granted: "Дозволено",
@@ -100,16 +118,52 @@ export function SettingsDialog({
   onOpenCityPicker,
   onRequestLocation,
   onReplayOnboarding,
+  initialView = "main",
 }: SettingsDialogProps) {
   const panelRef = useRef<HTMLElement>(null);
-  const [view, setView] = useState<View>("main");
+  const [view, setView] = useState<View>(initialView);
   const [profile, setProfile] = useState<LocalProfile | null>(() => readLocalProfile());
   const [confirmClear, setConfirmClear] = useState(false);
   const location = useGeolocationPermission();
   const { session } = useSession();
   const [push, setPush] = usePushStatus();
   const [pushBusy, setPushBusy] = useState(false);
+  const [topics, setTopics] = useState<PushTopic[] | null>(null);
   const [status, setStatus] = useState("");
+  const recovering = usePasswordRecovery();
+
+  useEffect(() => {
+    if (push !== "on") {
+      setTopics(null);
+      return;
+    }
+    let active = true;
+    readPushTopics()
+      .then((next) => {
+        if (active) setTopics(next);
+      })
+      .catch((error: unknown) => {
+        console.error("Could not read notification topics.", error);
+        if (active) setStatus("Не вдалося завантажити налаштування сповіщень.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [push, session]);
+
+  const toggleTopic = async (topic: PushTopic, enabled: boolean): Promise<void> => {
+    if (!topics) return;
+    const previous = topics;
+    const next = enabled ? [...topics, topic] : topics.filter((item) => item !== topic);
+    setTopics(next);
+    try {
+      await savePushTopics(next);
+    } catch (error: unknown) {
+      console.error("Could not save notification topics.", error);
+      setTopics(previous);
+      setStatus("Не вдалося зберегти налаштування сповіщень. Спробуйте ще раз.");
+    }
+  };
   useDialogFocus(panelRef, {
     onEscape: () => (view === "main" ? onClose() : setView("main")),
     focusKey: view,
@@ -125,7 +179,7 @@ export function SettingsDialog({
     try {
       const next = enable ? await enablePush() : await disablePush();
       setPush(next);
-      if (enable && next === "on") setStatus("Сповіщення про повітряну тривогу увімкнено.");
+      if (enable && next === "on") setStatus("Сповіщення увімкнено. Виберіть, про що повідомляти.");
       if (enable && next === "denied") setStatus("Дозвіл не надано. Його можна змінити в налаштуваннях браузера.");
     } catch (error: unknown) {
       console.error("Could not change the push subscription.", error);
@@ -214,7 +268,7 @@ export function SettingsDialog({
               <DetailSection title="Обліковий запис">
                 <ListRow
                   leading={<MaterialIcon name={session ? "account_circle" : "login"} size={20} />}
-                  title={session?.user.email ?? "Увійти або зареєструватися"}
+                  title={session ? accountLabel(session.user) : "Увійти або зареєструватися"}
                   subtitle={session ? "Ви увійшли" : "Для сповіщень про тривогу"}
                   onClick={() => setView("account")}
                 />
@@ -245,9 +299,12 @@ export function SettingsDialog({
                     ) : undefined
                   }
                 />
+              </DetailSection>
+
+              <DetailSection title="Сповіщення">
                 <ListRow
                   leading={<MaterialIcon name="notifications" size={20} />}
-                  title="Повітряна тривога"
+                  title="Сповіщення на цьому пристрої"
                   subtitle={
                     push === null
                       ? "Перевіряємо…"
@@ -257,18 +314,35 @@ export function SettingsDialog({
                   }
                   trailing={
                     <Switch
-                      aria-label="Сповіщення про повітряну тривогу"
+                      aria-label="Сповіщення на цьому пристрої"
                       checked={push === "on"}
                       disabled={pushBusy || (push !== "on" && push !== "off")}
                       onCheckedChange={(checked) => void togglePush(checked)}
                     />
                   }
                 />
+                {push === "on" &&
+                  PUSH_TOPICS.map((item) => (
+                    <ListRow
+                      key={item.topic}
+                      leading={<MaterialIcon name={item.icon} size={20} />}
+                      title={item.title}
+                      subtitle={item.subtitle}
+                      trailing={
+                        <Switch
+                          aria-label={item.title}
+                          checked={topics?.includes(item.topic) ?? false}
+                          disabled={topics === null}
+                          onCheckedChange={(checked) => void toggleTopic(item.topic, checked)}
+                        />
+                      }
+                    />
+                  ))}
                 {push === "on" && session && (
                   <ListRow
                     leading={<MaterialIcon name="send" size={20} />}
                     title="Тестове сповіщення"
-                    subtitle="Перевірте, чи сповіщення доходять на цей пристрій"
+                    subtitle="Перевірте, чи сповіщення доходять"
                     trailing={
                       <Button type="button" size="sm" variant="outline" disabled={pushBusy} onClick={() => void testPush()}>
                         Надіслати
@@ -379,7 +453,8 @@ export function SettingsDialog({
             >
               <SheetNavBar title="Обліковий запис" onBack={() => setView("main")} backLabel="Профіль" />
               <AccountView
-                signedInEmail={session?.user.email ?? null}
+                user={session?.user ?? null}
+                recovering={recovering}
                 onSignOut={() => void signOut()}
                 onSetUpProfile={() => setView("profile")}
               />
@@ -450,141 +525,6 @@ function ProfileForm({ initial, onSave }: { initial: LocalProfile; onSave: (prof
       <Button type="submit" size="lg">
         Зберегти
       </Button>
-    </form>
-  );
-}
-
-type AccountViewProps = {
-  signedInEmail: string | null;
-  onSignOut: () => void;
-  onSetUpProfile: () => void;
-};
-
-function AccountView({ signedInEmail, onSignOut, onSetUpProfile }: AccountViewProps) {
-  const [email, setEmail] = useState("");
-  const [sentTo, setSentTo] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  if (!supabase) {
-    return (
-      <div className="settings-account">
-        <span className="settings-account-icon" aria-hidden="true">
-          <MaterialIcon name="cloud_sync" size={28} />
-        </span>
-        <h3>Вхід тимчасово недоступний</h3>
-        <p>Обліковий запис ще не підключено на цьому сайті. Профіль зберігається лише в цьому браузері.</p>
-        <Button type="button" size="lg" variant="outline" onClick={onSetUpProfile}>
-          Налаштувати профіль на пристрої
-        </Button>
-      </div>
-    );
-  }
-
-  if (signedInEmail) {
-    return (
-      <div className="settings-account">
-        <span className="settings-account-icon" aria-hidden="true">
-          <MaterialIcon name="account_circle" size={28} />
-        </span>
-        <h3>Ви увійшли</h3>
-        <p>{signedInEmail}</p>
-        <Button type="button" size="lg" variant="outline" onClick={onSignOut}>
-          Вийти
-        </Button>
-      </div>
-    );
-  }
-
-  const sendLink = async (event: FormEvent): Promise<void> => {
-    event.preventDefault();
-    const address = email.trim();
-    setBusy(true);
-    setError("");
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email: address,
-      options: { emailRedirectTo: authRedirectUrl() },
-    });
-    setBusy(false);
-    if (signInError) {
-      console.error("Could not send the sign-in link.", signInError);
-      setError(
-        signInError.status === 429
-          ? "Забагато спроб. Зачекайте хвилину й спробуйте знову."
-          : !signInError.status
-            ? "Немає з’єднання з сервером. Перевірте інтернет і спробуйте ще раз."
-            : "Не вдалося надіслати лист. Перевірте адресу й спробуйте ще раз.",
-      );
-      return;
-    }
-    setSentTo(address);
-  };
-
-  const signInWithGoogle = async (): Promise<void> => {
-    setError("");
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: authRedirectUrl() },
-    });
-    if (oauthError) {
-      console.error("Could not start Google sign-in.", oauthError);
-      setError("Не вдалося відкрити вхід через Google. Спробуйте пізніше.");
-    }
-  };
-
-  if (sentTo) {
-    return (
-      <div className="settings-account" role="status">
-        <span className="settings-account-icon" aria-hidden="true">
-          <MaterialIcon name="mark_email_read" size={28} />
-        </span>
-        <h3>Перевірте пошту</h3>
-        <p>
-          Ми надіслали посилання для входу на {sentTo}. Відкрийте його на цьому пристрої. Лист може
-          прийти за хвилину.
-        </p>
-        <Button type="button" size="lg" variant="outline" onClick={() => setSentTo("")}>
-          Змінити адресу
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <form className="settings-form" onSubmit={(event) => void sendLink(event)}>
-      <p className="settings-hint">
-        <MaterialIcon name="info" size={16} />
-        Увійдіть або створіть обліковий запис, щоб отримувати сповіщення про повітряну тривогу. Пароль не потрібен.
-      </p>
-      <label className="settings-field">
-        <span>Електронна пошта</span>
-        <Input
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          placeholder="name@example.com"
-          required
-          maxLength={254}
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "settings-auth-error" : undefined}
-          data-autofocus
-        />
-      </label>
-      {error && (
-        <p id="settings-auth-error" className="settings-error" role="alert">
-          {error}
-        </p>
-      )}
-      <Button type="submit" size="lg" disabled={busy}>
-        {busy ? "Надсилаємо…" : "Надіслати посилання для входу"}
-      </Button>
-      {googleSignInEnabled && (
-        <Button type="button" size="lg" variant="outline" onClick={() => void signInWithGoogle()}>
-          Продовжити з Google
-        </Button>
-      )}
     </form>
   );
 }

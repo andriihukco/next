@@ -5,6 +5,7 @@ import zlib from 'zlib';
 import protobuf from 'protobufjs';
 import { fileURLToPath } from 'url';
 import { createPlaceImageService } from './place-images.mjs';
+import { signInWithTelegram } from './auth-telegram.mjs';
 import { dispatchAirAlertPush, sendTestPush } from './push.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -644,6 +645,19 @@ function sendJson(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 
+// Vercel parses JSON bodies into req.body; the local server hands over the raw stream.
+async function readJsonBody(req, limit = 4096) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  let text = typeof req.body === 'string' ? req.body : '';
+  if (!text) {
+    for await (const chunk of req) {
+      text += chunk;
+      if (text.length > limit) throw new Error('Body too large');
+    }
+  }
+  return text ? JSON.parse(text) : {};
+}
+
 export async function handleApiRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -657,6 +671,19 @@ export async function handleApiRequest(req, res) {
 
   const url = new URL(req.url || '/', 'http://localhost');
   const pathname = url.pathname.replace(/\/+$/, '');
+
+  if (pathname === '/api/auth/telegram' && req.method === 'POST') {
+    let payload;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, { error: 'Invalid request body' });
+      return;
+    }
+    const result = await signInWithTelegram(payload);
+    sendJson(res, result.status, result.body, { 'Cache-Control': 'no-store' });
+    return;
+  }
 
   if (pathname === '/api/push/test' && req.method === 'POST') {
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');

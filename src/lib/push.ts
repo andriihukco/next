@@ -71,6 +71,34 @@ export async function disablePush(): Promise<PushStatus> {
   return "off";
 }
 
+export type PushTopic = "air-alert" | "all-clear" | "threats";
+
+/** Matches the database default for a new subscription. */
+export const DEFAULT_PUSH_TOPICS: PushTopic[] = ["air-alert", "all-clear"];
+
+/** Topics this browser's subscription receives. */
+export async function readPushTopics(): Promise<PushTopic[]> {
+  const subscription = await currentSubscription();
+  if (!supabase || !subscription) return [];
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("topics")
+    .eq("endpoint", subscription.endpoint)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.topics as PushTopic[] | undefined) ?? [];
+}
+
+export async function savePushTopics(topics: PushTopic[]): Promise<void> {
+  const subscription = await currentSubscription();
+  if (!supabase || !subscription) throw new Error("This browser has no push subscription.");
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .update({ topics, updated_at: new Date().toISOString() })
+    .eq("endpoint", subscription.endpoint);
+  if (error) throw new Error(error.message);
+}
+
 const TEST_PUSH_MESSAGE: Record<number, string> = {
   401: "Сесія завершилася. Увійдіть знову.",
   404: "Цей пристрій не підписаний на сповіщення. Вимкніть і знову увімкніть їх.",

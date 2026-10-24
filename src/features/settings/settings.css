@@ -179,6 +179,54 @@
   line-height: 1.4;
 }
 
+.settings-auth {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.settings-auth-providers,
+.settings-auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-auth-providers .inline-flex {
+  width: 100%;
+}
+
+.settings-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.settings-auth-divider::before,
+.settings-auth-divider::after {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  content: "";
+}
+
+.settings-auth-title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--type-inspector);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.settings-auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+}
+
 .settings-error {
   margin: 0;
   color: var(--destructive);
