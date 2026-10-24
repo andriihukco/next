@@ -1,4 +1,4 @@
-import type { BuildingModelData } from "./building-3d-layer";
+import type { BuildingModelData, BuildingModelSource } from "./building-3d-layer";
 
 const DB_NAME = "eway-building-models";
 const DB_VERSION = 1;
@@ -37,9 +37,34 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-function isBuildingModelData(value: unknown): value is BuildingModelData {
-  if (!value || typeof value !== "object") return false;
+function readSource(candidate: Record<string, unknown>): BuildingModelSource | null {
+  // Records saved before FBX support kept the OBJ text in `objText`.
+  if (typeof candidate.objText === "string" && candidate.objText.length > 0) {
+    return { format: "obj", text: candidate.objText };
+  }
+  const source = candidate.source;
+  if (!source || typeof source !== "object") return null;
+  const entry = source as Record<string, unknown>;
+  if (entry.format === "obj" && typeof entry.text === "string" && entry.text.length > 0) {
+    return { format: "obj", text: entry.text };
+  }
+  if (entry.format === "fbx" && entry.buffer instanceof ArrayBuffer && entry.buffer.byteLength > 0) {
+    return { format: "fbx", buffer: entry.buffer };
+  }
+  return null;
+}
+
+function toBuildingModelData(value: unknown): BuildingModelData | null {
+  if (!value || typeof value !== "object") return null;
   const candidate = value as Record<string, unknown>;
+  const source = readSource(candidate);
+  if (!source) return null;
+  if (!isBuildingModelData(candidate)) return null;
+  const { objText: _legacy, ...rest } = candidate;
+  return { ...(rest as unknown as BuildingModelData), source };
+}
+
+function isBuildingModelData(candidate: Record<string, unknown>): boolean {
   return (
     typeof candidate.id === "string" &&
     typeof candidate.name === "string" &&
@@ -48,8 +73,6 @@ function isBuildingModelData(value: unknown): value is BuildingModelData {
     typeof candidate.lat === "number" &&
     Number.isFinite(candidate.lat) &&
     typeof candidate.fileName === "string" &&
-    typeof candidate.objText === "string" &&
-    candidate.objText.length > 0 &&
     typeof candidate.heightMeters === "number" &&
     candidate.heightMeters > 0 &&
     typeof candidate.scale === "number" &&
@@ -69,7 +92,10 @@ export async function loadBuildingModels(): Promise<BuildingModelData[]> {
   const transaction = database.transaction(STORE_NAME, "readonly");
   const request = transaction.objectStore(STORE_NAME).getAll();
   const values = await requestToPromise(request);
-  return values.filter(isBuildingModelData);
+  return values.flatMap((value) => {
+    const model = toBuildingModelData(value);
+    return model ? [model] : [];
+  });
 }
 
 export async function saveBuildingModel(model: BuildingModelData): Promise<void> {

@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
-import { cn } from "../../lib/utils";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { MaterialIcon } from "./material-icon";
 import "./detail-layout.css";
 
 /**
  * Shared building blocks for detail sheets (vehicle, stop, place).
- * Follows iOS and Material conventions: a top navigation bar with a back
- * action, a hero block, a row of equal-width actions, grouped sections,
- * and list rows with 44px+ touch targets.
+ * Built on shadcn Button and Badge. The class names stay as hooks
+ * for detail-layout.css. Follows iOS and Material conventions: a top
+ * navigation bar with a back action, a hero block, a row of equal-width
+ * actions, grouped sections, and list rows with 44px+ touch targets.
  */
 
 type SheetNavBarProps = {
@@ -25,15 +28,17 @@ export function SheetNavBar({
 }: SheetNavBarProps) {
   return (
     <div className="sheet-nav">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         className="sheet-nav-back"
         onClick={onBack}
         aria-label={backLabel}
       >
         <MaterialIcon name="chevron_left" size={24} />
         <span>{backLabel}</span>
-      </button>
+      </Button>
       <span className="sheet-nav-title">{title}</span>
       <span className="sheet-nav-trailing">{trailing}</span>
     </div>
@@ -70,10 +75,10 @@ type DetailChipProps = {
 
 export function DetailChip({ icon, tone = "neutral", children }: DetailChipProps) {
   return (
-    <span className={cn("detail-chip", tone === "live" && "is-live")}>
+    <Badge variant="secondary" className={cn("detail-chip", tone === "live" && "is-live")}>
       {icon && <MaterialIcon name={icon} size={14} />}
       {children}
-    </span>
+    </Badge>
   );
 }
 
@@ -97,8 +102,9 @@ type ActionBarButtonProps = {
 
 export function ActionBarButton({ icon, label, onClick, pressed, disabled, primary }: ActionBarButtonProps) {
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
       className={cn("detail-action", pressed && "is-pressed", primary && "is-primary")}
       aria-pressed={pressed}
       disabled={disabled}
@@ -108,7 +114,7 @@ export function ActionBarButton({ icon, label, onClick, pressed, disabled, prima
         <MaterialIcon name={icon} size={20} />
       </span>
       <span>{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -166,10 +172,48 @@ export function ListRow({ leading, title, subtitle, trailing, onClick }: ListRow
     </>
   );
   return onClick ? (
-    <button type="button" className="list-row" onClick={onClick}>
+    <Button type="button" variant="ghost" className="list-row" onClick={onClick}>
       {content}
-    </button>
+    </Button>
   ) : (
     <div className="list-row">{content}</div>
+  );
+}
+
+
+export type QuickFact = {
+  icon: string;
+  label: string;
+  value: string;
+  /** Makes the value a link. Only for facts with a real target (phone, site, email). */
+  href?: string;
+};
+
+/**
+ * Label and value rows, like the Quick facts block in Google Maps and the
+ * Hours, Ratings, Accepts and Distance row in Apple Maps. Each row is a plain
+ * definition pair, so screen readers read "label: value" in order.
+ */
+export function QuickFacts({ facts }: { facts: QuickFact[] }) {
+  return (
+    <dl className="quick-facts">
+      {facts.map((fact) => (
+        <div className="quick-fact" key={fact.label}>
+          <dt>
+            <MaterialIcon name={fact.icon} size={20} />
+            <span>{fact.label}</span>
+          </dt>
+          <dd>
+            {fact.href ? (
+              <a href={fact.href} target={fact.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer">
+                {fact.value}
+              </a>
+            ) : (
+              fact.value
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }

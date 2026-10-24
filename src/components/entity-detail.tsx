@@ -1,8 +1,9 @@
-import { useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "./ui/button";
-import { Chip } from "./ui/chip";
-import { ActionBar, ActionBarButton, DetailChip, DetailSection, ListRow } from "./ui/detail-layout";
+import { Toggle } from "./ui/toggle";
+import { ActionBar, ActionBarButton, DetailChip, DetailSection, QuickFacts, type QuickFact } from "./ui/detail-layout";
 import { IconButton } from "./ui/icon-button";
 import { Input } from "./ui/input";
 import { MaterialIcon } from "./ui/material-icon";
@@ -10,6 +11,7 @@ import { exitTransition, spring } from "../lib/motion";
 import { usePlacePhoto } from "../lib/place-images";
 import type { CityPlace } from "../lib/city-places";
 import { PlaceDetailsSection } from "./place-details-section";
+import { OrderPage } from "./order-page";
 import { demoRatingFor, formatRating } from "../lib/demo-rating";
 import "./entity-detail.css";
 
@@ -110,7 +112,6 @@ type EntityDetailProps = {
   coordinates: [number, number];
   phone?: string;
   website?: string;
-  sourceUrl?: string;
   saved: boolean;
   onToggleSaved: () => void;
   onShowOnMap: () => void;
@@ -137,7 +138,6 @@ export function EntityDetail({
   catalog = [],
   phone,
   website,
-  sourceUrl,
   saved,
   onToggleSaved,
   onShowOnMap,
@@ -146,6 +146,7 @@ export function EntityDetail({
 }: EntityDetailProps) {
   const flows = flowsForKind(kind);
   const [openFlow, setOpenFlow] = useState<EntityFlow | null>(null);
+  const [orderOpen, setOrderOpen] = useState(false);
   const [status, setStatus] = useState("");
   const [photoFailed, setPhotoFailed] = useState(false);
   const lookup = usePlacePhoto(place, !date);
@@ -159,6 +160,13 @@ export function EntityDetail({
   const shownRating = rating && !date ? (scrapedRating ?? sample) : undefined;
   const callPhone = phone || lookup.details?.phone;
   const showPhoto = Boolean(photoUrl) && !photoFailed && !date;
+  // Quick facts: the source info rows, then the website. Only facts that exist are shown.
+  const quickFacts: QuickFact[] = [
+    ...info,
+    ...(website
+      ? [{ icon: "language", label: "Сайт", value: website.replace(/^https?:\/\//, ""), href: website.startsWith("http") ? website : `https://${website}` }]
+      : []),
+  ];
   const coverColor = iconColor ? ({ "--entity-color": iconColor } as CSSProperties) : undefined;
 
   const share = (): void => {
@@ -178,6 +186,10 @@ export function EntityDetail({
 
   const toggleFlow = (flow: EntityFlow): void => {
     setStatus("");
+    if (flow === "order") {
+      setOrderOpen(true);
+      return;
+    }
     setOpenFlow((current) => (current === flow ? null : flow));
   };
 
@@ -284,7 +296,6 @@ export function EntityDetail({
             <FlowBody
               flow={openFlow}
               kind={kind}
-              menu={menu}
               catalog={catalog}
               onDone={(message) => {
                 setStatus(message);
@@ -302,39 +313,15 @@ export function EntityDetail({
         </p>
       )}
 
-      {description && (
-        <DetailSection title="Опис">
-          <p className="entity-description">{description}</p>
+      {(info.length > 0 || website) && (
+        <DetailSection title="Інформація">
+          <QuickFacts facts={quickFacts} />
         </DetailSection>
       )}
 
-      {(info.length > 0 || website || sourceUrl) && (
-        <DetailSection title="Інформація">
-          {info.map((row) => (
-            <ListRow
-              key={row.label}
-              leading={<MaterialIcon name={row.icon} size={20} />}
-              title={row.value}
-              subtitle={row.label}
-              onClick={row.href ? () => window.open(row.href, row.href?.startsWith("http") ? "_blank" : "_self") : undefined}
-            />
-          ))}
-          {website && (
-            <ListRow
-              leading={<MaterialIcon name="language" size={20} />}
-              title={website.replace(/^https?:\/\//, "")}
-              subtitle="Сайт"
-              onClick={() => window.open(website.startsWith("http") ? website : `https://${website}`, "_blank")}
-            />
-          )}
-          {sourceUrl && (
-            <ListRow
-              leading={<MaterialIcon name="open_in_new" size={20} />}
-              title="Відкрити в OpenStreetMap"
-              subtitle="Джерело даних"
-              onClick={() => window.open(sourceUrl, "_blank")}
-            />
-          )}
+      {description && (
+        <DetailSection title="Опис">
+          <p className="entity-description">{description}</p>
         </DetailSection>
       )}
 
@@ -344,85 +331,40 @@ export function EntityDetail({
         </section>
       )}
 
+      {orderOpen &&
+        createPortal(
+          <OrderPage
+            placeName={title}
+            items={menu}
+            onClose={() => setOrderOpen(false)}
+            onDone={(message) => {
+              setStatus(message);
+              setOrderOpen(false);
+            }}
+          />,
+          document.body,
+        )}
+
       {children}
     </article>
   );
 }
 
 const DEMO_NOTE = "Це демо: запит нікуди не надіслано.";
-const money = new Intl.NumberFormat("uk-UA", { style: "currency", currency: "UAH", maximumFractionDigits: 0 });
 
 function FlowBody({
   flow,
   kind,
-  menu,
   catalog,
   onDone,
 }: {
   flow: EntityFlow;
   kind: string;
-  menu: MenuItem[];
   catalog: MenuItem[];
   onDone: (message: string) => void;
 }) {
-  if (flow === "order") return <OrderFlow items={menu} onDone={onDone} />;
   if (flow === "catalog") return <CatalogFlow items={catalog} onDone={onDone} />;
   return <FormFlow flow={flow} kind={kind} onDone={onDone} />;
-}
-
-function OrderFlow({ items, onDone }: { items: MenuItem[]; onDone: (message: string) => void }) {
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const total = useMemo(
-    () => items.reduce((sum, item) => sum + item.price * (cart[item.id] ?? 0), 0),
-    [items, cart],
-  );
-  const count = Object.values(cart).reduce((sum, value) => sum + value, 0);
-  const change = (id: string, delta: number): void =>
-    setCart((current) => ({ ...current, [id]: Math.max(0, (current[id] ?? 0) + delta) }));
-
-  if (items.length === 0) {
-    return <p className="entity-flow-empty">Меню цього закладу ще не підключене.</p>;
-  }
-  return (
-    <>
-      <ul className="entity-menu">
-        {items.map((item) => {
-          const quantity = cart[item.id] ?? 0;
-          return (
-            <li key={item.id}>
-              <span className="entity-menu-copy">
-                <strong>{item.name}</strong>
-                <span>{item.description}</span>
-                <span className="entity-menu-price">{money.format(item.price)}</span>
-              </span>
-              <span className="entity-stepper" role="group" aria-label={`Кількість: ${item.name}`}>
-                {quantity > 0 && (
-                  <>
-                    <Button type="button" variant="outline" size="icon" aria-label="Менше" onClick={() => change(item.id, -1)}>
-                      <MaterialIcon name="remove" size={18} />
-                    </Button>
-                    <output aria-live="polite">{quantity}</output>
-                  </>
-                )}
-                <Button type="button" variant="outline" size="icon" aria-label={`Додати ${item.name}`} onClick={() => change(item.id, 1)}>
-                  <MaterialIcon name="add" size={18} />
-                </Button>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      <Button
-        type="button"
-        size="lg"
-        className="entity-flow-submit"
-        disabled={count === 0}
-        onClick={() => onDone(`Замовлення на ${money.format(total)}. ${DEMO_NOTE}`)}
-      >
-        {count === 0 ? "Додайте страви" : `Оформити · ${money.format(total)}`}
-      </Button>
-    </>
-  );
 }
 
 function CatalogFlow({ items, onDone }: { items: MenuItem[]; onDone: (message: string) => void }) {
@@ -529,9 +471,9 @@ function FormFlow({ flow, kind, onDone }: { flow: EntityFlow; kind: string; onDo
           <legend>Послуга</legend>
           <div className="entity-chips">
             {APPOINTMENT_CHOICES[kind].map((option) => (
-              <Chip key={option} size="sm" selected={choice === option} onClick={() => setChoice(option)}>
+              <Toggle variant="pill" key={option} size="sm" onClick={() => setChoice(option)} pressed={choice === option}>
                 {option}
-              </Chip>
+              </Toggle>
             ))}
           </div>
         </fieldset>

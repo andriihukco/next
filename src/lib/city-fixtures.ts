@@ -21,54 +21,6 @@ export type CityDirectoryListing = {
   coordinates: [number, number];
 };
 
-export const cityServiceListings: CityDirectoryListing[] = [
-  {
-    id: "service-beauty-demo",
-    name: "Студія краси · демо",
-    category: "beauty",
-    summary: "Приклад послуг догляду та краси",
-    details: "Манікюр · зачіски · попередній запис",
-    location: "Центр Львова · демолокація",
-    coordinates: [24.0297, 49.8397],
-  },
-  {
-    id: "service-dry-cleaning-demo",
-    name: "Хімчистка · демо",
-    category: "dry-cleaning",
-    summary: "Приклад чистки одягу та домашнього текстилю",
-    details: "Приймання речей · терміни й ціни потребують перевірки",
-    location: "Галицький район · демолокація",
-    coordinates: [24.0351, 49.8408],
-  },
-  {
-    id: "service-plumbing-demo",
-    name: "Майстер-сантехнік · демо",
-    category: "plumbing",
-    summary: "Приклад побутового ремонту сантехніки",
-    details: "Виїзд майстра · умови потребують перевірки",
-    location: "Франківський район · демолокація",
-    coordinates: [24.0125, 49.8238],
-  },
-  {
-    id: "service-repair-demo",
-    name: "Майстерня ремонту · демо",
-    category: "repair",
-    summary: "Приклад ремонту дрібної побутової техніки",
-    details: "Діагностика · ремонт за погодженням",
-    location: "Залізничний район · демолокація",
-    coordinates: [23.9942, 49.8384],
-  },
-  {
-    id: "service-cleaning-demo",
-    name: "Прибирання оселі · демо",
-    category: "cleaning",
-    summary: "Приклад послуг прибирання",
-    details: "Разове або регулярне · умови потребують перевірки",
-    location: "Личаківський район · демолокація",
-    coordinates: [24.0552, 49.8395],
-  },
-];
-
 export const cityJobListings: CityDirectoryListing[] = [
   {
     id: "job-developer-demo",

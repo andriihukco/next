@@ -21,13 +21,6 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     body: "Перемикайтеся між транспортом, місцями, освітою та міськими послугами.",
   },
   {
-    target: "place-search",
-    view: "city",
-    icon: "search",
-    title: "Знаходьте потрібне поруч",
-    body: "Шукайте маршрут, адресу чи заклад у відкритому розділі.",
-  },
-  {
     target: "city-events",
     view: "city",
     icon: "event",
@@ -62,7 +55,7 @@ export const WELCOME_FEATURES = [
     id: "places",
     icon: "explore",
     label: "Місця",
-    detail: "Кав’ярні, парки, музеї та інші місця поруч — з відкритих даних OpenStreetMap.",
+    detail: "Кав’ярні, парки, музеї та інші місця поруч.",
   },
   {
     id: "events",

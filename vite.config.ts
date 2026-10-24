@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "node:url";
 
 const developmentAdminAuth = (mode: string): Plugin => ({
   name: "development-admin-auth",
@@ -89,6 +90,7 @@ const developmentAdminAuth = (mode: string): Plugin => ({
 });
 
 export default defineConfig(({ mode }) => ({
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   optimizeDeps: { exclude: ["maplibre-gl"] },
   plugins: [react(), tailwindcss(), developmentAdminAuth(mode)],
   build: {

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useSpring, useTransform } from "motion/react";
 import { BrandLogo } from "../../components/ui/brand-logo";
 import { Button } from "../../components/ui/button";
-import { Chip } from "../../components/ui/chip";
+import { Toggle } from "../../components/ui/toggle";
 import { MaterialIcon } from "../../components/ui/material-icon";
 import { exitTransition, spring } from "../../lib/motion";
 import { useDialogFocus } from "../../lib/use-dialog-focus";
@@ -247,14 +247,13 @@ export function OnboardingDialog({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ ...spring.default, delay: 0.12 + index * 0.05 }}
                     >
-                      <Chip
-                        icon={item.icon}
-                        selected={feature === item.id}
+                      <Toggle variant="pill"
+                       
+                       
                         aria-controls="onboarding-feature-detail"
-                        onClick={() => setFeature(item.id)}
-                      >
+                        onClick={() => setFeature(item.id)} pressed={feature === item.id}><MaterialIcon name={item.icon} size={18} filled={feature === item.id} />
                         {item.label}
-                      </Chip>
+                      </Toggle>
                     </motion.div>
                   ))}
                 </div>
@@ -306,19 +305,18 @@ export function OnboardingDialog({
                     <legend>{question.legend}</legend>
                     <div className="onboarding-options">
                       {question.options.map((option) => (
-                        <Chip
+                        <Toggle variant="pill"
                           key={option}
                           size="sm"
-                          selected={profile[question.id] === option}
+                         
                           onClick={() =>
                             setProfile((value) => ({
                               ...value,
                               [question.id]: value[question.id] === option ? "" : option,
                             }))
-                          }
-                        >
+                          } pressed={profile[question.id] === option}>
                           {option}
-                        </Chip>
+                        </Toggle>
                       ))}
                     </div>
                   </fieldset>

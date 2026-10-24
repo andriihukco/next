@@ -311,3 +311,59 @@ button.list-row {
 .list-row-chevron {
   color: var(--muted-foreground);
 }
+
+/* Quick facts: label and value rows under the action bar (DESIGN.md §7). */
+.quick-facts {
+  margin: 0;
+}
+
+.quick-fact {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.quick-fact:last-child {
+  border-bottom: 0;
+}
+
+.quick-fact dt {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.quick-fact dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  line-height: 1.4;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.quick-fact dd a {
+  color: var(--accent-foreground);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.quick-fact dd a:hover {
+  text-decoration: underline;
+}
+
+.quick-fact dd a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

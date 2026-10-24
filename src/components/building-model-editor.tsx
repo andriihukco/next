@@ -1,3 +1,4 @@
+import { resolveColor } from "../lib/design-colors";
 import {
   useEffect,
   useMemo,
@@ -9,14 +10,15 @@ import { Button } from "./ui/button";
 import { MaterialIcon } from "./ui/material-icon";
 import type { CityPlace } from "../lib/city-places";
 import {
-  inspectObjModel,
+  inspectBuildingModel,
   suggestedRotationForInspection,
   type BuildingModelData,
   type BuildingModelInspection,
+  type BuildingModelSource,
   type BuildingModelUpAxis,
 } from "../lib/building-3d-layer";
 
-const MAX_OBJ_BYTES = 25 * 1024 * 1024;
+const MAX_MODEL_BYTES = 25 * 1024 * 1024;
 
 type BuildingModelEditorProps = {
   place: CityPlace;
@@ -73,12 +75,12 @@ export function BuildingModelEditor({
   const inspection = useMemo<BuildingModelInspection | null>(() => {
     if (!draft) return null;
     try {
-      return inspectObjModel(draft.objText, draft.upAxis);
+      return inspectBuildingModel(draft.source, draft.upAxis);
     } catch (inspectionError) {
       console.error("Could not inspect the uploaded OBJ model.", inspectionError);
       return null;
     }
-  }, [draft?.objText, draft?.upAxis]);
+  }, [draft?.source, draft?.upAxis]);
 
   const updateDraft = (patch: Partial<BuildingModelData>): void => {
     if (!draft) return;
@@ -95,23 +97,27 @@ export function BuildingModelEditor({
     if (!file) return;
     setError("");
     setStatus("");
-    if (!file.name.toLocaleLowerCase("en").endsWith(".obj")) {
-      setError("Підтримуються лише текстові OBJ-файли (.obj).");
+    const extension = file.name.toLocaleLowerCase("en").split(".").pop();
+    if (extension !== "obj" && extension !== "fbx") {
+      setError("Підтримуються лише файли OBJ (.obj) і FBX (.fbx).");
       return;
     }
-    if (file.size > MAX_OBJ_BYTES) {
+    if (file.size > MAX_MODEL_BYTES) {
       setError("Файл завеликий. Максимальний розмір — 25 МБ.");
       return;
     }
     setBusy(true);
     try {
-      const objText = await file.text();
-      if (!objText.trim()) {
+      const source: BuildingModelSource =
+        extension === "obj"
+          ? { format: "obj", text: await file.text() }
+          : { format: "fbx", buffer: await file.arrayBuffer() };
+      if (source.format === "obj" ? !source.text.trim() : source.buffer.byteLength === 0) {
         setError("Файл порожній або не містить геометрії.");
         return;
       }
       const nextUpAxis = draft?.upAxis ?? "auto";
-      const nextInspection = inspectObjModel(objText, nextUpAxis);
+      const nextInspection = inspectBuildingModel(source, nextUpAxis);
       const height = Math.max(
         1,
         draft?.heightMeters ?? defaultHeight(knownHeight, nextInspection),
@@ -122,14 +128,14 @@ export function BuildingModelEditor({
         lng: place.lng,
         lat: place.lat,
         fileName: file.name,
-        objText,
+        source,
         heightMeters: Math.round(height * 10) / 10,
         scale: draft?.scale ?? 1,
         rotation:
           draft?.rotation ??
           suggestedRotationForInspection(nextInspection, place.footprint),
         elevationOffset: draft?.elevationOffset ?? 0,
-        color: draft?.color ?? "#d6d2c8",
+        color: draft?.color ?? resolveColor("var(--building-default)"),
         upAxis: nextUpAxis,
         updatedAt: Date.now(),
       };
@@ -137,8 +143,8 @@ export function BuildingModelEditor({
       onPreview(next);
       setStatus("Модель завантажено. Перевірте розмір і поворот.");
     } catch (fileError) {
-      console.error("Could not read the OBJ file.", fileError);
-      setError("Не вдалося прочитати OBJ-файл. Перевірте, що це текстовий OBJ.");
+      console.error("Could not read the model file.", fileError);
+      setError("Не вдалося прочитати файл. Перевірте, що це OBJ або FBX.");
     } finally {
       setBusy(false);
     }
@@ -192,15 +198,15 @@ export function BuildingModelEditor({
           </strong>
           <p>
             {knownHeight
-              ? `Висота з OpenStreetMap: ${formatMeters(knownHeight)} м — модель підганяється під неї.`
-              : "Висоту будівлі не знайдено в OpenStreetMap — задайте її вручну."}
+              ? `Висота будівлі: ${formatMeters(knownHeight)} м — модель підганяється під неї.`
+              : "Висоту будівлі не знайдено — задайте її вручну."}
           </p>
         </div>
       </header>
 
       <input
         ref={fileInputRef}
-        accept=".obj,text/plain"
+        accept=".obj,.fbx,text/plain,model/fbx,application/octet-stream"
         className="building-model-file-input"
         id={`building-model-file-${place.id}`}
         type="file"
@@ -211,9 +217,9 @@ export function BuildingModelEditor({
         htmlFor={`building-model-file-${place.id}`}
       >
         <MaterialIcon name="upload_file" size={18} />
-        {draft ? "Замінити OBJ-файл" : "Вибрати .obj файл"}
+        {draft ? "Замінити файл моделі" : "Вибрати .obj або .fbx файл"}
       </label>
-      <p className="building-model-limit">Текстовий OBJ · до 25 МБ</p>
+      <p className="building-model-limit">OBJ або FBX · до 25 МБ</p>
 
       {error && (
         <p className="building-model-message error" role="alert">

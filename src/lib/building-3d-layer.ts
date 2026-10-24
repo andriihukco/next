@@ -1,3 +1,4 @@
+import { resolveColor } from "./design-colors";
 import * as THREE from "three";
 import { MercatorCoordinate } from "maplibre-gl";
 import type {
@@ -5,8 +6,17 @@ import type {
   Map as MapLibreMap,
 } from "maplibre-gl";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 
 export type BuildingModelUpAxis = "auto" | "y" | "z";
+
+/**
+ * The uploaded file as the user gave it. OBJ is text. FBX is stored as bytes,
+ * because it is often binary and IndexedDB keeps an ArrayBuffer as is.
+ */
+export type BuildingModelSource =
+  | { format: "obj"; text: string }
+  | { format: "fbx"; buffer: ArrayBuffer };
 
 /**
  * A user-uploaded building model anchored to a real OSM building.
@@ -22,7 +32,7 @@ export type BuildingModelData = {
   lng: number;
   lat: number;
   fileName: string;
-  objText: string;
+  source: BuildingModelSource;
   heightMeters: number;
   scale: number;
   /** Degrees, clockwise (compass bearing) around the vertical axis. */
@@ -118,16 +128,22 @@ function countTriangles(object: THREE.Object3D): number {
 }
 
 /**
- * Parse an OBJ file, orient it into the map's Z-up coordinate system and
+ * Parse an OBJ or FBX file, orient it into the map's Z-up coordinate system and
  * recenter it so that its bottom sits at z = 0 and its footprint center is
  * at the origin. The returned group is ready to be scaled and placed.
  */
+function parseSource(source: BuildingModelSource): THREE.Group {
+  return source.format === "obj"
+    ? new OBJLoader().parse(source.text)
+    : new FBXLoader().parse(source.buffer, "");
+}
+
 function prepareAsset(
-  objText: string,
+  modelSource: BuildingModelSource,
   upAxis: BuildingModelUpAxis,
   color: string,
 ): PreparedAsset {
-  const source = new OBJLoader().parse(objText);
+  const source = parseSource(modelSource);
   applyModelMaterials(source, color);
 
   // The orientation fix lives on an inner node so that the yaw applied to the
@@ -151,7 +167,7 @@ function prepareAsset(
   const size = box.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.x) || !Number.isFinite(size.y) || !Number.isFinite(size.z)) {
     disposeObject(group);
-    throw new Error("The OBJ file does not contain readable geometry.");
+    throw new Error("The model file does not contain readable geometry.");
   }
   const center = box.getCenter(new THREE.Vector3());
 
@@ -174,11 +190,11 @@ function prepareAsset(
  * Parse an uploaded OBJ and report its dimensions so the editor can show a
  * useful preview and choose a sensible default height.
  */
-export function inspectObjModel(
-  objText: string,
+export function inspectBuildingModel(
+  source: BuildingModelSource,
   upAxis: BuildingModelUpAxis = "auto",
 ): BuildingModelInspection {
-  const asset = prepareAsset(objText, upAxis, "#ffffff");
+  const asset = prepareAsset(source, upAxis, resolveColor("var(--card)"));
   const inspection: BuildingModelInspection = {
     height: asset.assetHeight,
     width: asset.width,
@@ -300,7 +316,7 @@ export function createBuilding3DLayer(): Building3DLayer {
       let loaded = models.get(item.id);
       const needsRebuild =
         !loaded ||
-        loaded.data.objText !== item.objText ||
+        loaded.data.source !== item.source ||
         loaded.data.upAxis !== item.upAxis;
 
       if (needsRebuild) {
@@ -310,7 +326,7 @@ export function createBuilding3DLayer(): Building3DLayer {
           models.delete(item.id);
         }
         try {
-          const asset = prepareAsset(item.objText, item.upAxis, item.color);
+          const asset = prepareAsset(item.source, item.upAxis, item.color);
           if (asset.triangles > MAX_TRIANGLES) {
             throw new Error(
               `The model has ${asset.triangles.toLocaleString("uk-UA")} triangles. ` +

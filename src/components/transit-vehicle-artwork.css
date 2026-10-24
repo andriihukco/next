@@ -1,0 +1,19 @@
+/* Fixed illustration colors for the vehicle artwork. Route color is set inline
+   on the body (it changes per vehicle type). Tokens: DESIGN.md §2a. */
+.transit-vehicle-artwork .art-shadow { fill: var(--art-shadow); }
+.transit-vehicle-artwork .art-pole { stroke: var(--art-pole); }
+.transit-vehicle-artwork .art-pole-wire { stroke: var(--art-pole-wire); }
+.transit-vehicle-artwork .art-body { stroke: var(--art-white); }
+.transit-vehicle-artwork .art-body-stripe { fill: var(--art-white); }
+.transit-vehicle-artwork .art-glass { fill: var(--art-glass); }
+.transit-vehicle-artwork .art-trim { fill: var(--art-trim); }
+.transit-vehicle-artwork .art-door { fill: var(--art-door); stroke: var(--art-white); }
+.transit-vehicle-artwork .art-door-seam { stroke: var(--art-door-seam); }
+.transit-vehicle-artwork .art-joint { fill: var(--art-joint); }
+.transit-vehicle-artwork .art-joint-seam { stroke: var(--art-joint-seam); }
+.transit-vehicle-artwork .art-sign { fill: var(--art-white); }
+.transit-vehicle-artwork .art-sign-text { fill: var(--art-sign-text); }
+.transit-vehicle-artwork .art-headlight { fill: var(--art-headlight); }
+.transit-vehicle-artwork .art-tail { fill: var(--art-tail); }
+.transit-vehicle-artwork .art-wheel { fill: var(--art-wheel); }
+.transit-vehicle-artwork .art-hub { fill: var(--art-hub); }

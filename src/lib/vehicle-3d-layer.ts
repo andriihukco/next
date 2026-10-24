@@ -6,6 +6,7 @@ import type {
   Map as MapLibreMap,
 } from "maplibre-gl";
 import { vehicleFleetColor } from "./fleet";
+import { resolveColor } from "./design-colors";
 
 export type Vehicle3DData = {
   id: string;
@@ -315,17 +316,19 @@ function drawLedCell(context: CanvasRenderingContext2D, text: string, column: nu
   if (!sourceContext) return;
   sourceContext.font = "bold 11px Arial";
   sourceContext.textAlign = "center";
-  sourceContext.fillStyle = "#fff";
+  sourceContext.fillStyle = resolveColor("var(--art-white)");
   sourceContext.fillText(text, LED_PIXEL_W / 2, LED_PIXEL_H - 1.5);
   const pixels = sourceContext.getImageData(0, 0, LED_PIXEL_W, LED_PIXEL_H).data;
 
   const originX = column * LED_CELL_W;
   const originY = row * LED_CELL_H;
-  context.fillStyle = "#07070a";
+  context.fillStyle = resolveColor("var(--led-off)");
   context.fillRect(originX, originY, LED_CELL_W, LED_CELL_H);
+  const ledOn = resolveColor("var(--led-on)");
+  const ledDim = resolveColor("var(--led-dim)");
   for (let y = 0; y < LED_PIXEL_H; y += 1) {
     for (let x = 0; x < LED_PIXEL_W; x += 1) {
-      context.fillStyle = pixels[(y * LED_PIXEL_W + x) * 4 + 3] > 110 ? "#ff9d1c" : "#1b1109";
+      context.fillStyle = pixels[(y * LED_PIXEL_W + x) * 4 + 3] > 110 ? ledOn : ledDim;
       context.beginPath();
       context.arc(originX + x * LED_DOT + LED_DOT / 2, originY + y * LED_DOT + LED_DOT / 2, 2.3, 0, Math.PI * 2);
       context.fill();

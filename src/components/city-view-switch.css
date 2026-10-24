@@ -1,0 +1,83 @@
+/* List and grid segmented control above the places list (docs/super-app-ia.md §3).
+   The selected segment is filled, so it reads as the active tab. */
+
+.city-view-switch {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+}
+
+.city-view-switch-item {
+  display: inline-flex;
+  height: 36px;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--type-small);
+  font-weight: 700;
+  box-shadow: none;
+  transition:
+    background-color var(--duration-state) var(--ease),
+    color var(--duration-state) var(--ease);
+}
+
+.city-view-switch-item[data-state="on"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-raised);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .city-view-switch-item:not([data-state="on"]):hover {
+    background: var(--card);
+    color: var(--foreground);
+  }
+}
+
+.city-view-switch-item:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-view-switch-item {
+    transition: none;
+  }
+}
+
+/* Grid: cards flow in columns and keep the photo on top. */
+.city-place-list.is-grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.city-place-list.is-grid .unified-card__header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.city-place-list.is-grid .unified-card__photo {
+  width: 100%;
+  height: auto;
+  flex: 0 0 auto;
+  aspect-ratio: 4 / 3;
+}
+
+.city-place-list.is-grid .unified-card__icon {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}

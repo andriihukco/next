@@ -16,7 +16,9 @@
 .entity-cover {
   position: relative;
   display: grid;
-  height: 184px;
+  aspect-ratio: 16 / 9;
+  max-height: 240px;
+  width: 100%;
   place-items: center;
   overflow: hidden;
   border-radius: var(--radius-md);
@@ -283,4 +285,99 @@
   color: var(--foreground);
   font-size: var(--type-body);
   line-height: 1.55;
+}
+
+/* Reviews in the place details (PlaceDetailsSection). */
+.place-reviews {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 12px;
+  list-style: none;
+}
+
+.place-review {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.place-review-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.place-review-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: var(--type-body);
+  font-weight: 700;
+}
+
+.place-review-who {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.place-review-who strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-review-who span {
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.place-review-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--foreground);
+  font-size: var(--type-small);
+  font-weight: 700;
+}
+
+.place-review-rating .material-symbols-rounded {
+  color: var(--accent-foreground);
+}
+
+.place-review-text {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+
+.place-review-toggle {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-foreground);
+  font: inherit;
+  font-size: var(--type-small);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.place-review-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

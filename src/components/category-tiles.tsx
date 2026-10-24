@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
-import { cn } from "../../lib/utils";
-import { MaterialIcon } from "./material-icon";
+import { cn } from "../lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
+import { MaterialIcon } from "./ui/material-icon";
 
 export type CategoryChipItem = {
   id: string;
@@ -11,7 +12,7 @@ export type CategoryChipItem = {
   count?: number;
 };
 
-type CategoryChipsProps = {
+type CategoryTilesProps = {
   label: string;
   items: readonly CategoryChipItem[];
   value: string;
@@ -22,14 +23,14 @@ type CategoryChipsProps = {
 /**
  * One horizontally scrolling row of colored category orbs, used by every
  * section (transport, places, education, services, jobs, real estate, events).
- * The selected orb is always scrolled into view.
+ * Built on shadcn ToggleGroup. The selected orb is always scrolled into view.
  */
-export function CategoryChips({ label, items, value, onChange, className }: CategoryChipsProps) {
+export function CategoryTiles({ label, items, value, onChange, className }: CategoryTilesProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const row = rowRef.current;
-    const selected = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    const selected = row?.querySelector<HTMLElement>('[data-state="on"]');
     if (!row || !selected) return;
     const start = selected.offsetLeft - 16;
     const end = selected.offsetLeft + selected.offsetWidth + 16 - row.clientWidth;
@@ -38,17 +39,27 @@ export function CategoryChips({ label, items, value, onChange, className }: Cate
   }, [value]);
 
   return (
-    <div ref={rowRef} className={cn("category-chips", className)} role="group" aria-label={label}>
+    <ToggleGroup
+      ref={rowRef}
+      type="single"
+      variant="outline"
+      value={value}
+      onValueChange={(next) => {
+        // Radix reports "" when the selected item is pressed again. Keep one selection.
+        if (next) onChange(next);
+      }}
+      className={cn("category-chips", className)}
+      aria-label={label}
+      spacing={0}
+    >
       {items.map((item) => {
         const selected = value === item.id;
         return (
-          <button
+          <ToggleGroupItem
             key={item.id}
-            type="button"
-            aria-pressed={selected}
+            value={item.id}
             data-filter={item.id}
             className="category-tile"
-            onClick={() => onChange(item.id)}
           >
             <span
               className="category-tile-orb"
@@ -60,9 +71,9 @@ export function CategoryChips({ label, items, value, onChange, className }: Cate
               )}
             </span>
             <span className="category-tile-label">{item.label}</span>
-          </button>
+          </ToggleGroupItem>
         );
       })}
-    </div>
+    </ToggleGroup>
   );
 }

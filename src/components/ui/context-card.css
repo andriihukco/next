@@ -1,0 +1,136 @@
+/* ContextCard: search result in the map-app style (DESIGN.md §7). Tokens only. */
+
+.context-card {
+  gap: 0;
+  padding: 12px;
+  border-color: var(--border);
+  transition: border-color var(--duration-state) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .context-card:hover {
+    border-color: var(--primary-border);
+  }
+}
+
+.context-card__row {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.context-card__thumb {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--context-card-color, var(--muted-foreground)) 14%, var(--card));
+  color: var(--context-card-color, var(--muted-foreground));
+}
+
+.context-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.context-card__thumb--loading,
+.context-card__thumb--empty {
+  background: var(--surface-muted);
+  color: var(--muted-foreground);
+}
+
+.context-card__body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.context-card__category {
+  font-size: var(--type-caption);
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.context-card__title {
+  margin: 0;
+  font-size: var(--type-title);
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+/* The button stretches over the row only, so the action row stays clickable. */
+.context-card__open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.context-card__open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+}
+
+.context-card__row:has(.context-card__open:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.context-card__open:focus-visible {
+  outline: none;
+}
+
+.context-card__subtitle {
+  margin: 0;
+  font-size: var(--type-small);
+  line-height: 1.4;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+.context-card__rating {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 0;
+  font-size: var(--type-small);
+  line-height: 1.4;
+  color: var(--text-default);
+}
+
+.context-card__rating strong {
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.context-card__rating span {
+  color: var(--muted-foreground);
+}
+
+.context-card__actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.context-card__action {
+  min-height: 36px;
+}

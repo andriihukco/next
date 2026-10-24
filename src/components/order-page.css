@@ -1,0 +1,195 @@
+/* Full-screen order page (DESIGN.md §7). It covers the map: no map is shown behind it. */
+
+.order-page {
+  position: fixed;
+  inset: 0;
+  /* Above the brand rail (z-index 1000), so the rail and map stay hidden. */
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.order-page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.order-page-title {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.order-page-title h2 {
+  margin: 0;
+  font-size: var(--type-inspector);
+  line-height: 1.2;
+}
+
+.order-page-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.order-page-scroll {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 20px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.order-page-empty,
+.order-page-scroll .order-field > span,
+.order-toggle > span > span {
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.order-items {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order-item {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.order-item + .order-item {
+  border-top: 1px solid var(--border);
+}
+
+.order-item-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.order-item-copy strong {
+  font-size: var(--type-body);
+}
+
+.order-item-copy > span:not(.order-item-price) {
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.order-item-price {
+  color: var(--accent-foreground);
+  font-size: var(--type-small);
+  font-weight: 700;
+}
+
+.order-stepper {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-stepper output {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.order-segment,
+.order-payment {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.order-segment > *,
+.order-payment > * {
+  flex: 1 1 auto;
+}
+
+.order-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.order-field {
+  display: grid;
+  gap: 6px;
+}
+
+.order-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--type-body);
+  resize: vertical;
+}
+
+.order-textarea:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.order-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.order-toggle > span {
+  display: grid;
+  gap: 2px;
+  font-size: var(--type-body);
+}
+
+.order-error {
+  margin: 0;
+  color: var(--destructive);
+  font-size: var(--type-small);
+}
+
+.order-page-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+.order-total {
+  display: grid;
+  gap: 2px;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.order-total strong {
+  color: var(--foreground);
+  font-size: var(--type-title);
+}

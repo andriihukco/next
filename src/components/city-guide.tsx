@@ -23,7 +23,6 @@ import {
   cityEducationKind,
   cityPlaceCategories,
   cityPlaceIcons,
-  cityPlaceOsmUrl,
   formatOpeningHours,
   type CityEducationKind,
   type CityPlace,
@@ -35,13 +34,15 @@ import {
   type CityDirectoryListing,
   cityJobListings,
   cityRealEstateListings,
-  cityServiceListings,
 } from "../lib/city-fixtures";
 import { Button } from "./ui/button";
-import { CategoryChips } from "./ui/category-chips";
+import { CategoryTiles } from "./category-tiles";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
+import "./city-view-switch.css";
 import { EntityDetail, flowsForKind, type InfoRow } from "./entity-detail";
 import { useSavedItems } from "../lib/use-saved-items";
 import { UnifiedCard } from "./ui/unified-card";
+import { ContextCard } from "./ui/context-card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,9 @@ type CitySection =
   | "parking"
   | "fuel"
   | "charging";
+
+/** How a place list is laid out. The map is a separate view, not a layout. */
+type PlacesLayout = "list" | "grid";
 
 /** Sub-tab within the Transport section */
 type TransportTab = "nearby" | "bus" | "tram" | "trolleybus" | "taxi";
@@ -99,11 +103,11 @@ type CityGuideProps = {
 
 // Orb colors for category rows (DESIGN.md §2, §7).
 const TRANSPORT_TABS: { id: TransportTab; label: string; icon: string; color: string }[] = [
-  { id: "nearby",     label: "Поруч",       icon: "near_me",         color: "#1caa63" },
-  { id: "bus",        label: "Автобуси",    icon: "directions_bus",  color: "#d89418" },
-  { id: "tram",       label: "Трамваї",     icon: "tram",            color: "#247bad" },
-  { id: "trolleybus", label: "Тролейбуси",  icon: "electric_bolt",   color: "#c64757" },
-  { id: "taxi",       label: "Таксі",       icon: "local_taxi",      color: "#bd5681" },
+  { id: "nearby",     label: "Поруч",       icon: "near_me",         color: "var(--transport-nearby)" },
+  { id: "bus",        label: "Автобуси",    icon: "directions_bus",  color: "var(--transport-bus)" },
+  { id: "tram",       label: "Трамваї",     icon: "tram",            color: "var(--transport-tram)" },
+  { id: "trolleybus", label: "Тролейбуси",  icon: "electric_bolt",   color: "var(--transport-trolleybus)" },
+  { id: "taxi",       label: "Таксі",       icon: "local_taxi",      color: "var(--transport-taxi)" },
 ];
 
 const CITY_SECTIONS: { id: CitySection; label: string; icon: string }[] = [
@@ -153,40 +157,46 @@ const EDUCATION_KIND_LABELS: Record<CityEducationKind, string> = {
 };
 
 const EVENT_FILTERS = [
-  { id: "all",        label: "Усі події",  icon: "event",           color: "#176443" },
-  { id: "Для родини", label: "Для родини", icon: "family_restroom", color: "#d89418" },
-  { id: "Діти",       label: "Діти",       icon: "child_care",      color: "#d76543" },
-  { id: "Зустріч",    label: "Зустріч",    icon: "groups",          color: "#9257a5" },
+  { id: "all",        label: "Усі події",  icon: "event",           color: "var(--event-all)" },
+  { id: "Для родини", label: "Для родини", icon: "family_restroom", color: "var(--event-family)" },
+  { id: "Діти",       label: "Діти",       icon: "child_care",      color: "var(--event-kids)" },
+  { id: "Зустріч",    label: "Зустріч",    icon: "groups",          color: "var(--event-meeting)" },
 ] as const;
 
 const EDUCATION_FILTERS: { id: CityEducationKind; label: string; icon: string; color: string }[] = [
-  { id: "school",       label: "Школи",        icon: "school",          color: "#6473bf" },
-  { id: "kindergarten", label: "Садочки",      icon: "child_care",      color: "#6473bf" },
-  { id: "university",   label: "Університети", icon: "account_balance", color: "#6473bf" },
-  { id: "adult-course", label: "Курси",        icon: "menu_book",       color: "#6473bf" },
-  { id: "library",      label: "Бібліотеки",   icon: "local_library",   color: "#6473bf" },
+  { id: "school",       label: "Школи",        icon: "school",          color: "var(--category-education)" },
+  { id: "kindergarten", label: "Садочки",      icon: "child_care",      color: "var(--category-education)" },
+  { id: "university",   label: "Університети", icon: "account_balance", color: "var(--category-education)" },
+  { id: "adult-course", label: "Курси",        icon: "menu_book",       color: "var(--category-education)" },
+  { id: "library",      label: "Бібліотеки",   icon: "local_library",   color: "var(--category-education)" },
 ];
 
-const SERVICE_FILTERS = [
-  { id: "beauty",       label: "Краса",      icon: "spa",                  color: "#bd5681" },
-  { id: "dry-cleaning", label: "Хімчистка",  icon: "local_laundry_service", color: "#60776b" },
-  { id: "plumbing",     label: "Сантехнік",  icon: "water_drop",           color: "#60776b" },
-  { id: "repair",       label: "Ремонт",     icon: "build",                color: "#60776b" },
-  { id: "cleaning",     label: "Прибирання", icon: "cleaning_services",    color: "#60776b" },
-] as const;
+/** Place categories that make up the Послуги section, parsed from the city data. */
+const SERVICE_CATEGORY_IDS: CityPlaceCategory[] = [
+  "services", "beauty", "laundry", "dry-cleaning", "car-repair", "car-wash", "tire-service",
+  "shoe-repair", "key-cutting", "locksmith", "photo-studio", "print-shop", "copy-center",
+  "optician", "construction", "hardware",
+];
+
+const SERVICE_FILTERS = SERVICE_CATEGORY_IDS.map((id) => ({
+  id,
+  label: cityPlaceCategories.find((category) => category.id === id)?.label ?? id,
+  icon: cityPlaceIcons[id],
+  color: CITY_PLACE_CATEGORY_COLORS[id],
+}));
 
 const JOB_FILTERS = [
-  { id: "technology",  label: "IT",          icon: "computer",      color: "#247bad" },
-  { id: "hospitality", label: "Гостинність", icon: "restaurant",    color: "#d76543" },
-  { id: "retail",      label: "Торгівля",    icon: "shopping_cart", color: "#d89418" },
-  { id: "education",   label: "Освіта",      icon: "school",        color: "#6473bf" },
+  { id: "technology",  label: "IT",          icon: "computer",      color: "var(--job-technology)" },
+  { id: "hospitality", label: "Гостинність", icon: "restaurant",    color: "var(--job-hospitality)" },
+  { id: "retail",      label: "Торгівля",    icon: "shopping_cart", color: "var(--job-retail)" },
+  { id: "education",   label: "Освіта",      icon: "school",        color: "var(--category-education)" },
 ] as const;
 
 const REAL_ESTATE_FILTERS = [
-  { id: "rent",       label: "Оренда",         icon: "home",               color: "#5476a5" },
-  { id: "sale",       label: "Продаж",         icon: "real_estate_agent",  color: "#7257a5" },
-  { id: "commercial", label: "Комерція",       icon: "business",           color: "#7257a5" },
-  { id: "private",    label: "Приватне житло", icon: "house",              color: "#5476a5" },
+  { id: "rent",       label: "Оренда",         icon: "home",               color: "var(--category-stay)" },
+  { id: "sale",       label: "Продаж",         icon: "real_estate_agent",  color: "var(--category-real-estate)" },
+  { id: "commercial", label: "Комерція",       icon: "business",           color: "var(--category-real-estate)" },
+  { id: "private",    label: "Приватне житло", icon: "house",              color: "var(--category-stay)" },
 ] as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -346,14 +356,6 @@ function EducationCard({
         variant="outline"
         onClick={() => onShowOnMap([place.lng, place.lat], place.name)}
       />
-      {detailPage && (
-        <UnifiedCard.Action
-          label="OpenStreetMap"
-          icon="open_in_new"
-          variant="outline"
-          onClick={() => window.open(cityPlaceOsmUrl(place), "_blank")}
-        />
-      )}
     </UnifiedCard>
   );
 }
@@ -420,7 +422,7 @@ function DirectoryListingPage({
 
   return (
     <section className="city-section" aria-label={title}>
-      <CategoryChips label={`Фільтр: ${title}`} items={filters} value={activeFilter} onChange={setActiveFilter} />
+      <CategoryTiles label={`Фільтр: ${title}`} items={filters} value={activeFilter} onChange={setActiveFilter} />
       <div className="city-place-list">
         {visible.map((item) => (
           <UnifiedCard key={item.id} variant="directory" onClick={() => onSelect(item.id)}>
@@ -716,6 +718,22 @@ export function CityGuide({
   onSelectTransportVehicle,
   searchQuery,
 }: CityGuideProps) {
+  const cityServiceListings = useMemo<CityDirectoryListing[]>(
+    () =>
+      places
+        .filter((place) => SERVICE_CATEGORY_IDS.includes(place.category))
+        .map((place) => ({
+          id: place.id,
+          name: place.name,
+          category: place.category,
+          summary: place.categoryLabel,
+          details: place.address,
+          location: place.address,
+          coordinates: [place.lng, place.lat],
+        })),
+    [places],
+  );
+
   const [section, setSection] = useState<CitySection>(() => {
     const saved = localStorage.getItem("eway-last-section");
     return (saved as CitySection) || "transport";
@@ -729,6 +747,9 @@ export function CityGuide({
   >("popular");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [placeDisplayLimit, setPlaceDisplayLimit] = useState(40);
+  const [placesLayout, setPlacesLayout] = useState<PlacesLayout>(() =>
+    localStorage.getItem("eway-places-layout") === "grid" ? "grid" : "list",
+  );
   const [educationKind, setEducationKind] = useState<CityEducationKind>("school");
   const [selectedEducationId, setSelectedEducationId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -807,6 +828,11 @@ export function CityGuide({
   const selectedEvent = cityEvents.find((event) => event.id === selectedEventId);
 
   const isDetailPage = Boolean(selectedPlaceId || selectedEducationId || selectedEventId || selectedListingId);
+
+  const changePlacesLayout = (next: PlacesLayout): void => {
+    setPlacesLayout(next);
+    localStorage.setItem("eway-places-layout", next);
+  };
 
   const returnToSection = (): void => {
     setSelectedPlaceId(null);
@@ -901,7 +927,7 @@ export function CityGuide({
             </p>
           ) : null}
 
-          <CategoryChips
+          <CategoryTiles
             label="Тип транспорту"
             items={TRANSPORT_TABS.map((tab) => ({
               ...tab,
@@ -948,11 +974,11 @@ export function CityGuide({
           aria-label="Місця"
         >
           {!selectedPlaceId && (
-            <CategoryChips
+            <CategoryTiles
               label="Категорії місць"
               items={[
-                { id: "popular", label: "Популярне", icon: "award_star", color: "#ee8a3f" },
-                ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me", color: "#16804f" }] : []),
+                { id: "popular", label: "Популярне", icon: "award_star", color: "var(--category-popular)" },
+                ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me", color: "var(--category-nearby)" }] : []),
                 ...availableCategories.map((category) => ({
                   id: category.id,
                   label: category.label,
@@ -966,6 +992,27 @@ export function CityGuide({
                 setPlaceDisplayLimit(40);
               }}
             />
+          )}
+          {!selectedPlaceId && (
+            <ToggleGroup
+              type="single"
+              className="city-view-switch"
+              aria-label="Вигляд місць"
+              value={placesLayout}
+              onValueChange={(next) => {
+                // Radix reports "" when the selected item is pressed again. Keep one layout.
+                if (next === "list" || next === "grid") changePlacesLayout(next);
+              }}
+            >
+              <ToggleGroupItem value="list" className="city-view-switch-item">
+                <MaterialIcon name="view_list" size={18} filled={placesLayout === "list"} />
+                Список
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" className="city-view-switch-item">
+                <MaterialIcon name="grid_view" size={18} filled={placesLayout === "grid"} />
+                Сітка
+              </ToggleGroupItem>
+            </ToggleGroup>
           )}
           {!selectedPlaceId && locationError && (
             <p className="city-location-error" role="status">
@@ -994,17 +1041,12 @@ export function CityGuide({
             <>
               {!selectedPlaceId && (
                 <div className="city-place-results-heading">
-                  <h3>
-                    {placeCategory === "nearby"
-                      ? "Поруч зараз"
-                      : placeCategory === "popular"
-                        ? "Популярне"
-                        : cityPlaceCategories.find((c) => c.id === placeCategory)?.label}
-                  </h3>
                   <span>Знайдено: {visiblePlaces.length}</span>
                 </div>
               )}
-              <div className={`city-place-list city-osm-place-list${selectedPlaceId ? " place-detail-list" : ""}`}>
+              <div
+                className={`city-place-list city-osm-place-list${selectedPlaceId ? " place-detail-list" : ""}${placesLayout === "grid" ? " is-grid" : ""}`}
+              >
                 {shownPlaces
                   .filter((place) => !selectedPlaceId || place.id === selectedPlaceId)
                   .map((place) => {
@@ -1029,11 +1071,42 @@ export function CityGuide({
                           coordinates={[place.lng, place.lat]}
                           phone={phone}
                           website={place.details["Сайт"]}
-                          sourceUrl={cityPlaceOsmUrl(place)}
                           saved={saved.has(place.id)}
                           onToggleSaved={() => toggleSaved(place.id)}
                           onShowOnMap={() => onShowOnMap([place.lng, place.lat], place.name)}
                           onDirections={() => onDirections([place.lng, place.lat], place.name)}
+                        />
+                      );
+                    }
+                    // List results are context cards (DESIGN.md §7). The grid keeps UnifiedCard's 4:3 photo tiles.
+                    if (placesLayout === "list") {
+                      return (
+                        <ContextCard
+                          key={place.id}
+                          title={place.name}
+                          category={place.categoryLabel}
+                          icon={cityPlaceIcons[place.category]}
+                          iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
+                          subtitle={[formatPlaceDistance(distanceToPlace(place, origin)), place.address].filter(Boolean).join(" · ")}
+                          imageUrl={place.imageUrl}
+                          place={place}
+                          onOpen={() => {
+                            setSelectedPlaceId(place.id);
+                            onPageNavigationChange(true, returnToSection);
+                          }}
+                          actions={[
+                            {
+                              label: "Маршрут",
+                              icon: "directions",
+                              primary: true,
+                              onClick: () => onDirections([place.lng, place.lat], place.name),
+                            },
+                            {
+                              label: "На мапі",
+                              icon: "map",
+                              onClick: () => onShowOnMap([place.lng, place.lat], place.name),
+                            },
+                          ]}
                         />
                       );
                     }
@@ -1086,14 +1159,6 @@ export function CityGuide({
               <span>Місць за цим фільтром не знайдено.</span>
             </div>
           )}
-          {!selectedPlaceId && (
-            <p className="city-osm-attribution">
-              OpenFreeMap на основі OpenStreetMap ·{" "}
-              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-                ліцензія ODbL
-              </a>
-            </p>
-          )}
         </section>
       )}
 
@@ -1115,7 +1180,6 @@ export function CityGuide({
                 coordinates={[selectedEducation.place.lng, selectedEducation.place.lat]}
                 phone={selectedEducation.place.details["Телефон"] || selectedEducation.place.details["Мобільний"]}
                 website={selectedEducation.place.details["Сайт"]}
-                sourceUrl={cityPlaceOsmUrl(selectedEducation.place)}
                 saved={saved.has(selectedEducation.place.id)}
                 onToggleSaved={() => toggleSaved(selectedEducation.place.id)}
                 onShowOnMap={() => onShowOnMap([selectedEducation.place.lng, selectedEducation.place.lat], selectedEducation.place.name)}
@@ -1124,7 +1188,7 @@ export function CityGuide({
             </>
           ) : (
             <>
-              <CategoryChips
+              <CategoryTiles
                 label="Тип закладу"
                 items={EDUCATION_FILTERS}
                 value={educationKind}
@@ -1159,7 +1223,7 @@ export function CityGuide({
                   {filteredEducationPlaces.length === 0 && (
                     <div className="city-places-state">
                       <MaterialIcon name="search_off" size={20} />
-                      <span>Закладів цієї категорії немає в OpenStreetMap для поточної ділянки.</span>
+                      <span>Закладів цієї категорії на цій ділянці мапи поки немає.</span>
                     </div>
                   )}
                 </div>
@@ -1227,7 +1291,7 @@ export function CityGuide({
         <section className="city-section" aria-label="Події">
           {!selectedEvent && (
             <>
-              <CategoryChips
+              <CategoryTiles
                 label="Категорії подій"
                 items={EVENT_FILTERS}
                 value={eventCategory}

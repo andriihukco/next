@@ -4,7 +4,7 @@
 
 - Read `DESIGN.md` before changing any UI, styling, copy, or motion.
 - Use the tokens, type scale, spacing, radius, and motion values defined there. Do not add raw hex colors, new radii, or new font sizes.
-- Build controls from `src/components/ui/` primitives. Use `Chip` for filter pills once it exists.
+- Build controls from `src/components/ui/` primitives. Use `Toggle` with `variant="pill"` for filter pills (shadcn). Show new controls at /design-system.
 - Run the checklist in `DESIGN.md` section 11 before reporting a UI change as done.
 - If a change needs a value `DESIGN.md` does not cover, propose the value and update `DESIGN.md` in the same change.
 

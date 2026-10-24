@@ -1,10 +1,10 @@
 type TransitType = "tram" | "trolleybus" | "bus" | "taxi";
 
 export const TRANSIT_TYPE_COLORS: Record<TransitType, string> = {
-  bus: "#22c55e",
-  tram: "#f97316",
-  trolleybus: "#3b82f6",
-  taxi: "#eab308",
+  bus: "var(--fleet-bus)",
+  tram: "var(--fleet-tram)",
+  trolleybus: "var(--fleet-trolleybus)",
+  taxi: "var(--fleet-taxi)",
 };
 
 export function vehicleFleetColor(type: TransitType): string {

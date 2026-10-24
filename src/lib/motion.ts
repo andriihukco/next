@@ -18,6 +18,28 @@ export const exitTransition: Transition = {
   ease: [0.4, 0, 1, 1],
 };
 
+/** Scrim behind a modal: fades only, so the map under it never jumps. */
+export const scrimMotion = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0, transition: exitTransition },
+  transition: { duration: 0.2 },
+} as const;
+
+/**
+ * Modal panel: slides in from the edge it is docked to (right on desktop,
+ * bottom on mobile) and leaves the same way. Transform and opacity only (DESIGN.md §8).
+ */
+export function panelMotion(mobile: boolean) {
+  const offset = mobile ? { y: "100%" } : { x: "100%" };
+  return {
+    initial: { ...offset, opacity: 0 },
+    animate: { x: 0, y: 0, opacity: 1 },
+    exit: { ...offset, opacity: 0, transition: exitTransition },
+    transition: spring.default,
+  } as const;
+}
+
 /**
  * Where a flick would come to rest, using exponential deceleration
  * (the same projection iOS scroll views use).

@@ -1,12 +1,15 @@
 import * as React from "react";
-import { cn } from "../../lib/utils";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { demoRatingFor, formatRating } from "../../lib/demo-rating";
 import type { CityPlace } from "../../lib/city-places";
 import { usePlacePhoto } from "../../lib/place-images";
 import { useInView } from "../../lib/use-in-view";
 import { MaterialIcon } from "./material-icon";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// Built on shadcn Card and Button. The `unified-card*` class names stay as
+// hooks for the existing list and grid layout rules (city-view-switch.css).
 
 export type UnifiedCardVariant =
   | "place"
@@ -64,26 +67,25 @@ export interface UnifiedCardMetaProps {
   onClick?: () => void;
 }
 
-// ─── Components ────────────────────────────────────────────────────────────────
-
 // A clickable card opens through its title button, which stretches over the whole
 // card. That keeps it keyboard-reachable without nesting buttons (DESIGN.md §11).
 const CardOpenContext = React.createContext<(() => void) | undefined>(undefined);
 
 const UnifiedCardComponent = React.forwardRef<HTMLDivElement, UnifiedCardProps>(
   ({ variant = "place", children, className, onClick, "aria-label": ariaLabel }, ref) => (
-    <article
+    <Card
       ref={ref}
+      role="article"
       className={cn(
         "unified-card",
         `unified-card--${variant}`,
         onClick && "unified-card--clickable",
-        className
+        className,
       )}
       aria-label={ariaLabel}
     >
       <CardOpenContext.Provider value={onClick}>{children}</CardOpenContext.Provider>
-    </article>
+    </Card>
   ),
 );
 UnifiedCardComponent.displayName = "UnifiedCard";
@@ -116,7 +118,7 @@ const UnifiedCardHeader = ({
   const showPhoto = Boolean(photoUrl) && !photoFailed && !date;
   const showPhotoPlaceholder = Boolean(place) && !showPhoto && !date;
   return (
-    <div ref={headerRef} className={cn("unified-card__header", className)}>
+    <CardHeader ref={headerRef} className={cn("unified-card__header", className)}>
       {date && (
         <div className="unified-card__date" aria-hidden="true">
           <strong>{date.day}</strong>
@@ -177,7 +179,7 @@ const UnifiedCardHeader = ({
         )}
       </div>
       {onOpen && <MaterialIcon name="chevron_right" size={20} className="unified-card__chevron" />}
-    </div>
+    </CardHeader>
   );
 };
 
@@ -188,14 +190,16 @@ const UnifiedCardAction = ({
   variant = "primary",
   className,
 }: UnifiedCardActionProps) => (
-  <button
+  <Button
     type="button"
+    size="sm"
+    variant={variant === "primary" ? "default" : variant === "secondary" ? "secondary" : "outline"}
     className={cn("unified-card__action", `unified-card__action--${variant}`, className)}
     onClick={onClick}
   >
     {icon && <MaterialIcon name={icon} size={16} />}
     <span>{label}</span>
-  </button>
+  </Button>
 );
 
 const UnifiedCardMeta = ({ label, value, icon, className, clickable, onClick }: UnifiedCardMetaProps) => {
