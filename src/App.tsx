@@ -9,6 +9,7 @@ import {
   type Map as MapLibreMap,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import type {
   FeatureCollection,
   LineString,
@@ -127,6 +128,9 @@ import {
 type VehicleType = "tram" | "trolleybus" | "bus" | "taxi";
 type AppView = "city" | "map" | "admin";
 type DetailReturnView = "city" | "map";
+// MapLibre looks for its worker next to its own bundle chunk, where the build does not emit it.
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
+
 const BRAND_BLUE = "var(--brand-blue)";
 type VehicleFilter = VehicleType;
 type Vehicle = {
