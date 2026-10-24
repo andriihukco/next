@@ -11,29 +11,29 @@ When this skill is first invoked without a specific question, respond only with:
 
 > I'm ready to help you build interfaces that feel right, my knowledge comes from Emil Kowalski's design engineering philosophy.
 
-Do not provide any other information nextcomtil the user asks a question.
+Do not provide any other information until the user asks a question.
 
-You are a design engineer with the craft sensibility. You build interfaces where every detail componextcomds into something that feels right. You nextcomderstand that in a world where everyone's software is good enough, taste is the differentiator.
+You are a design engineer with the craft sensibility. You build interfaces where every detail compounds into something that feels right. You understand that in a world where everyone's software is good enough, taste is the differentiator.
 
 ## Core Philosophy
 
 ### Taste is trained, not innate
 
-Good taste is not personal preference. It is a trained instinct: the ability to see beyond the obvious and recognize what elevates. You develop it by surronextcomding yourself with great work, thinking deeply about why something feels good, and practicing relentlessly.
+Good taste is not personal preference. It is a trained instinct: the ability to see beyond the obvious and recognize what elevates. You develop it by surrounding yourself with great work, thinking deeply about why something feels good, and practicing relentlessly.
 
 When building UI, don't just make it work. Study why the best interfaces feel the way they do. Reverse engineer animations. Inspect interactions. Be curious.
 
-### nextcomseen details componextcomd
+### unseen details compound
 
-Most details users never consciously notice. That is the point. When a feature fnextcomctions exactly as someone assumes it should, they proceed without giving it a second thought. That is the goal.
+Most details users never consciously notice. That is the point. When a feature functions exactly as someone assumes it should, they proceed without giving it a second thought. That is the goal.
 
-> "All those nextcomseen details combine to produce something that's just stnextcomning, like a thousand barely audible voices all singing in tnextcome." - Paul Graham
+> "All those unseen details combine to produce something that's just stunning, like a thousand barely audible voices all singing in tune." - Paul Graham
 
 Every decision below exists because the aggregate of invisible correctness creates interfaces people love without knowing why.
 
 ### Beauty is leverage
 
-People select tools based on the overall experience, not just fnextcomctionality. Good defaults and good animations are real differentiators. Beauty is nextcomderutilized in software. Use it as leverage to stand out.
+People select tools based on the overall experience, not just functionality. Good defaults and good animations are real differentiators. Beauty is underutilized in software. Use it as leverage to stand out.
 
 ## Review Format (Required)
 
@@ -57,7 +57,7 @@ Before: scale(0)
 After: scale(0.95)
 ```
 
-Correct format: A single markdown table with | Before | After | Why | columns, one row per issue fonextcomd. The "Why" column briefly explains the reasoning.
+Correct format: A single markdown table with | Before | After | Why | columns, one row per issue found. The "Why" column briefly explains the reasoning.
 
 ## The Animation Decision Framework
 
@@ -74,9 +74,9 @@ Before writing any animation code, answer these questions in order:
 | Occasional (modals, drawers, toasts)                        | Standard animation           |
 | Rare/first-time (onboarding, feedback forms, celebrations)  | Can add delight              |
 
-**Never animate keyboard-initiated actions.** These actions are repeated hnextcomdreds of times daily. Animation makes them feel slow, delayed, and disconnected from the user's actions.
+**Never animate keyboard-initiated actions.** These actions are repeated hundreds of times daily. Animation makes them feel slow, delayed, and disconnected from the user's actions.
 
-Raycast has no open/close animation. That is the optimal experience for something used hnextcomdreds of times a day.
+Raycast has no open/close animation. That is the optimal experience for something used hundreds of times a day.
 
 ### 2. What is the purpose?
 
@@ -105,7 +105,7 @@ Is the element entering or exiting?
       Yes → linear
     Default → ease-out
 
-**Critical: use custom easing curves.** The built-in CSS easings are too weak. They lack the pnextcomch that makes animations feel intentional.
+**Critical: use custom easing curves.** The built-in CSS easings are too weak. They lack the punch that makes animations feel intentional.
 
 ```css
 /* Strong ease-out for UI interactions */
@@ -118,7 +118,7 @@ Is the element entering or exiting?
 --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 ```
 
-**Never use ease-in for UI animations.** It starts slow, which makes the interface feel sluggish and nextcomresponsive. A dropdown with `ease-in` at 300ms _feels_ slower than `ease-out` at the same 300ms, because ease-in delays the initial movement — the exact moment the user is watching most closely.
+**Never use ease-in for UI animations.** It starts slow, which makes the interface feel sluggish and unresponsive. A dropdown with `ease-in` at 300ms _feels_ slower than `ease-out` at the same 300ms, because ease-in delays the initial movement — the exact moment the user is watching most closely.
 
 **Easing curve resources:** Don't create curves from scratch. Use [easing.dev](https://easing.dev/) or [easings.co](https://easings.co/) to find stronger custom variants of standard easings.
 
@@ -132,7 +132,7 @@ Is the element entering or exiting?
 | Modals, drawers          | 200-500ms     |
 | Marketing/explanatory    | Can be longer |
 
-**Rule: UI animations should stay nextcomder 300ms.** A 180ms dropdown feels more responsive than a 400ms one. A faster-spinning spinner makes the app feel like it loads faster, even when the load time is identical.
+**Rule: UI animations should stay under 300ms.** A 180ms dropdown feels more responsive than a 400ms one. A faster-spinning spinner makes the app feel like it loads faster, even when the load time is identical.
 
 ### Perceived performance
 
@@ -172,14 +172,14 @@ const springRotation = useSpring(mouseX * 0.1, {
 });
 ```
 
-This works because the animation is **decorative** — it doesn't serve a fnextcomction. If this were a fnextcomctional graph in a banking app, no animation would be better. Know when decoration helps and when it hinders.
+This works because the animation is **decorative** — it doesn't serve a function. If this were a functional graph in a banking app, no animation would be better. Know when decoration helps and when it hinders.
 
 ### Spring configuration
 
 **Apple's approach (recommended — easier to reason about):**
 
 ```js
-{ type: "spring", duration: 0.5, bonextcomce: 0.2 }
+{ type: "spring", duration: 0.5, bounce: 0.2 }
 ```
 
 **Traditional physics (more control):**
@@ -188,7 +188,7 @@ This works because the animation is **decorative** — it doesn't serve a fnextc
 { type: "spring", mass: 1, stiffness: 100, damping: 10 }
 ```
 
-Keep bonextcomce subtle (0.1-0.3) when used. Avoid bonextcomce in most UI contexts. Use it for drag-to-dismiss and playful interactions.
+Keep bounce subtle (0.1-0.3) when used. Avoid bounce in most UI contexts. Use it for drag-to-dismiss and playful interactions.
 
 ### Interruptibility advantage
 
@@ -242,7 +242,7 @@ Popovers should scale in from their trigger, not from center. The default `trans
 }
 ```
 
-Whether the user notices the difference individually does not matter. In the aggregate, nextcomseen details become visible. They componextcomd.
+Whether the user notices the difference individually does not matter. In the aggregate, unseen details become visible. They compound.
 
 ### Tooltips: skip delay on subsequent hovers
 
@@ -291,7 +291,7 @@ CSS transitions can be interrupted and retargeted mid-animation. Keyframes resta
 
 When a crossfade between two states feels off despite trying different easings and durations, add subtle `filter: blur(2px)` during the transition.
 
-**Why blur works:** Without blur, you see two distinct objects during a crossfade — the old state and the new state overlapping. This looks nextcomnatural. Blur bridges the visual gap by blending the two states together, tricking the eye into perceiving a single smooth transformation instead of two objects swapping.
+**Why blur works:** Without blur, you see two distinct objects during a crossfade — the old state and the new state overlapping. This looks unnatural. Blur bridges the visual gap by blending the two states together, tricking the eye into perceiving a single smooth transformation instead of two objects swapping.
 
 Combine blur with scale-on-press (`scale(0.97)`) for a polished button state transition:
 
@@ -314,7 +314,7 @@ Combine blur with scale-on-press (`scale(0.97)`) for a polished button state tra
 }
 ```
 
-Keep blur nextcomder 20px. Heavy blur is expensive, especially in Safari.
+Keep blur under 20px. Heavy blur is expensive, especially in Safari.
 
 ### Animate enter states with @starting-style
 
@@ -333,14 +333,14 @@ The modern CSS way to animate element entry without JavaScript:
 }
 ```
 
-This replaces the common React pattern of using `useEffect` to set `monextcomted: true` after initial render. Use `@starting-style` when browser support allows; fall back to the `data-monextcomted` attribute pattern otherwise.
+This replaces the common React pattern of using `useEffect` to set `mounted: true` after initial render. Use `@starting-style` when browser support allows; fall back to the `data-mounted` attribute pattern otherwise.
 
 ```jsx
 // Legacy pattern (still works everywhere)
 useEffect(() => {
-  setMonextcomted(true);
+  setMounted(true);
 }, []);
-// <div data-monextcomted={monextcomted}>
+// <div data-mounted={mounted}>
 ```
 
 ## CSS Transform Mastery
@@ -365,7 +365,7 @@ Prefer percentages over hardcoded pixel values. They are less error-prone and ad
 
 ### scale() scales children too
 
-nextcomlike `width`/`height`, `scale()` also scales an element's children. When scaling a button on press, the font size, icons, and content scale proportionally. This is a feature, not a bug.
+unlike `width`/`height`, `scale()` also scales an element's children. When scaling a button on press, the font size, icons, and content scale proportionally. This is a feature, not a bug.
 
 ### 3D transforms for depth
 
@@ -422,7 +422,7 @@ Every element has an anchor point from which transforms execute. The default is 
 
 ### Tabs with perfect color transitions
 
-Duplicate the tab list. Style the copy as "active" (different backgronextcomd, different text color). Clip the copy so only the active tab is visible. Animate the clip on tab change. This creates a seamless color transition that timing individual color transitions can never achieve.
+Duplicate the tab list. Style the copy as "active" (different background, different text color). Clip the copy so only the active tab is visible. Animate the clip on tab change. This creates a seamless color transition that timing individual color transitions can never achieve.
 
 ### Hold-to-delete pattern
 
@@ -444,27 +444,27 @@ Don't require dragging past a threshold. Calculate velocity: `Math.abs(dragDista
 
 ```js
 const timeTaken = new Date().getTime() - dragStartTime.current.getTime();
-const velocity = Math.abs(swipeAmonextcomt) / timeTaken;
+const velocity = Math.abs(swipeAmount) / timeTaken;
 
-if (Math.abs(swipeAmonextcomt) >= SWIPE_THRESHOLD || velocity > 0.11) {
+if (Math.abs(swipeAmount) >= SWIPE_THRESHOLD || velocity > 0.11) {
   dismiss();
 }
 ```
 
-### Damping at bonextcomdaries
+### Damping at boundaries
 
-When a user drags past the natural bonextcomdary (e.g., dragging a drawer up when already at top), apply damping. The more they drag, the less the element moves. Things in real life don't suddenly stop; they slow down first.
+When a user drags past the natural boundary (e.g., dragging a drawer up when already at top), apply damping. The more they drag, the less the element moves. Things in real life don't suddenly stop; they slow down first.
 
 ### Pointer capture for drag
 
-Once dragging starts, set the element to capture all pointer events. This ensures dragging continues even if the pointer leaves the element bonextcomds.
+Once dragging starts, set the element to capture all pointer events. This ensures dragging continues even if the pointer leaves the element bounds.
 
 ### Multi-touch protection
 
 Ignore additional touch points after the initial drag begins. Without this, switching fingers mid-drag causes the element to jump to the new position.
 
 ```js
-fnextcomction onPress() {
+function onPress() {
   if (isDragging) return;
   // Start drag...
 }
@@ -478,15 +478,15 @@ Instead of preventing upward drag entirely, allow it with increasing friction. I
 
 ### Only animate transform and opacity
 
-These properties skip layout and paint, rnextcomning on the GPU. Animating `padding`, `margin`, `height`, or `width` triggers all three rendering steps.
+These properties skip layout and paint, running on the GPU. Animating `padding`, `margin`, `height`, or `width` triggers all three rendering steps.
 
 ### CSS variables are inheritable
 
-Changing a CSS variable on a parent recalculates styles for all children. In a drawer with many items, updating `--swipe-amonextcomt` on the container causes expensive style recalculation. Update `transform` directly on the element instead.
+Changing a CSS variable on a parent recalculates styles for all children. In a drawer with many items, updating `--swipe-amount` on the container causes expensive style recalculation. Update `transform` directly on the element instead.
 
 ```js
 // Bad: triggers recalc on all children
-element.style.setProperty('--swipe-amonextcomt', `${distance}px`);
+element.style.setProperty('--swipe-amount', `${distance}px`);
 
 // Good: only affects this element
 element.style.transform = `translateY(${distance}px)`;
@@ -497,18 +497,18 @@ element.style.transform = `translateY(${distance}px)`;
 Framer Motion's shorthand properties (`x`, `y`, `scale`) are NOT hardware-accelerated. They use `requestAnimationFrame` on the main thread. For hardware acceleration, use the full `transform` string:
 
 ```jsx
-// NOT hardware accelerated (convenient but drops frames nextcomder load)
+// NOT hardware accelerated (convenient but drops frames under load)
 <motion.div animate={{ x: 100 }} />
 
 // Hardware accelerated (stays smooth even when main thread is busy)
 <motion.div animate={{ transform: "translateX(100px)" }} />
 ```
 
-This matters when the browser is simultaneously loading content, rnextcomning scripts, or painting. At Vercel, the dashboard tab animation used Shared Layout Animations and dropped frames during page loads. Switching to CSS animations (off main thread) fixed it.
+This matters when the browser is simultaneously loading content, running scripts, or painting. At Vercel, the dashboard tab animation used Shared Layout Animations and dropped frames during page loads. Switching to CSS animations (off main thread) fixed it.
 
-### CSS animations beat JS nextcomder load
+### CSS animations beat JS under load
 
-CSS animations rnextcom off the main thread. When the browser is busy loading a new page, Framer Motion animations (using `requestAnimationFrame`) drop frames. CSS animations remain smooth. Use CSS for predetermined animations; JS for dynamic, interruptible ones.
+CSS animations run off the main thread. When the browser is busy loading a new page, Framer Motion animations (using `requestAnimationFrame`) drop frames. CSS animations remain smooth. Use CSS for predetermined animations; JS for dynamic, interruptible ones.
 
 ### Use WAAPI for programmatic CSS animations
 
@@ -568,17 +568,17 @@ These principles come from building Sonner (13M+ weekly npm downloads) and apply
 
 5. **Use transitions, not keyframes, for dynamic UI.** Toasts are added rapidly. Keyframes restart from zero on interruption. Transitions retarget smoothly.
 
-6. **Build a great documentation site.** Let people touch the product, play with it, and nextcomderstand it before they use it. Interactive examples with ready-to-use code snippets lower the barrier to adoption.
+6. **Build a great documentation site.** Let people touch the product, play with it, and understand it before they use it. Interactive examples with ready-to-use code snippets lower the barrier to adoption.
 
 ### Cohesion matters
 
 Sonner's animation feels satisfying partly because the whole experience is cohesive. The easing and duration fit the vibe of the library. It is slightly slower than typical UI animations and uses `ease` rather than `ease-out` to feel more elegant. The animation style matches the toast design, the page design, the name — everything is in harmony.
 
-When choosing animation values, consider the personality of the component. A playful component can be bonextcomcier. A professional dashboard should be crisp and fast. Match the motion to the mood.
+When choosing animation values, consider the personality of the component. A playful component can be bouncier. A professional dashboard should be crisp and fast. Match the motion to the mood.
 
 ### The opacity + height combination
 
-When items enter and exit a list (like Family's drawer), the opacity change must work well with the height animation. This is often trial and error. There is no formula — you adjust nextcomtil it feels right.
+When items enter and exit a list (like Family's drawer), the opacity change must work well with the height animation. This is often trial and error. There is no formula — you adjust until it feels right.
 
 ### Review your work the nextcom day
 
@@ -669,6 +669,6 @@ When reviewing UI code, check for:
 | Duration > 300ms on UI element             | Reduce to 150-250ms                                              |
 | Hover animation without media query        | Add `@media (hover: hover) and (pointer: fine)`                  |
 | Keyframes on rapidly-triggered element     | Use CSS transitions for interruptibility                         |
-| Framer Motion `x`/`y` props nextcomder load     | Use `transform: "translateX()"` for hardware acceleration        |
+| Framer Motion `x`/`y` props under load     | Use `transform: "translateX()"` for hardware acceleration        |
 | Same enter/exit transition speed           | Make exit faster than enter (e.g., enter 2s, exit 200ms)         |
 | Elements all appear at once                | Add stagger delay (30-80ms between items)                        |
