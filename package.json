@@ -10,6 +10,7 @@
     "build:production": "tsc && vite build --mode production",
     "preview": "vite preview",
     "server": "node --env-file-if-exists=.env.local server.js",
+    "test:navigation": "esbuild scripts/navigation-logic.test.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/navigation-logic.test.mjs && node node_modules/.cache/navigation-logic.test.mjs",
     "test:fixtures": "esbuild scripts/fixture-logic.test.ts --bundle --platform=node --format=esm --loader:.json=json --outfile=node_modules/.cache/fixture-logic.test.mjs && node node_modules/.cache/fixture-logic.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\""

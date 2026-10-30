@@ -54,6 +54,7 @@ import { Input } from "./components/ui/input";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { apiUrl } from "./lib/api";
 import { EntityDetail, type InfoRow } from "./components/entity-detail";
+import { NavigationPanel, type NavDestination } from "./components/navigation-panel";
 import { useSavedItems } from "./lib/use-saved-items";
 import {
   createVehicle3DLayer,
@@ -828,6 +829,7 @@ export default function App() {
   // Inputs stay instant; list filtering runs at lower priority so typing never stalls.
   const deferredSearch = useDeferredValue(search);
   const [waypoints, setWaypoints] = useState(["Моє місцезнаходження", ""]);
+  const [navDestination, setNavDestination] = useState<NavDestination | null>(null);
 
   useEffect(() => {
     const dialog = cityLaunchDialogRef.current;
@@ -2551,6 +2553,8 @@ export default function App() {
     setSelectedPlace(null);
     setCityPageOpen(false);
     setWaypoints((current) => [current[0] || "Моє місцезнаходження", placeName]);
+    // [lng, lat] from MapLibre, so the panel gets the destination in lat/lng order.
+    setNavDestination({ name: placeName, lat: coordinates[1], lng: coordinates[0] });
     // Lower the mobile sheet so the pinned destination is visible above it.
     if (isMobileLayout) sheet.setDetent("half");
   };
@@ -3482,6 +3486,13 @@ export default function App() {
               )}
             </section>
           </section>
+        )}
+        {navDestination && (
+          <NavigationPanel
+            map={mapRef.current}
+            destination={navDestination}
+            onClose={() => setNavDestination(null)}
+          />
         )}
         {selectedPlace && (
           <section className="inspector place-inspector">

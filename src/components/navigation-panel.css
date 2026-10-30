@@ -1,0 +1,157 @@
+/* Turn-by-turn panel. Colors and radii come from the tokens in src/index.css (DESIGN.md §2, §4). */
+.nav-panel {
+  position: fixed;
+  inset-inline-start: 16px;
+  bottom: 16px;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(72vh, 640px);
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-raised);
+}
+
+.nav-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -16px -16px 0;
+  padding: 14px 16px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.nav-banner-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.nav-banner-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nav-banner-distance {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.nav-banner-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.nav-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nav-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nav-title strong {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.nav-eyebrow,
+.nav-meta,
+.nav-step-distance {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.nav-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nav-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 56px;
+}
+
+.nav-eta {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.nav-actions {
+  display: flex;
+}
+
+.nav-actions > * {
+  flex: 1;
+}
+
+.nav-steps {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.nav-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-step-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--secondary);
+}
+
+.nav-step-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .nav-panel {
+    inset-inline: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 60vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-panel * {
+    transition: none;
+  }
+}
