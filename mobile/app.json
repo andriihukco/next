@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Eway",
+    "slug": "eway-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.eway.lviv"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Геолокація показує вас на маршруті під час прогулянки."
+        }
+      ]
+    ],
+    "scheme": "eway",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
