@@ -38,6 +38,7 @@ import { useDevRoute } from "./lib/dev-tools/route";
 import { loadSupabaseForAuthRedirect, usePasswordRecovery } from "./lib/password-recovery";
 import { useMediaQuery } from "./lib/use-media-query";
 import { useSavedItems } from "./lib/use-saved-items";
+import { useMapLayerPrefs } from "./lib/map-layers";
 
 export default function App() {
   const devToolsActive = useDevRoute();
@@ -60,6 +61,7 @@ export default function App() {
   });
   const { mapRef, mapReady } = map;
   const places = useCityPlaces(mapRef, activeView, selection.activeViewRef);
+  const mapLayerPrefs = useMapLayerPrefs();
   const geo = useGeolocation(mapRef, feed.shelters);
   const stopDetails = useStopDetails(mapRef, mapReady, selectedStop, map.terrainEnabled, feed.vehicles, geo.userLocation);
   const buildingModels = useBuildingModels(selectedPlace?.id);
@@ -72,7 +74,6 @@ export default function App() {
   const [cityPageOpen, setCityPageOpen] = useState(false);
   const cityPageBackRef = useRef<() => void>(() => setCityPageOpen(false));
   const [mapSettingsOpen, setMapSettingsOpen] = useState(false);
-  const mapSettingsRef = useRef<HTMLDivElement>(null);
   const [airAlertExpanded, setAirAlertExpanded] = useState(false);
   const [search, setSearch] = useState("");
   // Inputs stay instant; list filtering runs at lower priority so typing never stalls.
@@ -128,8 +129,8 @@ export default function App() {
     vehicles: feed.vehicles,
     selectedVehicle,
     stops: feed.stops,
-    mapPlaces: places.mapCityPlaces,
-    layerCategories: places.mapLayerCategories,
+    mapPlaces: places.cityPlaces,
+    layerPrefs: mapLayerPrefs,
     selectedPlaceId: selectedPlace?.id,
     userLocation: geo.userLocation,
     shelters: feed.shelters,
@@ -138,18 +139,6 @@ export default function App() {
     buildingModels: buildingModels.models,
     buildingModelPreview: buildingModels.preview,
   });
-
-  // Close the map settings popover on an outside click.
-  useEffect(() => {
-    if (!mapSettingsOpen) return;
-    const handleOutside = (event: MouseEvent): void => {
-      if (mapSettingsRef.current && !mapSettingsRef.current.contains(event.target as Node)) {
-        setMapSettingsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [mapSettingsOpen]);
 
   const headerControls = (
     <BrandHeaderControls
@@ -214,7 +203,6 @@ export default function App() {
             placesStatus={places.cityPlacesStatus}
             placesError={places.cityPlacesError}
             onRetryPlaces={places.refreshCityPlaces}
-            onPlacesChange={places.setMapCityPlaces}
             cityEvents={places.eventData}
             transportVehicles={feed.vehicles}
             transitDataStatus={feed.transitDataStatus}
@@ -352,12 +340,8 @@ export default function App() {
         onZoomIn={() => mapRef.current?.zoomIn()}
         onZoomOut={() => mapRef.current?.zoomOut()}
         onLocate={geo.requestLocation}
-        settingsRef={mapSettingsRef}
         settingsOpen={mapSettingsOpen}
         onToggleSettings={() => setMapSettingsOpen((open) => !open)}
-        layerCategories={places.mapLayerCategories}
-        onToggleLayerCategory={places.toggleLayerCategory}
-        onClearLayers={places.clearLayerCategories}
       />
       {devToolsActive && activeView !== "admin" && (
         <Suspense fallback={null}>

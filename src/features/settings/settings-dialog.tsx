@@ -34,7 +34,6 @@ import { NotificationsSection, usePushSettings } from "./notifications-section";
 import { isLegalSlug } from "../../legal/legal-content";
 
 type SettingsDialogProps = {
-  cityName: string;
   onClose: () => void;
   onRequestLocation: () => void;
   onReplayOnboarding: () => void;

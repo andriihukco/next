@@ -11,8 +11,8 @@ import type { LoadStatus } from "./use-transit-feed";
 
 
 /**
- * Places read from the visible OSM tiles (the city list), places shown as pins on the map,
- * and the map layer filter. Events stay here until they get their own source;
+ * Places read from the visible OSM tiles. The city guide and the map pins both read this list;
+ * the map applies its own layer filter (src/lib/map-layers.ts). Events stay here until they get their own source;
  * until then only development builds have (sample) events.
  */
 export function useCityPlaces(

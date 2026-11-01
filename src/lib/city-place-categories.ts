@@ -361,9 +361,12 @@ export const cityPlaceIcons: Record<CityPlaceCategory, string> = {
   "car-sharing": "directions_car",
 };
 
+/** Groups are the unit of map clustering and bulk show/hide (DESIGN.md §5, map layers). */
+export const CITY_PLACE_GROUP_OTHER = "other";
+
 /**
  * Groups for the places picker (Google Maps "Directory" style): pick a group, then a
- * category inside it. Every category belongs to one group; anything not listed is «Місто».
+ * category inside it. Every category belongs to one group; anything not listed is «Інше».
  */
 export const cityPlaceGroups: { id: string; label: string; icon: string; categories: CityPlaceCategory[] }[] = [
   { id: "eat", label: "Їжа", icon: "restaurant", categories: ["food", "groceries", "nightlife", "market"] },
@@ -413,9 +416,6 @@ export const cityPlaceGroups: { id: string; label: string; icon: string; categor
   },
   { id: CITY_PLACE_GROUP_OTHER, label: "Інше", icon: "more_horiz", categories: [] },
 ];
-
-/** Groups are the unit of map clustering and bulk show/hide (DESIGN.md §5, map layers). */
-export const CITY_PLACE_GROUP_OTHER = "other";
 
 export function cityPlaceGroupOf(category: CityPlaceCategory): string {
   return cityPlaceGroups.find((group) => group.categories.includes(category))?.id ?? CITY_PLACE_GROUP_OTHER;

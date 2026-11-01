@@ -56,7 +56,6 @@ export type CityGuideProps = {
   placesStatus: "loading" | "ready" | "error";
   placesError: string;
   onRetryPlaces: () => void;
-  onPlacesChange: (places: CityPlace[]) => void;
   cityEvents: CityEvent[];
   transportVehicles: CityTransitVehicle[];
   transitDataStatus: "loading" | "ready" | "error";

@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode, type RefObject } from "react";
+import { AnimatePresence } from "motion/react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { MaterialIcon } from "./ui/material-icon";
 import { Switch } from "./ui/switch";
-import { Toggle } from "./ui/toggle";
 import { CENTER } from "../lib/app-constants";
-import { CITY_PLACE_CATEGORY_COLORS, cityPlaceCategories, type CityPlaceCategory } from "../lib/city-places";
+import { MapLayersPanel } from "./map-layers-panel";
+import { MapPanel } from "./map-panel";
+import { useMediaQuery } from "../lib/use-media-query";
+import { useMapLayerPrefs } from "../lib/map-layers";
 import { satellitePreviewUrl, type MapStyleMode } from "../lib/map-style-mode";
 
 /** Button steps: one press turns the view 15° and tilts it 10°. */
@@ -39,12 +42,8 @@ type MapControlsProps = {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onLocate: () => void;
-  settingsRef: RefObject<HTMLDivElement | null>;
   settingsOpen: boolean;
   onToggleSettings: () => void;
-  layerCategories: Set<CityPlaceCategory>;
-  onToggleLayerCategory: (id: CityPlaceCategory) => void;
-  onClearLayers: () => void;
 };
 
 /** Closes a popover on an outside click or Escape. Runs only while the popover is open. */
@@ -84,13 +83,13 @@ export function MapControls({
   onZoomIn,
   onZoomOut,
   onLocate,
-  settingsRef,
   settingsOpen,
   onToggleSettings,
-  layerCategories,
-  onToggleLayerCategory,
-  onClearLayers,
 }: MapControlsProps) {
+  const layerPrefs = useMapLayerPrefs();
+  const hiddenLayerCount = layerPrefs.hiddenCategories.length + layerPrefs.hiddenTransport.length;
+  // On mobile every map popover becomes a bottom sheet (DESIGN.md §5).
+  const mobile = useMediaQuery("(max-width: 800px)");
   const [styleOpen, setStyleOpen] = useState(false);
   const styleRef = useRef<HTMLDivElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -138,10 +137,15 @@ export function MapControls({
           >
             <MaterialIcon name={MAP_STYLE_OPTIONS.find((option) => option.mode === mapStyleMode)?.icon ?? "map"} size={20} />
           </Button>
-          {styleOpen && (
-            <div className="map-settings-popover map-style-popover" role="dialog" aria-label="Тип мапи">
-              <div className="map-style-options" role="group" aria-label="Тип мапи">
-                {MAP_STYLE_OPTIONS.map((option) => {
+          <MapPopoverSwitch
+            open={styleOpen}
+            mobile={mobile}
+            title="Тип мапи"
+            className="map-style-popover"
+            onClose={() => setStyleOpen(false)}
+          >
+            <div className="map-style-options" role="group" aria-label="Тип мапи">
+              {MAP_STYLE_OPTIONS.map((option) => {
                   const selected = option.mode === mapStyleMode;
                   const isImagery = option.mode !== "standard";
                   return (
@@ -163,8 +167,7 @@ export function MapControls({
                   );
                 })}
               </div>
-            </div>
-          )}
+          </MapPopoverSwitch>
         </div>
         <Button
           type="button"
@@ -215,8 +218,13 @@ export function MapControls({
           >
             <MaterialIcon name="360" size={20} />
           </Button>
-          {cameraOpen && (
-            <div className="map-settings-popover map-camera-popover" role="dialog" aria-label="Камера">
+          <MapPopoverSwitch
+            open={cameraOpen}
+            mobile={mobile}
+            title="Камера"
+            className="map-camera-popover"
+            onClose={() => setCameraOpen(false)}
+          >
               <div className="map-settings-header">
                 <span className="map-settings-title">Камера</span>
                 <div className="map-camera-3d">
@@ -260,8 +268,7 @@ export function MapControls({
                 <span className="map-camera-label map-camera-label-bottom" aria-hidden="true">Вид зверху</span>
               </div>
               <p className="map-settings-hint">Перетягніть точку в центрі, щоб повертати й нахиляти разом.</p>
-            </div>
-          )}
+          </MapPopoverSwitch>
         </div>
       </div>
 
@@ -271,7 +278,7 @@ export function MapControls({
       </div>
 
       <div className="map-control-set" role="group" aria-label="Шари">
-        <div className="map-settings-wrap" ref={settingsRef}>
+        <div className="map-settings-wrap">
           <Button
             type="button"
             variant="ghost"
@@ -283,59 +290,44 @@ export function MapControls({
             onClick={() => onToggleSettings()}
           >
             <MaterialIcon name="layers" size={20} />
-            {layerCategories.size > 0 && (
-              <span className="map-settings-badge">{layerCategories.size}</span>
-            )}
+            {hiddenLayerCount > 0 && <span className="map-settings-badge" aria-hidden="true" />}
           </Button>
-          {settingsOpen && (
-            <div
-              className="map-settings-popover"
-              role="dialog"
-              aria-label="Шари мапи"
-            >
-              <div className="map-settings-header">
-                <span className="map-settings-title">Що показувати</span>
-                {layerCategories.size > 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="map-settings-clear"
-                    onClick={onClearLayers}
-                  >
-                    Скинути
-                  </Button>
-                )}
-              </div>
-              <p className="map-settings-hint">
-                До 3 категорій одночасно
-              </p>
-              <div className="map-settings-chips" role="group" aria-label="Категорії місць">
-                {cityPlaceCategories.map((cat) => {
-                  const isActive = layerCategories.has(cat.id);
-                  const atLimit = !isActive && layerCategories.size >= 3;
-                  return (
-                    <Toggle variant="pill"
-                      key={cat.id}
-                      size="sm"
-
-                      disabled={atLimit}
-                      className="map-layer-chip"
-                      style={{ "--chip-color": CITY_PLACE_CATEGORY_COLORS[cat.id] } as React.CSSProperties}
-                      onClick={() => onToggleLayerCategory(cat.id)} pressed={isActive}>
-                      <span
-                        className="map-layer-chip-dot"
-                        aria-hidden="true"
-                      />
-                      {cat.label}
-                    </Toggle>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <AnimatePresence>{settingsOpen && <MapLayersPanel onClose={onToggleSettings} />}</AnimatePresence>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** A map popover on desktop; the same content as a map panel sheet on mobile. */
+function MapPopoverSwitch({
+  open,
+  mobile,
+  title,
+  className,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  mobile: boolean;
+  title: string;
+  className: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (!open) return null;
+  if (mobile) {
+    return (
+      <AnimatePresence>
+        <MapPanel title={title} onClose={onClose}>
+          {children}
+        </MapPanel>
+      </AnimatePresence>
+    );
+  }
+  return (
+    <div className={`map-settings-popover ${className}`} role="dialog" aria-label={title}>
+      {children}
     </div>
   );
 }

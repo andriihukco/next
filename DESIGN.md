@@ -278,7 +278,7 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
 
 ### 2f. Settings icon tiles (proposed 2026-11-01)
 
-- Each settings row icon sits on a 36px square with a top-to-bottom gradient (the top color, then a slightly darker one of the same hue). The glyph is `--tile-glyph` (white).
+- Each settings row icon sits on a 28px square on web (36px on mobile until the Expo app follows) with a top-to-bottom gradient (the top color, then a slightly darker one of the same hue). The glyph is `--tile-glyph` (white).
 - The color is chosen by a stable hash of the row's key (`src/lib/icon-tiles.ts`, `mobile/src/lib/icon-tiles.ts`), so each row has its own color and the list does not change between renders. Only the nine tile colors below are used. Do not use the brand green for every row.
 - Web: `ListRow tile="…"` in `src/components/ui/detail-layout.tsx`. Mobile: `ListRow` and `SwitchRow` with `iconTile`, drawn with `expo-linear-gradient`. Both use the same values from `design/tokens.json` (`iconTiles`), checked by `npm run design:tokens`.
 - Tiles keep their colors in dark mode (accent rule, §2b). The white glyph has at least 3:1 contrast on each tile.
@@ -315,6 +315,7 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
 
 - Headings: letter-spacing `-0.02em` to `-0.04em` at 22px and up. Body text uses default tracking.
 - Do not add a new font size outside this scale.
+- **Appearance presets (Вигляд, Settings → Вигляд; `src/lib/appearance.ts`, `src/lib/appearance.css`).** Text size S / M / L overrides the scale's values, with the same steps: caption 11/12/13, small 13/14/15, body 14/15/16, title 16/17/18, inspector 20/22/24, display 26/28/30. Input stays 16px. UI font is one of five Cyrillic sans-serif faces: Manrope (default), Inter, Golos Text, Onest, PT Sans. Serif faces are not offered. The choice sets `--font-sans`.
 
 ## 4. Spacing, radius, elevation
 
@@ -329,6 +330,7 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
 - Bottom sheets (mobile) round only their top corners, at 8px.
 - Shadows: two tokens only: `--shadow-raised` for floating map controls and tooltips, `--shadow-overlay` for modals, inspectors, and sheets.
 - Stable control sizes: 36px minimum for controls, 44px minimum touch target on mobile.
+- Density (Вигляд): Компактна or Просторна. Compact sets row padding to 4px and section padding to 10px; comfortable keeps 8px and 16px (`--density-row`, `--density-section`).
 
 ## 5. Layout
 
@@ -343,7 +345,7 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
 ## 6. Icons
 
 - One icon family: **Material Symbols Rounded**, rendered only through `MaterialIcon` (`src/components/ui/material-icon.tsx`).
-- Default is filled off, weight 400. Use filled (`FILL 1`) only for the selected/active state of a single icon.
+- Default is filled off, weight 400. Use filled (`FILL 1`) only for the selected/active state of a single icon. Exception: the icon on a settings tile (§2f) is always filled, because the tile is the active surface.
 - Category orb icons (`CategoryTiles`) use weight 300, filled or not. The font loads the 200–700 range for this.
 - `MaterialIcon` takes `filled` for the active state. Icons inside a control with `aria-pressed`, `aria-selected`, or `aria-current="page"` fill automatically. Only the Rounded font is loaded.
 - Map pins (category places) draw the outlined glyph. The selected pin draws the filled glyph from a pinned FILL 1 copy of the font (`src/lib/material-symbols-filled.ts`, canvas cannot set the FILL axis). Pins have no light halo behind the glyph.
@@ -396,7 +398,8 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
   - **Compass** (`map-compass`): a round control outside the groups, like Apple Maps. A red north needle turns with the map bearing. Click resets the bearing to north. It is always visible.
   - **Camera** (`map-camera-btn`, icon `360`, Material Symbols Rounded): opens a panel. The header has a «3D» switch (`map-camera-3d`), which turns 3D on or off. Below it is the orbit pad (`map-camera-pad`): each arrow has a visible label beside it. Up «Нахил до горизонту» and down «Вид зверху» tilt the view by 10°. Left «Повернути ліворуч» and right «Повернути праворуч» turn it by 15°. The center dot is a drag handle: horizontal drag turns, vertical drag tilts. The panel closes on an outside click or Escape. It is available on all sizes. On mobile, opening it drops the rail sheet to peek, because the sheet would otherwise cover the panel.
   - **Zoom**: plus and minus icons. Desktop only. Mobile hides the zoom pair because pinch covers it.
-  - **Layers** (`map-settings-btn`): the place category popover. Pill `Toggle` (size `sm`) with `aria-pressed`. It opens beside the column.
+  - **Layers** (`map-settings-btn`): «Що показувати». A left sidebar on desktop and a bottom sheet on mobile (`src/components/map-panel.tsx`, `map-layers-panel.tsx`). Transport switches first (vehicles, stops), then one row per place group. The group switch shows or hides all its categories; the chevron opens the categories for one-by-one pills. «Показати все» and «Сховати все» act on every category. Everything is shown by default. Stored on the device (`src/lib/map-layers.ts`). The map clusters each group separately, so one bubble never mixes groups; cluster bubbles take their group's first category color. Shelters stay under the air-alert rule, not the switches.
+  - **Mobile popovers** (map type, camera) open as the same bottom sheet on screens up to 800px. Tooltips are native titles and do not open on touch.
   - Tooltips name the action in full. Shift+arrows rotate and tilt through the MapLibre keyboard handler.
 - Vehicle and stop details open in the contextual inspector. Route selection highlights its GTFS geometry.
 - Named buildings and places open dismissible detail inspectors. Show only attributes present in the source data.

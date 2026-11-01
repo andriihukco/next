@@ -53,7 +53,6 @@ export function CityGuide({
   placesStatus,
   placesError,
   onRetryPlaces,
-  onPlacesChange,
   cityEvents,
   transportVehicles,
   transitDataStatus,
@@ -156,28 +155,6 @@ export function CityGuide({
     select(id);
     onPageNavigationChange(true, returnToSection);
   };
-
-  useEffect(() => {
-    if (placesStatus === "ready") {
-      const filteredPlaces = (() => {
-        switch (section) {
-          case "places":
-            return visiblePlaces;
-          case "market":
-            return places.filter((p) => p.category === "market");
-          case "parking":
-            return places.filter((p) => p.category === "parking");
-          case "fuel":
-            return places.filter((p) => p.category === "fuel");
-          case "charging":
-            return places.filter((p) => p.category === "charging-station");
-          default:
-            return [];
-        }
-      })();
-      onPlacesChange(filteredPlaces);
-    }
-  }, [onPlacesChange, placesStatus, section, visiblePlaces, places]);
 
   useEffect(() => {
     if (!userLocation && placeCategory === "nearby") {
