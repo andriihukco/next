@@ -214,4 +214,9 @@ export const LEGAL_PAGES: Record<LegalSlug, LegalPageContent> = {
   },
 };
 
-export const isLegalSlug = (value: string): value is LegalSlug => value in LEGAL_PAGES;
+/** A page goes live once no «[потрібно: …]» marker is left in it (D-D). Development shows all of them. */
+export const PUBLISHED_LEGAL: LegalSlug[] = LEGAL_ORDER.filter(
+  (slug) => import.meta.env.DEV || !JSON.stringify(LEGAL_PAGES[slug]).includes("[потрібно:"),
+);
+
+export const isLegalSlug = (value: string): value is LegalSlug => (PUBLISHED_LEGAL as string[]).includes(value);

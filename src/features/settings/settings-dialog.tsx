@@ -22,6 +22,7 @@ import "./settings.css";
 import { PERMISSION_LABEL, useGeolocationPermission } from "./settings-permissions";
 import { ProfileForm } from "./profile-form";
 import { NotificationsSection, usePushSettings } from "./notifications-section";
+import { isLegalSlug } from "../../legal/legal-content";
 
 type SettingsDialogProps = {
   cityName: string;
@@ -42,7 +43,7 @@ const ABOUT_LINKS = [
   { href: "/privacy", icon: "shield_person", title: "Політика конфіденційності" },
   { href: "/sources", icon: "dataset", title: "Джерела даних" },
   { href: "/accessibility", icon: "accessibility_new", title: "Доступність" },
-] as const;
+].filter(({ href }) => href === "/updates" || isLegalSlug(href.slice(1)));
 
 
 /** Profile and settings. On mobile it is a full-height sheet; on desktop a side panel. */

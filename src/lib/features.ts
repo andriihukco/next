@@ -10,6 +10,13 @@ import type { CityDirectoryListing, CityEvent } from "./listing-types";
 export const SERVICES_ENABLED: boolean =
   import.meta.env.DEV || import.meta.env.VITE_FEATURE_SERVICES === "1";
 
+/**
+ * «Видалити обліковий запис». Off in builds until it is tested on a non-production Supabase
+ * project; the server also needs ACCOUNT_DELETION_ENABLED=true.
+ */
+export const ACCOUNT_DELETION_ENABLED: boolean =
+  import.meta.env.DEV || import.meta.env.VITE_FEATURE_ACCOUNT_DELETION === "1";
+
 /** Sample events, jobs, homes and the modelled ridership chart. Development only. */
 export const SAMPLE_CONTENT_ENABLED: boolean = import.meta.env.DEV;
 

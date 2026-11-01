@@ -4,6 +4,8 @@
 import { supabaseAdmin } from './supabase-admin.mjs';
 
 export async function deleteAccount(accessToken) {
+  // Off until deletion is tested on a non-production Supabase project.
+  if (process.env.ACCOUNT_DELETION_ENABLED !== 'true') return { status: 404, body: { error: 'Not found' } };
   const db = supabaseAdmin();
   if (!db) return { status: 503, body: { error: 'Accounts are not configured on the server.' } };
   if (!accessToken) return { status: 401, body: { error: 'Sign in to delete your account.' } };

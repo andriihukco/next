@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   readonly VITE_TELEGRAM_BOT_ID?: string;
   /** "1" shows the demo service flows in a non-development build. */
   readonly VITE_FEATURE_SERVICES?: string;
+  /** "1" shows «Видалити обліковий запис» in a non-development build. */
+  readonly VITE_FEATURE_ACCOUNT_DELETION?: string;
 }
 
 interface ImportMeta {

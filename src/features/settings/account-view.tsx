@@ -14,6 +14,8 @@ import {
 } from "../../lib/supabase";
 import { signInWithTelegram, telegramBotId } from "../../lib/telegram-auth";
 import { DeleteAccount } from "./delete-account";
+import { ACCOUNT_DELETION_ENABLED } from "../../lib/features";
+import { isLegalSlug } from "../../legal/legal-content";
 
 type Mode = "sign-in" | "sign-up" | "magic" | "reset" | "new-password";
 type Notice = { icon: string; title: string; text: string };
@@ -204,15 +206,17 @@ export function AccountView({ user, recovering, onSignOut, onSetUpProfile }: Acc
         <Button type="button" size="lg" variant="outline" onClick={onSignOut}>
           Вийти
         </Button>
-        <DeleteAccount
-          onDeleted={() =>
-            setNotice({
-              icon: "check_circle",
-              title: "Обліковий запис видалено",
-              text: "Обліковий запис і підписки на сповіщення стерто. Мапою можна користуватися й далі.",
-            })
-          }
-        />
+        {ACCOUNT_DELETION_ENABLED && (
+          <DeleteAccount
+            onDeleted={() =>
+              setNotice({
+                icon: "check_circle",
+                title: "Обліковий запис видалено",
+                text: "Обліковий запис і підписки на сповіщення стерто. Мапою можна користуватися й далі.",
+              })
+            }
+          />
+        )}
       </AccountMessage>
     );
   }
@@ -313,7 +317,7 @@ export function AccountView({ user, recovering, onSignOut, onSetUpProfile }: Acc
         <Button type="submit" size="lg" disabled={busy}>
           {busy ? "Зачекайте…" : submitLabel}
         </Button>
-        {mode === "sign-up" && (
+        {mode === "sign-up" && isLegalSlug("terms") && isLegalSlug("privacy") && (
           <p className="settings-legal-note">
             Реєструючись, ви погоджуєтеся з <a href="/terms">Умовами користування</a> і{" "}
             <a href="/privacy">Політикою конфіденційності</a>.
