@@ -11,7 +11,8 @@ Vite modes are configured separately:
 | Production | — | `npm run build:production` |
 
 Start the transit API in another terminal with `npm run server`. Development
-and staging Vite servers proxy `/api` to `http://localhost:3001`. Each mode has
+and staging Vite servers proxy `/api` to `http://localhost:3001`; set
+`DEV_API_PROXY` in `.env.local` to use another address. Each mode has
 an environment file (`.env.development`, `.env.staging`, `.env.production`)
 with `VITE_API_BASE_URL`. Leave it empty for same-origin API requests; set it
 to the API origin for a separately hosted stage or production service using
