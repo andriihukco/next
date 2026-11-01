@@ -4,7 +4,7 @@ import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
 
-export type CitySection = "transport" | "places" | "services";
+export type CitySection = "transport" | "places" | "education" | "services";
 
 /** Filled glyph for the active tab, outline glyph for the others, as in iOS tab bars. */
 const SECTIONS: {
@@ -15,6 +15,7 @@ const SECTIONS: {
 }[] = [
   { id: "transport", label: "Транспорт", filled: "directions-transit", outline: "train-variant" },
   { id: "places", label: "Місця", filled: "explore", outline: "compass-outline" },
+  { id: "education", label: "Освіта", filled: "school", outline: "school-outline" },
   { id: "services", label: "Послуги", filled: "storefront", outline: "storefront-outline" },
 ];
 
@@ -23,6 +24,7 @@ export function SectionTabs({ value, onChange }: { value: CitySection; onChange:
   const pressRefs = useRef<Record<CitySection, Animated.Value>>({
     transport: new Animated.Value(1),
     places: new Animated.Value(1),
+    education: new Animated.Value(1),
     services: new Animated.Value(1),
   }).current;
 

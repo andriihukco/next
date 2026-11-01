@@ -6,6 +6,7 @@ import { TransitSourceBanner } from "./transit-source-banner";
 import { CategoryOrbs, type TransportTab } from "./category-orbs";
 import { TransitRouteList } from "./transit-route-list";
 import { PlacesPanel } from "../places/places-panel";
+import { EducationPanel } from "../places/education-panel";
 import { ServicesPanel } from "../services/services-panel";
 import { colors, radius } from "../../lib/theme";
 import type { Vehicle } from "../../lib/transit-types";
@@ -143,6 +144,14 @@ export function TransportPanel({
             places={places}
             origin={origin}
             hasUserLocation={hasUserLocation}
+            onOpen={onOpenPlace}
+            onShowOnMap={onShowPlaceOnMap}
+            onDirections={onDirectionsToPlace}
+          />
+        ) : section === "education" ? (
+          <EducationPanel
+            places={places}
+            origin={origin}
             onOpen={onOpenPlace}
             onShowOnMap={onShowPlaceOnMap}
             onDirections={onDirectionsToPlace}

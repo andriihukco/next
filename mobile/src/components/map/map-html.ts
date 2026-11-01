@@ -1,5 +1,6 @@
 // MapLibre GL JS page for the WebView. It uses the same OpenFreeMap style as the web app,
 // so the 3D building layer is the same. Native code talks to it with JSON messages.
+import { SATELLITE_TILES } from "../../lib/map-style";
 import { VEHICLE_3D_BUNDLE_BASE64, VEHICLE_PLATE_CSS } from "./vehicle-3d.generated";
 
 export const MAP_HTML = `<!doctype html>
@@ -137,15 +138,53 @@ map.on("load", () => {
     paint: { "circle-radius": 9, "circle-color": "#0874df", "circle-stroke-color": "#ffffff", "circle-stroke-width": 3 },
   });
 
+  addSatellite();
+
   ready = true;
   for (const message of pending.splice(0)) apply(message);
   paintSelection();
   paintShelters();
   post({ type: "ready" });
   emitRegion();
+  emitCamera();
 });
 
 map.on("moveend", emitRegion);
+
+// Camera for the native compass and 3D switch, at most once per frame.
+let cameraQueued = false;
+function emitCamera() {
+  if (cameraQueued) return;
+  cameraQueued = true;
+  requestAnimationFrame(() => {
+    cameraQueued = false;
+    post({ type: "camera", bearing: map.getBearing(), pitch: map.getPitch() });
+  });
+}
+map.on("rotate", emitCamera);
+map.on("pitch", emitCamera);
+
+// Map type (web DESIGN.md §7): imagery under the base style. Standard restores the style's own
+// visibility, hybrid keeps roads and labels over imagery, satellite shows imagery only.
+const baseVisibility = {};
+function addSatellite() {
+  for (const layer of map.getStyle().layers) baseVisibility[layer.id] = (layer.layout && layer.layout.visibility) || "visible";
+  map.addSource("satellite", { type: "raster", tiles: ["${SATELLITE_TILES}"], tileSize: 256, maxzoom: 19 });
+  const first = map.getStyle().layers.find((layer) => layer.id !== "background");
+  map.addLayer({ id: "satellite-raster", type: "raster", source: "satellite", layout: { visibility: "none" } }, first && first.id);
+}
+function applyMapStyle(mode) {
+  if (!map.getLayer("satellite-raster")) return;
+  map.setLayoutProperty("satellite-raster", "visibility", mode === "standard" ? "none" : "visible");
+  for (const layer of map.getStyle().layers) {
+    if (layer.source !== "openmaptiles") continue;
+    const own = baseVisibility[layer.id] !== "none";
+    let visible = false;
+    if (mode === "standard") visible = own;
+    else if (mode === "hybrid") visible = own && (layer.type === "symbol" || (layer.type === "line" && layer.id.startsWith("road_")));
+    map.setLayoutProperty(layer.id, "visibility", visible ? "visible" : "none");
+  }
+}
 
 map.on("click", (event) => {
   const hit = map.queryRenderedFeatures(event.point, { layers: CLICKABLE })[0];
@@ -288,6 +327,16 @@ function apply(message) {
   if ("nearestShelterId" in message) {
     state.nearestShelterId = message.nearestShelterId;
     paintShelters();
+  }
+  if ("mapStyle" in message) applyMapStyle(message.mapStyle);
+  if ("resetNorth" in message) map.easeTo({ bearing: 0, duration: 250 });
+  if ("orbit" in message) {
+    const [bearingDelta, pitchDelta, duration] = message.orbit;
+    const pitch = Math.min(Math.max(map.getPitch() + pitchDelta, 0), map.getMaxPitch());
+    map.easeTo({ bearing: map.getBearing() + bearingDelta, pitch, duration });
+  }
+  if ("mode3d" in message) {
+    map.easeTo(message.mode3d ? { pitch: 50, duration: 400 } : { pitch: 0, bearing: 0, duration: 400 });
   }
 }
 

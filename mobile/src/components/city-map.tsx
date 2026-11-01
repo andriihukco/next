@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { StyleSheet } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";
 import { MAP_HTML } from "./map/map-html";
@@ -7,6 +7,17 @@ import type { Shelter } from "../lib/alerts-api";
 import type { Stop, Vehicle } from "../lib/transit-types";
 import { FLEET_COLORS } from "../lib/transit-types";
 import { arrivalsAt } from "../lib/transit-eta";
+import type { MapStyleMode } from "../lib/map-style";
+
+/** Camera commands for the map controls. Sent straight to the page, without a re-render. */
+export type MapCommands = {
+  /** Turns the bearing and tilts the pitch by degrees. Duration 0 applies at once (drags). */
+  orbit: (bearingDelta: number, pitchDelta: number, duration: number) => void;
+  resetNorth: () => void;
+  set3D: (on: boolean) => void;
+};
+
+export type MapCamera = { bearing: number; pitch: number };
 
 /** Map viewport: centre and span in degrees, used by the places query. */
 export type MapRegion = {
@@ -43,6 +54,10 @@ type Props = {
   focus: { latitude: number; longitude: number } | null;
   onSelect: (selection: Selection | null) => void;
   onRegionChangeComplete: (region: MapRegion) => void;
+  mapStyle: MapStyleMode;
+  /** Bearing and pitch, at most once per frame while the camera moves. */
+  onCamera: (camera: MapCamera) => void;
+  controller: Ref<MapCommands>;
 };
 
 type ToMap = Record<string, unknown>;
@@ -51,6 +66,7 @@ type FromMap =
   | { type: "region"; latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number }
   | { type: "select"; kind: Selection["kind"]; id: string }
   | { type: "deselect" }
+  | { type: "camera"; bearing: number; pitch: number }
   | { type: "error"; message: string };
 
 /**
@@ -70,6 +86,9 @@ export function CityMap({
   focus,
   onSelect,
   onRegionChangeComplete,
+  mapStyle,
+  onCamera,
+  controller,
 }: Props) {
   const webRef = useRef<{ postMessage: (message: string) => void } | null>(null);
   const [ready, setReady] = useState(false);
@@ -77,6 +96,20 @@ export function CityMap({
   const send = useCallback((message: ToMap) => {
     webRef.current?.postMessage(JSON.stringify(message));
   }, []);
+
+  useImperativeHandle(
+    controller,
+    () => ({
+      orbit: (bearingDelta, pitchDelta, duration) => send({ orbit: [bearingDelta, pitchDelta, duration] }),
+      resetNorth: () => send({ resetNorth: true }),
+      set3D: (on) => send({ mode3d: on }),
+    }),
+    [send],
+  );
+
+  useEffect(() => {
+    if (ready) send({ mapStyle });
+  }, [ready, mapStyle, send]);
 
   useEffect(() => {
     if (ready) {
@@ -181,6 +214,9 @@ export function CityMap({
         break;
       case "deselect":
         onSelect(null);
+        break;
+      case "camera":
+        onCamera({ bearing: message.bearing, pitch: message.pitch });
         break;
       case "error":
         console.warn("Map error:", message.message);

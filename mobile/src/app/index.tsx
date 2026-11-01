@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import * as Location from "expo-location";
-import { CityMap, LVIV_REGION, type MapRegion, type Selection } from "../components/city-map";
+import { CityMap, LVIV_REGION, type MapCommands, type MapRegion, type Selection } from "../components/city-map";
+import { MapControls, type MapControlsHandle } from "../components/map/map-controls";
+import type { MapStyleMode } from "../lib/map-style";
 import { CitySheet, type SheetContent } from "../components/city-sheet";
 import { GlassSurface } from "../components/glass-surface";
 import { useLiveVehicles } from "../hooks/use-live-vehicles";
@@ -43,6 +45,23 @@ export default function CityScreen() {
   const [routeShape, setRouteShape] = useState<{ latitude: number; longitude: number }[] | null>(null);
   const [locating, setLocating] = useState(false);
   const [section, setSection] = useState<CitySection>("transport");
+  const [mapStyle, setMapStyle] = useState<MapStyleMode>("standard");
+  const mapCommands = useRef<MapCommands>(null);
+  const controls = useRef<MapControlsHandle>(null);
+
+  /** «Моє місцезнаходження»: asks for permission on tap, then centers the map on the user. */
+  const locate = async () => {
+    const { granted } = await Location.requestForegroundPermissionsAsync();
+    if (!granted) {
+      Alert.alert("Геолокацію вимкнено", "Дозвольте доступ до місцезнаходження в налаштуваннях телефона.");
+      return;
+    }
+    setLocating(true);
+    const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    const point = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+    setUserCoordinate(point);
+    setFocus(point);
+  };
 
   useEffect(() => {
     let active = true;
@@ -152,9 +171,20 @@ export default function CityScreen() {
         focus={focus}
         onSelect={setSelection}
         onRegionChangeComplete={setRegion}
+        mapStyle={mapStyle}
+        onCamera={(camera) => controls.current?.setCamera(camera)}
+        controller={mapCommands}
       />
 
       <MapHeader />
+
+      <MapControls
+        ref={controls}
+        map={mapCommands}
+        mapStyle={mapStyle}
+        onChangeMapStyle={setMapStyle}
+        onLocate={() => void locate()}
+      />
 
       {showShelters && alert && (
         <View style={styles.alertWrap}>
