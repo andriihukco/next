@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { MotionConfig, motion, useScroll, useSpring } from "motion/react";
 import { Button } from "../components/ui/button";
 import { BrandLogo } from "../components/ui/brand-logo";
@@ -8,20 +9,46 @@ import { LegalFooter } from "../legal/legal-footer";
 import {
   APP_HREF,
   ROUTE_D,
-  PAINS,
+  FACTS,
   STEPS,
   FEATURES,
-  BENEFITS,
   USE_CASES,
   LABELS,
   FAQ,
 } from "./landing-content";
+import { LandingLeadForm } from "./landing-lead-form";
 import { stagger, Reveal, staggerChild, StaggerGroup } from "./landing-motion";
+
+const PAGE_TITLE = "NEXTCOM — транспорт наживо й місця Львова на одній мапі";
+
+/** FAQPage structured data, so search results can show the answers (schema.org). */
+const FAQ_JSON_LD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      name: "NEXTCOM",
+      applicationCategory: "TravelApplication",
+      operatingSystem: "Web",
+      inLanguage: "uk",
+      description: "Транспорт наживо, місця й послуги Львова на одній мапі.",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "UAH" },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQ.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: { "@type": "Answer", text: item.a },
+      })),
+    },
+  ],
+});
 
 /**
  * Public entry point at `/`. The app lives at `/app` (DESIGN.md §5).
- * Structure follows AIDA (attention, interest, desire, action), with a problem →
- * solution block, three steps, use cases, a data-trust block, and objections.
+ * Apple-style product page: a centered promise over the product picture, three counted
+ * facts, product areas, use cases, steps, data trust, sign-up (leads), objections, action.
  * Copy follows DESIGN.md §1, §9, §13: no invented ratings, reviews, or numbers.
  */
 
@@ -30,6 +57,14 @@ export function LandingPage() {
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 220, damping: 40, restDelta: 0.001 });
 
+  useEffect(() => {
+    const previous = document.title;
+    document.title = PAGE_TITLE;
+    return () => {
+      document.title = previous;
+    };
+  }, []);
+
   return (
     <MotionConfig reducedMotion="user">
       <div className="landing">
@@ -37,14 +72,14 @@ export function LandingPage() {
 
         <header className="landing-nav">
           <div className="landing-nav-inner">
-            <a href="/" className="landing-brand" aria-label="next, головна">
+            <a href="/" className="landing-brand" aria-label="NEXTCOM, головна">
               <BrandLogo />
             </a>
             <nav className="landing-nav-links" aria-label="Розділи сторінки">
-              <a href="#problem">Чому NEXTCOM</a>
               <a href="#features">Можливості</a>
+              <a href="#steps">Як це працює</a>
+              <a href="#join">Для закладів</a>
               <a href="#faq">Питання</a>
-              <a href="#data">Дані</a>
             </nav>
             <Button asChild size="sm" className="landing-btn landing-btn-primary landing-btn-nav">
               <a href={APP_HREF}>Відкрити мапу</a>
@@ -60,10 +95,10 @@ export function LandingPage() {
                 Львів · жива мапа
               </p>
               <h1 id="landing-hero-title" className="landing-hero-title landing-rise" style={stagger(1)}>
-                Ваше місто — на одній мапі.
+                Львів. На одній мапі.
               </h1>
               <p className="landing-lead landing-rise" style={stagger(2)}>
-                Автобуси, трамваї й тролейбуси наживо. Місця поруч. Послуги, які не треба шукати в трьох застосунках.
+                Транспорт наживо, місця поруч і все, що потрібно місту, в одному вікні.
               </p>
               <div className="landing-cta-row landing-rise" style={stagger(3)}>
                 <Button asChild size="lg" className="landing-btn landing-btn-primary">
@@ -121,30 +156,17 @@ export function LandingPage() {
             </motion.div>
           </section>
 
-          {/* Problem → agitate → solve (PAS). */}
-          <section id="problem" className="landing-block" aria-labelledby="landing-problem-title">
-            <Reveal>
-              <p className="landing-eyebrow">Знайомо?</p>
-              <h2 id="landing-problem-title" className="landing-title">
-                Щоб дізнатися, коли приїде трамвай, доводиться відкривати три застосунки.
-              </h2>
-            </Reveal>
-            <StaggerGroup className="landing-pain-grid">
-              {PAINS.map((pain) => (
-                <motion.article key={pain.title} className="landing-card landing-pain" variants={staggerChild}>
-                  <span className="landing-icon-tile">
-                    <MaterialIcon name={pain.icon} size={24} />
-                  </span>
-                  <h3>{pain.title}</h3>
-                  <p>{pain.text}</p>
-                </motion.article>
+          {/* Proof: three counted facts instead of adjectives. */}
+          <section id="why" className="landing-facts" aria-label="Коротко про NEXTCOM">
+            <StaggerGroup className="landing-facts-grid">
+              {FACTS.map((fact) => (
+                <motion.div key={fact.label} className="landing-fact" variants={staggerChild}>
+                  <p className="landing-fact-value">{fact.value}</p>
+                  <p className="landing-fact-label">{fact.label}</p>
+                  <p className="landing-fact-text">{fact.text}</p>
+                </motion.div>
               ))}
             </StaggerGroup>
-            <Reveal className="landing-solve">
-              <p>
-                <strong>NEXTCOM збирає це в одну мапу,</strong> де все під рукою.
-              </p>
-            </Reveal>
           </section>
 
           {/* Interest: the three product areas, shown with real-looking states. */}
@@ -248,29 +270,7 @@ export function LandingPage() {
             </StaggerGroup>
           </section>
 
-          {/* Desire: why it is better, and who it is for. */}
-          <section className="landing-block" aria-labelledby="landing-benefits-title">
-            <Reveal>
-              <p className="landing-eyebrow">Чому це зручніше</p>
-              <h2 id="landing-benefits-title" className="landing-title">
-                Менше пошуку, більше дороги.
-              </h2>
-            </Reveal>
-            <StaggerGroup className="landing-benefit-grid">
-              {BENEFITS.map((item) => (
-                <motion.div key={item.title} className="landing-benefit" variants={staggerChild}>
-                  <span className="landing-icon-tile">
-                    <MaterialIcon name={item.icon} size={24} />
-                  </span>
-                  <div>
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </StaggerGroup>
-          </section>
-
+          {/* Desire: who it is for. */}
           <section className="landing-block" aria-labelledby="landing-cases-title">
             <Reveal>
               <p className="landing-eyebrow">Для кого</p>
@@ -331,6 +331,19 @@ export function LandingPage() {
             </StaggerGroup>
           </section>
 
+          {/* Leads: a waitlist for people and a contact form for venues. */}
+          <section id="join" className="landing-block" aria-labelledby="landing-join-title">
+            <Reveal>
+              <p className="landing-eyebrow">Залишайтеся на зв’язку</p>
+              <h2 id="landing-join-title" className="landing-title">
+                Наступне — записи, квитки й нові міста.
+              </h2>
+            </Reveal>
+            <Reveal className="landing-join-card">
+              <LandingLeadForm />
+            </Reveal>
+          </section>
+
           {/* Objections: answer the doubts before the visitor voices them. */}
           <section id="faq" className="landing-block" aria-labelledby="landing-faq-title">
             <Reveal>
@@ -369,12 +382,15 @@ export function LandingPage() {
           </Reveal>
         </main>
 
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: FAQ_JSON_LD }} />
+
         <footer className="landing-footer">
           <div className="landing-footer-top">
             <BrandLogo />
             <nav className="landing-footer-links" aria-label="Посилання внизу сторінки">
               <a href={APP_HREF}>Мапа</a>
               <a href="#features">Можливості</a>
+              <a href="#join">Для закладів</a>
               <a href="#faq">Питання</a>
               <a href="#data">Дані</a>
             </nav>

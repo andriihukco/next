@@ -203,6 +203,8 @@ html.is-landing #root {
   max-width: 1120px;
   margin: 0 auto;
   padding: 64px 16px;
+  /* Anchor jumps land below the sticky nav. */
+  scroll-margin-top: 56px;
 }
 
 .landing-card {
@@ -223,23 +225,8 @@ html.is-landing #root {
 }
 
 .landing-card h3,
-.landing-benefit h3,
-.landing-step h3 {
-  margin: 16px 0 0;
-  color: var(--foreground);
-  font-size: var(--type-title);
-  font-weight: 700;
-  line-height: 1.3;
-}
 
 .landing-card p,
-.landing-benefit p,
-.landing-step p {
-  margin: 8px 0 0;
-  color: var(--text-default);
-  font-size: var(--type-small);
-  line-height: 1.55;
-}
 
 /* ---------- Hero ---------- */
 
@@ -254,8 +241,9 @@ html.is-landing #root {
 .landing-hero-copy {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
+  text-align: center;
 }
 
 .landing-hero-title {
@@ -270,7 +258,7 @@ html.is-landing #root {
 
 .landing-lead {
   margin: 0;
-  max-width: 540px;
+  max-width: 600px;
   color: var(--muted-foreground);
   font-size: var(--type-inspector);
   line-height: 1.35;
@@ -279,6 +267,7 @@ html.is-landing #root {
 .landing-cta-row {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 12px;
   margin-top: 8px;
 }
@@ -436,26 +425,138 @@ html.is-landing #root {
   text-align: center;
 }
 
-/* ---------- Problem / solve ---------- */
+/* ---------- Facts strip ---------- */
 
-.landing-pain-grid {
+.landing-facts {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 16px 8px;
+}
+
+.landing-facts-grid {
   display: grid;
-  gap: 16px;
-  margin-top: 40px;
-}
-
-.landing-solve {
-  margin-top: 32px;
-  padding: 32px;
-  border-radius: var(--landing-radius);
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.landing-solve p {
+  gap: 24px;
+  padding: 0;
   margin: 0;
+}
+
+.landing-fact {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.landing-fact p {
+  margin: 0;
+}
+
+.landing-fact-value {
+  color: var(--foreground);
+  font-size: var(--type-hero);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-fact .landing-fact-label {
+  margin-top: 8px;
+  color: var(--text-strong);
+  font-size: var(--type-title);
+  font-weight: 700;
+}
+
+.landing-fact .landing-fact-text {
+  margin-top: 4px;
+  color: var(--text-default);
+  font-size: var(--type-small);
+  line-height: 1.55;
+}
+
+/* ---------- Leads ---------- */
+
+.landing-join-card {
+  max-width: 640px;
+  margin-top: 40px;
+  padding: 24px;
+  border-radius: var(--landing-radius);
+  background: var(--surface-muted);
+}
+
+.landing-lead-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.landing-lead-title {
+  margin: 20px 0 0;
+  color: var(--foreground);
   font-size: var(--type-inspector);
-  line-height: 1.35;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.landing-lead-text {
+  margin: 8px 0 0;
+  color: var(--text-default);
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+
+.landing-lead-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.landing-lead-field {
+  display: grid;
+  gap: 6px;
+  color: var(--text-strong);
+  font-size: var(--type-small);
+  font-weight: 600;
+}
+
+.landing-lead-field input {
+  height: 48px;
+  background: var(--card);
+}
+
+/* Off-screen honeypot. Not `display: none`, which some bots skip. */
+.landing-lead-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.landing-lead-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-caption);
+  line-height: 1.5;
+}
+
+.landing-lead-note a {
+  color: var(--text-accent);
+}
+
+.landing-lead-error {
+  margin: 0;
+  color: var(--destructive);
+  font-size: var(--type-small);
+}
+
+.landing-lead-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 0 0;
+  color: var(--text-accent);
+  font-size: var(--type-body);
+  font-weight: 600;
 }
 
 /* ---------- Features (bento) ---------- */
@@ -598,30 +699,7 @@ html.is-landing #root {
   font-size: var(--type-small);
 }
 
-/* ---------- Desire: benefits and use cases ---------- */
-
-.landing-benefit-grid {
-  display: grid;
-  gap: 16px;
-  margin-top: 40px;
-}
-
-.landing-benefit {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 24px;
-  border-radius: var(--landing-radius);
-  border: 1px solid var(--border);
-}
-
-.landing-benefit h3 {
-  margin-top: 0;
-}
-
-.landing-benefit p {
-  margin-top: 4px;
-}
+/* ---------- Desire: use cases ---------- */
 
 .landing-case-grid {
   display: grid;
@@ -889,17 +967,37 @@ html.is-landing #root {
   }
 
   .landing-hero {
-    grid-template-columns: 1.05fr 0.95fr;
-    align-items: center;
-    gap: 64px;
-    padding: 88px 24px 48px;
+    gap: 56px;
+    padding: 112px 24px 48px;
+  }
+
+  .landing-stage {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .landing-map {
+    height: 420px;
+  }
+
+  .landing-facts {
+    padding: 32px 24px 0;
+  }
+
+  .landing-facts-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+
+  .landing-join-card {
+    padding: 40px;
   }
 
   .landing-block {
     padding: 104px 24px;
   }
 
-  .landing-pain-grid,
   .landing-case-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -921,10 +1019,6 @@ html.is-landing #root {
 
   .landing-feature-services .landing-feature-visual {
     min-height: 260px;
-  }
-
-  .landing-benefit-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .landing-steps {
