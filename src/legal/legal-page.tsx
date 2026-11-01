@@ -1,6 +1,7 @@
 import { BrandLogo } from "../components/ui/brand-logo";
 import { MaterialIcon } from "../components/ui/material-icon";
-import { LEGAL_ORDER, LEGAL_PAGES, LEGAL_UPDATED, type LegalSlug } from "./legal-content";
+import { LEGAL_PAGES, LEGAL_UPDATED, type LegalSlug } from "./legal-content";
+import { LegalFooter } from "./legal-footer";
 import "./legal.css";
 
 /** One page for terms, privacy, cookies, contacts, data sources and accessibility. */
@@ -52,18 +53,5 @@ export function LegalPage({ slug }: { slug: LegalSlug }) {
       </main>
       <LegalFooter current={slug} />
     </div>
-  );
-}
-
-/** Links to every legal page. Shared by the legal pages and the landing footer. */
-export function LegalFooter({ current }: { current?: LegalSlug }) {
-  return (
-    <nav className="legal-footer" aria-label="Правова інформація">
-      {LEGAL_ORDER.map((slug) => (
-        <a key={slug} href={`/${slug}`} aria-current={slug === current ? "page" : undefined}>
-          {LEGAL_PAGES[slug].title}
-        </a>
-      ))}
-    </nav>
   );
 }
