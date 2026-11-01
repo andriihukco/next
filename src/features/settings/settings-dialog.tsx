@@ -1,30 +1,17 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "../../components/ui/button";
-import { Toggle } from "../../components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { DetailSection, ListRow, SheetNavBar } from "../../components/ui/detail-layout";
-import { Input } from "../../components/ui/input";
-import { Switch } from "../../components/ui/switch";
 import { MaterialIcon } from "../../components/ui/material-icon";
 import { panelMotion, scrimMotion, spring, exitTransition } from "../../lib/motion";
-import {
-  disablePush,
-  enablePush,
-  readPushStatus,
-  readPushTopics,
-  savePushTopics,
-  sendTestPush,
-  type PushStatus,
-  type PushTopic,
-} from "../../lib/push";
+import { disablePush } from "../../lib/push";
 import { accountLabel, supabase, usePasswordRecovery, useSession } from "../../lib/supabase";
 import { useDialogFocus } from "../../lib/use-dialog-focus";
 import { useMediaQuery } from "../../lib/use-media-query";
 import { setThemePreference, useThemePreference, type ThemePreference } from "../../lib/use-theme";
 import {
   EMPTY_PROFILE,
-  VISITOR_TYPES,
   clearDeviceData,
   readLocalProfile,
   saveLocalProfile,
@@ -32,8 +19,9 @@ import {
 } from "./profile";
 import { AccountView } from "./account-view";
 import "./settings.css";
-
-type PermissionState = "granted" | "denied" | "prompt" | "unsupported";
+import { PERMISSION_LABEL, useGeolocationPermission } from "./settings-permissions";
+import { ProfileForm } from "./profile-form";
+import { NotificationsSection, usePushSettings } from "./notifications-section";
 
 type SettingsDialogProps = {
   cityName: string;
@@ -47,69 +35,6 @@ type SettingsDialogProps = {
 
 export type View = "main" | "profile" | "account";
 
-const PUSH_TOPICS: { topic: PushTopic; icon: string; title: string; subtitle: string }[] = [
-  { topic: "air-alert", icon: "campaign", title: "Початок тривоги", subtitle: "Повітряна тривога у Львівській області" },
-  { topic: "all-clear", icon: "verified_user", title: "Відбій тривоги", subtitle: "Коли загрозу знято" },
-  { topic: "threats", icon: "radar", title: "Загрози для Львова", subtitle: "Нові повідомлення про дрони й авіабомби" },
-];
-
-const PERMISSION_LABEL: Record<PermissionState, string> = {
-  granted: "Дозволено",
-  denied: "Вимкнено в налаштуваннях браузера",
-  prompt: "Не надано",
-  unsupported: "Не підтримується цим браузером",
-};
-
-function useGeolocationPermission(): PermissionState {
-  const [state, setState] = useState<PermissionState>("prompt");
-  useEffect(() => {
-    if (!("geolocation" in navigator)) {
-      setState("unsupported");
-      return;
-    }
-    if (!navigator.permissions?.query) return;
-    let status: PermissionStatus | null = null;
-    const sync = (): void => setState((status?.state as PermissionState | undefined) ?? "prompt");
-    navigator.permissions
-      .query({ name: "geolocation" })
-      .then((result) => {
-        status = result;
-        sync();
-        result.addEventListener("change", sync);
-      })
-      .catch((error: unknown) => console.error("Could not read the location permission.", error));
-    return () => status?.removeEventListener("change", sync);
-  }, []);
-  return state;
-}
-
-const PUSH_LABEL: Record<PushStatus, string> = {
-  unsupported: "Цей браузер не підтримує push-сповіщення",
-  "ios-install": "На iPhone спершу додайте next на початковий екран: Поділитися → На початковий екран",
-  unconfigured: "Сповіщення ще не налаштовані на сервері",
-  denied: "Вимкнено в налаштуваннях браузера",
-  off: "Вимкнено",
-  on: "Увімкнено на цьому пристрої",
-};
-
-function usePushStatus(): [PushStatus | null, (status: PushStatus) => void] {
-  const [status, setStatus] = useState<PushStatus | null>(null);
-  useEffect(() => {
-    let active = true;
-    readPushStatus()
-      .then((next) => {
-        if (active) setStatus(next);
-      })
-      .catch((error: unknown) => {
-        console.error("Could not read the push subscription.", error);
-        if (active) setStatus("unsupported");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  return [status, setStatus];
-}
 
 /** Profile and settings. On mobile it is a full-height sheet; on desktop a side panel. */
 export function SettingsDialog({
@@ -126,81 +51,17 @@ export function SettingsDialog({
   const [confirmClear, setConfirmClear] = useState(false);
   const location = useGeolocationPermission();
   const { session } = useSession();
-  const [push, setPush] = usePushStatus();
-  const [pushBusy, setPushBusy] = useState(false);
-  const [topics, setTopics] = useState<PushTopic[] | null>(null);
   const [status, setStatus] = useState("");
+  const pushSettings = usePushSettings(session, setStatus, () => setView("account"));
+  const { push, setPush } = pushSettings;
   const recovering = usePasswordRecovery();
 
-  useEffect(() => {
-    if (push !== "on") {
-      setTopics(null);
-      return;
-    }
-    let active = true;
-    readPushTopics()
-      .then((next) => {
-        if (active) setTopics(next);
-      })
-      .catch((error: unknown) => {
-        console.error("Could not read notification topics.", error);
-        if (active) setStatus("Не вдалося завантажити налаштування сповіщень.");
-      });
-    return () => {
-      active = false;
-    };
-  }, [push, session]);
 
-  const toggleTopic = async (topic: PushTopic, enabled: boolean): Promise<void> => {
-    if (!topics) return;
-    const previous = topics;
-    const next = enabled ? [...topics, topic] : topics.filter((item) => item !== topic);
-    setTopics(next);
-    try {
-      await savePushTopics(next);
-    } catch (error: unknown) {
-      console.error("Could not save notification topics.", error);
-      setTopics(previous);
-      setStatus("Не вдалося зберегти налаштування сповіщень. Спробуйте ще раз.");
-    }
-  };
   useDialogFocus(panelRef, {
     onEscape: () => (view === "main" ? onClose() : setView("main")),
     focusKey: view,
   });
 
-  const togglePush = async (enable: boolean): Promise<void> => {
-    if (enable && !session) {
-      setView("account");
-      return;
-    }
-    setPushBusy(true);
-    setStatus("");
-    try {
-      const next = enable ? await enablePush() : await disablePush();
-      setPush(next);
-      if (enable && next === "on") setStatus("Сповіщення увімкнено. Виберіть, про що повідомляти.");
-      if (enable && next === "denied") setStatus("Дозвіл не надано. Його можна змінити в налаштуваннях браузера.");
-    } catch (error: unknown) {
-      console.error("Could not change the push subscription.", error);
-      setStatus(enable ? "Не вдалося увімкнути сповіщення. Спробуйте ще раз." : "Не вдалося вимкнути сповіщення.");
-    } finally {
-      setPushBusy(false);
-    }
-  };
-
-  const testPush = async (): Promise<void> => {
-    if (!session) return;
-    setPushBusy(true);
-    try {
-      setStatus(await sendTestPush(session));
-    } catch (error: unknown) {
-      console.error("Could not request a test notification.", error);
-      setStatus("Немає з’єднання з сервером. Спробуйте пізніше.");
-    } finally {
-      setPushBusy(false);
-    }
-  };
 
   const signOut = async (): Promise<void> => {
     if (!supabase) return;
@@ -301,56 +162,7 @@ export function SettingsDialog({
                 />
               </DetailSection>
 
-              <DetailSection title="Сповіщення">
-                <ListRow
-                  leading={<MaterialIcon name="notifications" size={20} />}
-                  title="Сповіщення на цьому пристрої"
-                  subtitle={
-                    push === null
-                      ? "Перевіряємо…"
-                      : push === "off" && !session
-                        ? "Увійдіть, щоб отримувати сповіщення"
-                        : PUSH_LABEL[push]
-                  }
-                  trailing={
-                    <Switch
-                      aria-label="Сповіщення на цьому пристрої"
-                      checked={push === "on"}
-                      disabled={pushBusy || (push !== "on" && push !== "off")}
-                      onCheckedChange={(checked) => void togglePush(checked)}
-                    />
-                  }
-                />
-                {push === "on" &&
-                  PUSH_TOPICS.map((item) => (
-                    <ListRow
-                      key={item.topic}
-                      leading={<MaterialIcon name={item.icon} size={20} />}
-                      title={item.title}
-                      subtitle={item.subtitle}
-                      trailing={
-                        <Switch
-                          aria-label={item.title}
-                          checked={topics?.includes(item.topic) ?? false}
-                          disabled={topics === null}
-                          onCheckedChange={(checked) => void toggleTopic(item.topic, checked)}
-                        />
-                      }
-                    />
-                  ))}
-                {push === "on" && session && (
-                  <ListRow
-                    leading={<MaterialIcon name="send" size={20} />}
-                    title="Тестове сповіщення"
-                    subtitle="Перевірте, чи сповіщення доходять"
-                    trailing={
-                      <Button type="button" size="sm" variant="outline" disabled={pushBusy} onClick={() => void testPush()}>
-                        Надіслати
-                      </Button>
-                    }
-                  />
-                )}
-              </DetailSection>
+              <NotificationsSection settings={pushSettings} signedIn={Boolean(session)} />
 
               <DetailSection title="Вигляд">
                 <ListRow
@@ -468,63 +280,5 @@ export function SettingsDialog({
         )}
       </motion.section>
     </motion.div>
-  );
-}
-
-function ProfileForm({ initial, onSave }: { initial: LocalProfile; onSave: (profile: LocalProfile) => void }) {
-  const [draft, setDraft] = useState<LocalProfile>(initial);
-  const field = (key: keyof LocalProfile) => ({
-    value: draft[key],
-    onChange: (event: { target: { value: string } }) =>
-      setDraft((current) => ({ ...current, [key]: event.target.value })),
-  });
-  const submit = (event: FormEvent): void => {
-    event.preventDefault();
-    onSave({
-      name: draft.name.trim(),
-      visitorType: draft.visitorType,
-      home: draft.home.trim(),
-      work: draft.work.trim(),
-    });
-  };
-
-  return (
-    <form className="settings-form" onSubmit={submit}>
-      <label className="settings-field">
-        <span>Ім’я</span>
-        <Input autoComplete="given-name" placeholder="Як до вас звертатися" maxLength={40} data-autofocus {...field("name")} />
-      </label>
-      <fieldset className="settings-field">
-        <legend>Хто ви у Львові</legend>
-        <div className="settings-chips">
-          {VISITOR_TYPES.map((type) => (
-            <Toggle variant="pill"
-              key={type}
-              size="sm"
-             
-              onClick={() =>
-                setDraft((current) => ({ ...current, visitorType: current.visitorType === type ? "" : type }))
-              } pressed={draft.visitorType === type}>
-              {type}
-            </Toggle>
-          ))}
-        </div>
-      </fieldset>
-      <label className="settings-field">
-        <span>Дім</span>
-        <Input autoComplete="street-address" placeholder="Вулиця й номер будинку" maxLength={120} {...field("home")} />
-      </label>
-      <label className="settings-field">
-        <span>Робота або навчання</span>
-        <Input placeholder="Вулиця й номер будинку" maxLength={120} {...field("work")} />
-      </label>
-      <p className="settings-hint">
-        <MaterialIcon name="lock" size={16} />
-        Зберігається лише на цьому пристрої. Адреси допоможуть швидше будувати маршрути.
-      </p>
-      <Button type="submit" size="lg">
-        Зберегти
-      </Button>
-    </form>
   );
 }

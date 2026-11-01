@@ -1,13 +1,33 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "../components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../components/ui/sheet";
 import { Skeleton } from "../components/ui/skeleton";
 import { Slider } from "../components/ui/slider";
 import { Switch } from "../components/ui/switch";
@@ -34,6 +54,14 @@ import {
 } from "../components/ui/detail-layout";
 import { CategoryTiles } from "../components/category-tiles";
 import "./design-system.css";
+import {
+  TYPE_TOKENS,
+  RADIUS_TOKENS,
+  SHADOW_TOKENS,
+  Section,
+  Specimen,
+  TokenSwatches,
+} from "./design-system-parts";
 
 /**
  * Developer reference at /design-system. Shows every token and component in
@@ -41,67 +69,6 @@ import "./design-system.css";
  * truth for the rules is DESIGN.md; this page only displays them.
  */
 
-const COLOR_TOKENS = [
-  "--background",
-  "--foreground",
-  "--card",
-  "--surface-muted",
-  "--muted-foreground",
-  "--border",
-  "--primary",
-  "--primary-hover",
-  "--primary-border",
-  "--accent",
-  "--accent-foreground",
-  "--ring",
-  "--destructive",
-  "--scrim",
-];
-
-const TYPE_TOKENS = [
-  ["Caption", "--type-caption"],
-  ["Small", "--type-small"],
-  ["Body", "--type-body"],
-  ["Title", "--type-title"],
-  ["Inspector", "--type-inspector"],
-  ["Display", "--type-display"],
-] as const;
-
-const RADIUS_TOKENS = ["--radius-sm", "--radius-md", "--radius-pill"] as const;
-const SHADOW_TOKENS = ["--shadow-raised", "--shadow-overlay"] as const;
-
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section className="ds-section" id={id} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`} className="ds-section-title">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-function Specimen({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="ds-specimen">
-      <span className="ds-specimen-label">{label}</span>
-      <div className="ds-specimen-body">{children}</div>
-    </div>
-  );
-}
-
-function TokenSwatches() {
-  return (
-    <div className="ds-swatches">
-      {COLOR_TOKENS.map((token) => (
-        <div className="ds-swatch" key={token}>
-          <span className="ds-swatch-chip" style={{ background: `var(${token})` }} aria-hidden="true" />
-          <code>{token}</code>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function DesignSystemPage() {
   const [tab, setTab] = useState("places");

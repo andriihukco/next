@@ -1,10 +1,21 @@
-import type { CSSProperties, ReactNode } from "react";
 import { MotionConfig, motion, useScroll, useSpring } from "motion/react";
 import { Button } from "../components/ui/button";
 import { BrandLogo } from "../components/ui/brand-logo";
 import { MaterialIcon } from "../components/ui/material-icon";
 import { spring } from "../lib/motion";
 import "./landing.css";
+import {
+  APP_HREF,
+  ROUTE_D,
+  PAINS,
+  STEPS,
+  FEATURES,
+  BENEFITS,
+  USE_CASES,
+  LABELS,
+  FAQ,
+} from "./landing-content";
+import { stagger, Reveal, staggerChild, StaggerGroup } from "./landing-motion";
 
 /**
  * Public entry point at `/`. The app lives at `/app` (DESIGN.md §5).
@@ -13,123 +24,6 @@ import "./landing.css";
  * Copy follows DESIGN.md §1, §9, §13: no invented ratings, reviews, or numbers.
  */
 
-const APP_HREF = "/app";
-const ROUTE_D = "M 28 232 C 96 232, 112 84, 196 96 S 318 52, 372 74";
-
-const PAINS = [
-  { icon: "schedule", title: "Розклад не каже, де транспорт зараз.", text: "Ви чекаєте на зупинці й не знаєте, чи встигнете." },
-  { icon: "stacked_bar_chart", title: "Оцінки й фото розкидані.", text: "Кав’ярню шукаєте в одному місці, відгуки читаєте в іншому." },
-  { icon: "shuffle", title: "Кожна послуга — з нуля.", text: "Запис, столик, квиток: щоразу новий застосунок і нова реєстрація." },
-] as const;
-
-const STEPS = [
-  { icon: "map", title: "Відкрийте мапу", text: "Місто, транспорт і місця одразу. Реєстрація не потрібна." },
-  { icon: "tune", title: "Оберіть, що потрібно", text: "Маршрут, зупинку, кав’ярню поруч або подію." },
-  { icon: "near_me", title: "Дійте за кілька дотиків", text: "Прокладіть маршрут, зателефонуйте або збережіть місце на пристрої." },
-] as const;
-
-const FEATURES = [
-  {
-    id: "transport",
-    icon: "directions_bus",
-    eyebrow: "Транспорт",
-    title: "Автобуси, трамваї й тролейбуси наживо.",
-    text: "Позиції з живого GPS-потоку та маршрути. Час прибуття є оцінкою, а не розкладом.",
-    points: ["Маршрути й зупинки на мапі", "Оцінка прибуття за позицією транспорту"],
-  },
-  {
-    id: "places",
-    icon: "place",
-    eyebrow: "Місця",
-    title: "Кав’ярні, аптеки, парки й школи поруч.",
-    text: "Місця поруч із фото, оцінками й відгуками, там де вони є. Якщо оцінки немає, її не показуємо.",
-    points: ["Пошук місць поруч із вами", "Оцінки лише там, де вони є"],
-  },
-  {
-    id: "services",
-    icon: "event_available",
-    eyebrow: "Послуги й події",
-    title: "Записи, квитки й столики в одному місці.",
-    text: "Незабаром. Розділ з’явиться, коли підключимо заклади. Доти ми його не показуємо.",
-    points: ["Запис, столик і квитки", "Лише з перевіреними закладами"],
-  },
-] as const;
-
-const BENEFITS = [
-  { icon: "layers", title: "Одна мапа замість трьох застосунків", text: "Транспорт, місця й послуги поруч, без перемикання." },
-  { icon: "verified", title: "Видно, що саме ви бачите", text: "Кожна мітка має підпис: наживо чи оцінка." },
-  { icon: "language", title: "Працює в браузері", text: "Нічого не треба встановлювати, щоб подивитися маршрут." },
-  { icon: "lock", title: "Ваші місця лишаються з вами", text: "Збережені місця й налаштування зберігаються на вашому пристрої." },
-] as const;
-
-const USE_CASES = [
-  { icon: "work", title: "Щоденна поїздка на роботу", text: "Перевірте, який транспорт їде зараз і скільки йти до зупинки." },
-  { icon: "flight_land", title: "Перші дні в місті", text: "Знайдіть аптеку, банкомат і парк, не відкриваючи десять вкладок." },
-  { icon: "family_restroom", title: "Вихідні з дітьми", text: "Плейграунди, парки й бібліотеки поруч, з адресою та графіком." },
-  { icon: "build", title: "Послуга, коли вона раптом потрібна", text: "Шиномонтаж, ремонт або кравець поруч, з телефоном одним дотиком." },
-] as const;
-
-const LABELS = [
-  { tag: "Наживо", tone: "live", text: "Позиція транспорту з GPS-потоку." },
-  { tag: "Оцінка", tone: "estimate", text: "Час прибуття за позицією, не за розкладом." },
-] as const;
-
-const FAQ = [
-  {
-    q: "Чи можна довіряти часу прибуття?",
-    a: "Це оцінка за поточною позицією транспорту на мапі. Це не розклад і не гарантія.",
-  },
-  {
-    q: "Чи потрібен акаунт?",
-    a: "Ні. Профіль, збережені місця й налаштування зберігаються на вашому пристрої. Вхід в обліковий запис ще не підключено.",
-  },
-  {
-    q: "Чи працюють запис, замовлення й квитки?",
-    a: "Поки що ні. Вони з’являться, коли підключимо заклади, а доти їх у застосунку немає.",
-  },
-] as const;
-
-const stagger = (index: number) => ({ "--i": index }) as CSSProperties;
-
-/** Scroll-in reveal: fades and rises once, with the app's default spring. */
-function Reveal({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ ...spring.default, delay }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-/** Staggers the `staggerChild` items inside it when the block enters view. */
-const staggerParent = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-};
-
-const staggerChild = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: spring.default },
-};
-
-function StaggerGroup({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <motion.div
-      className={className}
-      variants={staggerParent}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.15 }}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 export function LandingPage() {
   const { scrollYProgress } = useScroll();
