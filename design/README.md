@@ -15,7 +15,8 @@ One design system for the web app and the iOS and Android app. Tokens live in on
 
 ## The live library
 
-- Web: open `/design` on the web app. The switch shows **Web**, **iOS** or **Android**.
+- `/design` is a documentation site. The sidebar opens each page of these docs at full width, with an "On this page" list. Links between the docs open the page in the site.
+- Live library (`?page=live`): open it to see each element. The switch shows **Web**, **iOS** or **Android**.
 - Web tab: the web components (`src/components/ui`), from `src/design-system/`.
 - iOS and Android tabs: the real mobile components (`mobile/src/ui`), rendered by the Expo app's `/design` screen in a device frame.
 - In the app: Профіль → Дизайн-система opens the same screen on the phone.
