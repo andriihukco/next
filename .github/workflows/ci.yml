@@ -18,4 +18,5 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm run test:fixtures
+      - run: npm run test:server
       - run: npm run build
