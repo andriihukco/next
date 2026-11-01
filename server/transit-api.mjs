@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { createPlaceImageService } from './place-images.mjs';
 import { signInWithTelegram } from './auth-telegram.mjs';
 import { deleteAccount } from './account.mjs';
+import { adminMe } from './admin-auth.mjs';
 import { listReleases, publishRelease } from './releases.mjs';
 import { dispatchAirAlertPush, sendTestPush } from './push.mjs';
 import { getAirAlert, loadAirAlert } from './feeds/air-alert.mjs';
@@ -84,6 +85,12 @@ export async function handleApiRequest(req, res) {
       return;
     }
     const result = await signInWithTelegram(payload);
+    sendJson(res, result.status, result.body, { 'Cache-Control': 'no-store' });
+    return;
+  }
+
+  if (pathname === '/api/admin/me' && req.method === 'GET') {
+    const result = await adminMe(req);
     sendJson(res, result.status, result.body, { 'Cache-Control': 'no-store' });
     return;
   }

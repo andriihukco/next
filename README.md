@@ -69,10 +69,11 @@ route shape instead of a synthetic straight line. The map renders buses, trams,
 and trolleybuses as separate 3D models. Vehicle positions and speeds are
 simulated, not live GPS readings.
 
-The admin page is protected by a password checked by the Vite server. Set
-`ADMIN_PASSWORD` in the git-ignored `.env.development.local` file before opening
-the admin page. It can inspect and edit the current in-memory vehicles, stops,
-shelters, places, events, air-alert status, and fixture settings.
+The data editor in the `/dev` tools changes only this browser's local copy of the
+vehicles, stops, shelters, places, events, air-alert status and fixture settings,
+so it has no password. The real admin is `/admin`: it needs a Supabase account with
+the `editor` or `admin` role in `public.profiles`, and admins confirm with a second
+factor (TOTP). Everyone else sees a 404.
 Validated overrides are stored in this browser's local storage; they do not
 write to the transit API or a shared database.
 

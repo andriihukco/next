@@ -8,6 +8,7 @@ import './index.css';
 
 // The map app and the design-system page pull in MapLibre and three.js, so the landing page does not load them.
 const App = lazy(() => import('./App.tsx'));
+const AdminApp = lazy(() => import('./admin/admin-app').then((module) => ({ default: module.AdminApp })));
 const UpdatesPage = lazy(() => import('./updates/updates-page').then((module) => ({ default: module.UpdatesPage })));
 const LegalPage = lazy(() => import('./legal/legal-page').then((module) => ({ default: module.LegalPage })));
 const DesignSystemPage = lazy(() =>
@@ -17,7 +18,7 @@ const DesignSystemPage = lazy(() =>
 // Routes: `/` is the landing page, `/app` is the app (`/dev` keeps the developer
 // tools on the app, see lib/dev-tools/route.ts), and `/design-system` is a
 // developer reference page. `/terms`, `/privacy`, `/cookies`, `/contacts`, `/sources`
-// and `/accessibility` are the legal and trust pages (platform-plan S8); `/updates` is «Що нового» (S7).
+// and `/accessibility` are the legal and trust pages (platform-plan S8); `/updates` is «Що нового» (S7); `/admin` is the role-gated admin (S2).
 const path = window.location.pathname.replace(/\/+$/, '') || '/';
 const isDesignSystem = path === '/design-system';
 const isApp = path === '/app' || path.startsWith('/app/') || isDevPathname(path);
@@ -31,7 +32,11 @@ if (!isDesignSystem && !isApp) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {path === '/updates' ? (
+    {path === '/admin' ? (
+      <Suspense fallback={null}>
+        <AdminApp />
+      </Suspense>
+    ) : path === '/updates' ? (
       <Suspense fallback={null}>
         <UpdatesPage />
       </Suspense>

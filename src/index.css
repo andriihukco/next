@@ -7559,25 +7559,7 @@ a.education-open {
   font-weight: 700;
 }
 
-.admin-login {
-  display: grid;
-  gap: 10px;
-  max-width: 380px;
-  margin: 28px auto;
-  padding: 24px;
-  border:1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--card);
-  box-shadow: 0 10px 30px rgba(29, 62, 42, 0.08);
-}
 
-.admin-icon {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  border-radius: var(--radius-md);
-}
 
 .admin-eyebrow {
   color:var(--tone-37815a);
@@ -7586,7 +7568,6 @@ a.education-open {
   letter-spacing: 0.08em;
 }
 
-.admin-login h1,
 .admin-heading h1 {
   margin: 0;
   color:var(--text-strong);
@@ -7594,7 +7575,6 @@ a.education-open {
   font-weight: 800;
 }
 
-.admin-login > p,
 .admin-heading p,
 .admin-editor-heading p {
   margin: 0;
@@ -7603,32 +7583,18 @@ a.education-open {
   line-height: 1.45;
 }
 
-.admin-login > label,
 .admin-json-label {
   color:var(--tone-3b4a41);
   font-size: var(--type-small);
   font-weight: 700;
 }
 
-.admin-login > input {
-  min-height: 46px;
-  padding: 0 12px;
-  border:1px solid var(--border);
-  border-radius: var(--radius-md);
-  background:var(--surface-subtle);
-  color:var(--text-strong);
-}
 
-.admin-login > input:focus-visible,
 .admin-editor textarea:focus-visible {
   outline:2px solid var(--tone-258456);
   outline-offset: 2px;
 }
 
-.admin-submit {
-  min-height: 46px;
-  margin-top: 4px;
-}
 
 .admin-message {
   min-height: 21px;
@@ -8381,7 +8347,6 @@ body {
 
 .inspector-header h2,
 .city-launch-header h2,
-.admin-login h1,
 .admin-heading h1 {
   letter-spacing: -0.035em;
 }
@@ -8393,7 +8358,6 @@ body {
 
 .route-search-submit,
 .route-search-submit:hover,
-.admin-submit,
 .admin-editor-heading > button,
 .city-launch-email-form button {
   border-color: transparent;
@@ -8402,7 +8366,6 @@ body {
 }
 
 .route-search-submit:hover,
-.admin-submit:hover,
 .admin-editor-heading > button:hover,
 .city-launch-email-form button:hover {
   background: var(--brand-primary-hover);
@@ -8410,7 +8373,6 @@ body {
 }
 
 .route-search-submit:active,
-.admin-submit:active,
 .admin-editor-heading > button:active,
 .city-launch-email-form button:active {
   background: var(--brand-primary-strong);
@@ -8455,15 +8417,10 @@ body {
   outline-color: var(--brand-primary);
 }
 
-.admin-submit,
 .admin-editor-heading > button {
   border-radius: var(--radius-md);
 }
 
-.admin-icon {
-  background: var(--brand-primary-soft);
-  color: var(--brand-primary);
-}
 
 .admin-datasets button.active {
   background: var(--brand-primary);

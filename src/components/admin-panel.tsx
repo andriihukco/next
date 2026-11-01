@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, MaterialIcon } from "./ui/material-icon";
+import { useEffect, useState } from "react";
+import { ArrowLeft } from "./ui/material-icon";
 import { Button } from "./ui/button";
 
 export type AdminDataset = {
@@ -16,14 +16,10 @@ type AdminPanelProps = {
 };
 
 export function AdminPanel({ datasets, onSave, onClose }: AdminPanelProps) {
-  const [authenticated, setAuthenticated] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState(datasets[0]?.id ?? "");
-  const [password, setPassword] = useState("");
   const [draft, setDraft] = useState("");
   const [draftDirty, setDraftDirty] = useState(false);
-  const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const [busy, setBusy] = useState(false);
   const dataset = datasets.find((item) => item.id === selectedDataset);
 
   useEffect(() => {
@@ -31,31 +27,6 @@ export function AdminPanel({ datasets, onSave, onClose }: AdminPanelProps) {
       setDraft(dataset ? JSON.stringify(dataset.data, null, 2) : "");
     }
   }, [dataset?.data, draftDirty, selectedDataset]);
-
-  const unlock = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const response = await fetch("/__admin/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const result = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        setError(result.error ?? "Не вдалося перевірити пароль.");
-        return;
-      }
-      setAuthenticated(true);
-      setPassword("");
-    } catch (requestError) {
-      console.error("Could not verify the development admin password.", requestError);
-      setError("Сервер розробки недоступний. Перевірте, що Vite запущений.");
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const save = (): void => {
     if (!dataset) return;
@@ -87,29 +58,6 @@ export function AdminPanel({ datasets, onSave, onClose }: AdminPanelProps) {
         <ArrowLeft size={18} />
         До міста
       </Button>
-      {!authenticated ? (
-        <form className="admin-login" onSubmit={unlock}>
-          <span className="admin-icon">
-            <MaterialIcon name="admin_panel_settings" size={28} />
-          </span>
-          <span className="admin-eyebrow">ЛОКАЛЬНА РОЗРОБКА</span>
-          <h1 id="admin-title">Адмінпанель</h1>
-          <p>Введіть пароль розробника, щоб переглядати та редагувати дані.</p>
-          <label htmlFor="admin-password">Пароль</label>
-          <input
-            autoComplete="current-password"
-            id="admin-password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-          {error && <p className="admin-message error" role="alert">{error}</p>}
-          <Button type="submit" className="admin-submit" disabled={busy}>
-            {busy ? "Перевіряємо…" : "Увійти"}
-          </Button>
-        </form>
-      ) : (
         <>
           <header className="admin-heading">
             <span className="admin-eyebrow">ЛОКАЛЬНА РОЗРОБКА</span>
@@ -161,7 +109,6 @@ export function AdminPanel({ datasets, onSave, onClose }: AdminPanelProps) {
             </div>
           )}
         </>
-      )}
     </section>
   );
 }
