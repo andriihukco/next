@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { MapCamera, MapCommands } from "../city-map";
 import { LVIV_REGION } from "../city-map";
 import { SATELLITE_ATTRIBUTION, satellitePreviewUrl, type MapStyleMode } from "../../lib/map-style";
@@ -73,13 +73,12 @@ export function MapControls({
   onToggleLayer,
   onClearLayers,
 }: Props) {
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [camera, setCamera] = useState<MapCamera>({ bearing: 0, pitch: 50 });
   const [panel, setPanel] = useState<Panel>(null);
   useImperativeHandle(ref, () => ({ setCamera }), []);
 
-  const top = insets.top + HEADER_CLEARANCE;
+  const top = HEADER_CLEARANCE;
   const is3D = camera.pitch >= 0.5;
   const imagery = mapStyle !== "standard";
   const panelStyle = { top, right: 12 + MIN_TOUCH + PANEL_GAP, width: Math.min(300, width - (12 + MIN_TOUCH + PANEL_GAP) - 12) };
@@ -106,167 +105,176 @@ export function MapControls({
   );
 
   return (
-    <>
-      <View style={[styles.column, { top }]} pointerEvents="box-none" ref={tourTarget("map-controls")} collapsable={false}>
-        <View style={styles.group}>
-          <ControlButton
-            icon={MAP_STYLE_OPTIONS.find((option) => option.mode === mapStyle)?.icon ?? "map"}
-            label="Тип мапи"
-            active={panel === "style"}
-            onPress={() => setPanel("style")}
-          />
-          <View style={styles.divider} />
-          <View ref={tourTarget("map-location")} collapsable={false}>
-            <ControlButton icon="my-location" label="Моє місцезнаходження" onPress={onLocate} />
-          </View>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Компас: повернути карту на північ"
-          onPress={() => map.current?.resetNorth()}
-          style={({ pressed }) => [styles.compass, pressed && styles.pressed]}
-        >
-          <View style={[styles.needle, { transform: [{ rotate: `${-camera.bearing}deg` }] }]}>
-            <View style={styles.needleNorth} />
-            <View style={styles.needleSouth} />
-          </View>
-        </Pressable>
-
-        <View style={styles.group}>
-          <ControlButton
-            icon="360"
-            label="Камера: нахил і поворот"
-            active={panel === "camera"}
-            onPress={() => setPanel("camera")}
-          />
-        </View>
-
-        <View style={styles.group}>
-          <ControlButton
-            icon="layers"
-            label="Що показувати на мапі"
-            active={panel === "layers"}
-            onPress={() => setPanel("layers")}
-          />
-          {layerCategories.size > 0 && (
-            <View style={styles.badge} pointerEvents="none">
-              <Text style={styles.badgeText}>{layerCategories.size}</Text>
-            </View>
-          )}
-        </View>
-
-        <Text style={styles.attribution}>
-          {imagery ? `${SATELLITE_ATTRIBUTION} · ` : ""}© OpenFreeMap, OpenStreetMap
-        </Text>
-      </View>
-
-      <Modal visible={panel !== null} transparent animationType="fade" onRequestClose={() => setPanel(null)}>
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Закрити" onPress={() => setPanel(null)} />
-
-        {panel === "style" && (
-          <View style={[styles.panel, panelStyle]} accessibilityViewIsModal>
-            <Text style={styles.panelTitle}>Тип мапи</Text>
-            <View style={styles.styleRow}>
-              {MAP_STYLE_OPTIONS.map((option) => {
-                const selected = option.mode === mapStyle;
-                return (
-                  <Pressable
-                    key={option.mode}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={option.label}
-                    onPress={() => onChangeMapStyle(option.mode)}
-                    style={styles.styleTile}
-                  >
-                    <View style={[styles.stylePreview, selected && styles.stylePreviewSelected]}>
-                      {option.mode === "standard" ? (
-                        <MaterialIcons name={option.icon} size={24} color={colors.foreground} />
-                      ) : (
-                        <Image source={{ uri: SATELLITE_PREVIEW }} style={styles.previewImage} />
-                      )}
-                    </View>
-                    <Text style={[styles.styleLabel, selected && styles.styleLabelSelected]}>{option.label}</Text>
-                  </Pressable>
-                );
-              })}
+    // Native safe-area frame: the JS insets read 0 under the native tab bar on iOS, so the column
+    // sat under the status bar. Children are placed from the inset line, not the screen top.
+    <SafeAreaView edges={["top"]} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <View style={styles.frame} pointerEvents="box-none">
+        <View style={[styles.column, { top }]} pointerEvents="box-none" ref={tourTarget("map-controls")} collapsable={false}>
+          <View style={styles.group}>
+            <ControlButton
+              icon={MAP_STYLE_OPTIONS.find((option) => option.mode === mapStyle)?.icon ?? "map"}
+              label="Тип мапи"
+              active={panel === "style"}
+              onPress={() => setPanel("style")}
+            />
+            <View style={styles.divider} />
+            <View ref={tourTarget("map-location")} collapsable={false}>
+              <ControlButton icon="my-location" label="Моє місцезнаходження" onPress={onLocate} />
             </View>
           </View>
-        )}
 
-        {panel === "camera" && (
-          <View style={[styles.panel, panelStyle]} accessibilityViewIsModal>
-            <View style={styles.cameraHeader}>
-              <Text style={styles.panelTitle}>Камера</Text>
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>3D</Text>
-                <Switch
-                  accessibilityLabel="3D-вигляд"
-                  value={is3D}
-                  onValueChange={(on) => map.current?.set3D(on)}
-                  trackColor={{ true: colors.primary, false: colors.border }}
-                />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Компас: повернути карту на північ"
+            onPress={() => map.current?.resetNorth()}
+            style={({ pressed }) => [styles.compass, pressed && styles.pressed]}
+          >
+            <View style={[styles.needle, { transform: [{ rotate: `${-camera.bearing}deg` }] }]}>
+              <View style={styles.needleNorth} />
+              <View style={styles.needleSouth} />
+            </View>
+          </Pressable>
+
+          <View style={styles.group}>
+            <ControlButton
+              icon="360"
+              label="Камера: нахил і поворот"
+              active={panel === "camera"}
+              onPress={() => setPanel("camera")}
+            />
+          </View>
+
+          <View style={styles.group}>
+            <ControlButton
+              icon="layers"
+              label="Що показувати на мапі"
+              active={panel === "layers"}
+              onPress={() => setPanel("layers")}
+            />
+            {layerCategories.size > 0 && (
+              <View style={styles.badge} pointerEvents="none">
+                <Text style={styles.badgeText}>{layerCategories.size}</Text>
               </View>
-            </View>
+            )}
+          </View>
 
-            <Text style={styles.padLabel}>Нахил до горизонту</Text>
-            <View style={styles.padRow}>
-              <Text style={[styles.padLabel, styles.padSide, styles.padLeft]}>Повернути ліворуч</Text>
-              <View style={styles.pad}>
-                <PadButton icon="keyboard-arrow-up" label="Нахил до горизонту" onPress={() => map.current?.orbit(0, STEP_PITCH, 250)} style={styles.padUp} />
-                <PadButton icon="keyboard-arrow-left" label="Повернути ліворуч" onPress={() => map.current?.orbit(-STEP_BEARING, 0, 250)} style={styles.padLeftBtn} />
-                <View
-                  {...drag.panHandlers}
-                  accessible
-                  accessibilityLabel="Перетягніть, щоб повернути й нахилити карту"
-                  style={styles.padCenter}
-                >
-                  <View style={styles.padDot} />
+          <Text style={styles.attribution}>
+            {imagery ? `${SATELLITE_ATTRIBUTION} · ` : ""}© OpenFreeMap, OpenStreetMap
+          </Text>
+        </View>
+
+        <Modal visible={panel !== null} transparent animationType="fade" onRequestClose={() => setPanel(null)}>
+          <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Закрити" onPress={() => setPanel(null)} />
+
+        <SafeAreaView edges={["top"]} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <View style={styles.frame} pointerEvents="box-none">
+
+            {panel === "style" && (
+              <View style={[styles.panel, panelStyle]} accessibilityViewIsModal>
+                <Text style={styles.panelTitle}>Тип мапи</Text>
+                <View style={styles.styleRow}>
+                  {MAP_STYLE_OPTIONS.map((option) => {
+                    const selected = option.mode === mapStyle;
+                    return (
+                      <Pressable
+                        key={option.mode}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={option.label}
+                        onPress={() => onChangeMapStyle(option.mode)}
+                        style={styles.styleTile}
+                      >
+                        <View style={[styles.stylePreview, selected && styles.stylePreviewSelected]}>
+                          {option.mode === "standard" ? (
+                            <MaterialIcons name={option.icon} size={24} color={colors.foreground} />
+                          ) : (
+                            <Image source={{ uri: SATELLITE_PREVIEW }} style={styles.previewImage} />
+                          )}
+                        </View>
+                        <Text style={[styles.styleLabel, selected && styles.styleLabelSelected]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-                <PadButton icon="keyboard-arrow-right" label="Повернути праворуч" onPress={() => map.current?.orbit(STEP_BEARING, 0, 250)} style={styles.padRightBtn} />
-                <PadButton icon="keyboard-arrow-down" label="Вид зверху" onPress={() => map.current?.orbit(0, -STEP_PITCH, 250)} style={styles.padDown} />
               </View>
-              <Text style={[styles.padLabel, styles.padSide]}>Повернути праворуч</Text>
-            </View>
-            <Text style={styles.padLabel}>Вид зверху</Text>
-            <Text style={styles.hint}>Перетягніть точку в центрі, щоб повертати й нахиляти разом.</Text>
-          </View>
-        )}
+            )}
 
-        {panel === "layers" && (
-          <View style={[styles.panel, panelStyle, styles.layersPanel]} accessibilityViewIsModal>
-            <View style={styles.cameraHeader}>
-              <Text style={styles.panelTitle}>Що показувати</Text>
-              {layerCategories.size > 0 && (
-                <Pressable accessibilityRole="button" onPress={onClearLayers} hitSlop={8}>
-                  <Text style={styles.clear}>Скинути</Text>
-                </Pressable>
-              )}
+            {panel === "camera" && (
+              <View style={[styles.panel, panelStyle]} accessibilityViewIsModal>
+                <View style={styles.cameraHeader}>
+                  <Text style={styles.panelTitle}>Камера</Text>
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>3D</Text>
+                    <Switch
+                      accessibilityLabel="3D-вигляд"
+                      value={is3D}
+                      onValueChange={(on) => map.current?.set3D(on)}
+                      trackColor={{ true: colors.primary, false: colors.border }}
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.padLabel}>Нахил до горизонту</Text>
+                <View style={styles.padRow}>
+                  <Text style={[styles.padLabel, styles.padSide, styles.padLeft]}>Повернути ліворуч</Text>
+                  <View style={styles.pad}>
+                    <PadButton icon="keyboard-arrow-up" label="Нахил до горизонту" onPress={() => map.current?.orbit(0, STEP_PITCH, 250)} style={styles.padUp} />
+                    <PadButton icon="keyboard-arrow-left" label="Повернути ліворуч" onPress={() => map.current?.orbit(-STEP_BEARING, 0, 250)} style={styles.padLeftBtn} />
+                    <View
+                      {...drag.panHandlers}
+                      accessible
+                      accessibilityLabel="Перетягніть, щоб повернути й нахилити карту"
+                      style={styles.padCenter}
+                    >
+                      <View style={styles.padDot} />
+                    </View>
+                    <PadButton icon="keyboard-arrow-right" label="Повернути праворуч" onPress={() => map.current?.orbit(STEP_BEARING, 0, 250)} style={styles.padRightBtn} />
+                    <PadButton icon="keyboard-arrow-down" label="Вид зверху" onPress={() => map.current?.orbit(0, -STEP_PITCH, 250)} style={styles.padDown} />
+                  </View>
+                  <Text style={[styles.padLabel, styles.padSide]}>Повернути праворуч</Text>
+                </View>
+                <Text style={styles.padLabel}>Вид зверху</Text>
+                <Text style={styles.hint}>Перетягніть точку в центрі, щоб повертати й нахиляти разом.</Text>
+              </View>
+            )}
+
+            {panel === "layers" && (
+              <View style={[styles.panel, panelStyle, styles.layersPanel]} accessibilityViewIsModal>
+                <View style={styles.cameraHeader}>
+                  <Text style={styles.panelTitle}>Що показувати</Text>
+                  {layerCategories.size > 0 && (
+                    <Pressable accessibilityRole="button" onPress={onClearLayers} hitSlop={8}>
+                      <Text style={styles.clear}>Скинути</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <Text style={styles.hint}>До {MAX_LAYER_CATEGORIES} категорій одночасно</Text>
+                <ScrollView contentContainerStyle={styles.chips}>
+                  {cityPlaceCategories.map((category) => {
+                    const selected = layerCategories.has(category.id);
+                    const disabled = !selected && layerCategories.size >= MAX_LAYER_CATEGORIES;
+                    return (
+                      <Pressable
+                        key={category.id}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected, disabled }}
+                        disabled={disabled}
+                        onPress={() => onToggleLayer(category.id)}
+                        style={[styles.chip, selected && styles.chipSelected, disabled && styles.chipDisabled]}
+                      >
+                        <View style={[styles.chipDot, { backgroundColor: categoryColor(category.id) }]} />
+                        <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{category.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
             </View>
-            <Text style={styles.hint}>До {MAX_LAYER_CATEGORIES} категорій одночасно</Text>
-            <ScrollView contentContainerStyle={styles.chips}>
-              {cityPlaceCategories.map((category) => {
-                const selected = layerCategories.has(category.id);
-                const disabled = !selected && layerCategories.size >= MAX_LAYER_CATEGORIES;
-                return (
-                  <Pressable
-                    key={category.id}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected, disabled }}
-                    disabled={disabled}
-                    onPress={() => onToggleLayer(category.id)}
-                    style={[styles.chip, selected && styles.chipSelected, disabled && styles.chipDisabled]}
-                  >
-                    <View style={[styles.chipDot, { backgroundColor: categoryColor(category.id) }]} />
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{category.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
+        </SafeAreaView>
       </Modal>
-    </>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -321,6 +329,7 @@ const PAD = 132;
 const CELL = 44;
 
 const styles = themed(() => ({
+  frame: { flex: 1 },
   column: { position: "absolute", right: 12, alignItems: "flex-end", gap: 8 },
   group: {
     backgroundColor: colors.card,
