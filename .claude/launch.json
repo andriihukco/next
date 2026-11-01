@@ -11,10 +11,11 @@
     },
     {
       "name": "web",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "npx",
       "runtimeArgs": [
-        "run",
-        "dev"
+        "vite",
+        "--mode",
+        "development"
       ],
       "port": 5173
     },

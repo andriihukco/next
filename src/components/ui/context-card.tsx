@@ -39,6 +39,10 @@ export interface ContextCardProps {
   place?: CityPlace;
   /** Scraper rating only. Omit it when no rating exists; never pass a sample. */
   rating?: { value: number; count?: number };
+  /** Open now / closed, from the source's opening hours only. */
+  status?: { open: boolean; text: string } | null;
+  /** Short amenity chips (Wi-Fi, Тераса…), from the source only. */
+  amenities?: { icon: string; label: string }[];
   onOpen: () => void;
   actions?: ContextCardAction[];
   className?: string;
@@ -53,6 +57,8 @@ export function ContextCard({
   imageUrl,
   place,
   rating,
+  status,
+  amenities,
   onOpen,
   actions,
   className,
@@ -71,12 +77,45 @@ export function ContextCard({
     ? { value: lookup.details.rating, count: lookup.details.reviewCount }
     : undefined;
   const shownRating = rating ?? scraped;
+  // The first scraped review, quoted like the map apps do. Development only (DESIGN.md §13).
+  const quote = place ? lookup.details?.reviews.find((review) => review.text.trim())?.text : undefined;
+  // Without OSM hours, the lookup's hours for today, as listed (no open/closed guess).
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  const todayHours = lookup.details?.openHours.find((slot) => slot.day === today)?.hours;
+  const shownStatus = status ?? (todayHours ? { open: true, text: `Сьогодні · ${todayHours}`, neutral: true } : null);
 
   return (
     <Card
       className={cn("context-card", actions?.length ? "context-card--with-actions" : undefined, className)}
     >
       <div className="context-card__row">
+        <div className="context-card__body">
+          {category && <span className="context-card__category">{category}</span>}
+          <h3 className="context-card__title">
+            <button type="button" className="context-card__open" onClick={onOpen}>
+              {title}
+            </button>
+          </h3>
+          {shownRating && (
+            <p className="context-card__rating" aria-label={`Оцінка ${formatRating(shownRating.value)} з 5`}>
+              <strong>{formatRating(shownRating.value)}</strong>
+              <MaterialIcon name="star" size={14} filled />
+              {shownRating.count !== undefined && <span>({shownRating.count})</span>}
+            </p>
+          )}
+          {subtitle && subtitle.trim() && <p className="context-card__subtitle">{subtitle}</p>}
+          {shownStatus && (
+            <p
+              className={cn(
+                "context-card__status",
+                "neutral" in shownStatus ? undefined : shownStatus.open ? "is-open" : "is-closed",
+              )}
+            >
+              <strong>{shownStatus.text.split(" · ")[0]}</strong>
+              {shownStatus.text.includes(" · ") && <span> · {shownStatus.text.split(" · ").slice(1).join(" · ")}</span>}
+            </p>
+          )}
+        </div>
         <div
           ref={thumbRef}
           className={cn(
@@ -93,23 +132,23 @@ export function ContextCard({
           {showIcon && <MaterialIcon name={icon} size={20} />}
           {showEmpty && <MaterialIcon name="image" size={20} />}
         </div>
-        <div className="context-card__body">
-          {category && <span className="context-card__category">{category}</span>}
-          <h3 className="context-card__title">
-            <button type="button" className="context-card__open" onClick={onOpen}>
-              {title}
-            </button>
-          </h3>
-          {subtitle && subtitle.trim() && <p className="context-card__subtitle">{subtitle}</p>}
-          {shownRating && (
-            <p className="context-card__rating" aria-label={`Оцінка ${formatRating(shownRating.value)} з 5`}>
-              <MaterialIcon name="star" size={14} filled />
-              <strong>{formatRating(shownRating.value)}</strong>
-              {shownRating.count !== undefined && <span>({shownRating.count})</span>}
-            </p>
-          )}
-        </div>
       </div>
+      {quote && (
+        <p className="context-card__quote">
+          <MaterialIcon name="format_quote" size={16} />
+          <span>{quote}</span>
+        </p>
+      )}
+      {amenities && amenities.length > 0 && (
+        <ul className="context-card__amenities" aria-label="Зручності">
+          {amenities.map((item) => (
+            <li key={item.label}>
+              <MaterialIcon name={item.icon} size={14} />
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      )}
       {actions && actions.length > 0 && (
         <div className="context-card__actions" role="group" aria-label={`Дії: ${title}`}>
           {actions.map((action) => (

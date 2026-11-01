@@ -142,7 +142,14 @@ export function cityPlacesFromMapFeatures(
         ["Тип", properties.subclass ?? properties.class],
         ["Мобільний", properties.mobile ?? properties["contact:mobile"]],
         ["Wi-Fi", properties.internet_access ?? properties["internet_access:fee"]],
-        [" wheelchair", properties.wheelchair],
+        ["Доступність", properties.wheelchair],
+        ["Тераса", properties.outdoor_seating],
+        ["З собою", properties.takeaway],
+        ["Доставка", properties.delivery],
+        ["Вегетаріанське", properties["diet:vegetarian"]],
+        ["Оплата карткою", properties["payment:cards"] ?? properties["payment:visa"] ?? properties["payment:mastercard"]],
+        ["Зірки", properties.stars],
+        ["Опис", properties.description],
       ].map(([label, value]) => [label, asText(value)]).filter(([, value]) => value),
     );
     places.set(id, {

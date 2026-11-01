@@ -6663,6 +6663,29 @@ body,
   font-size: var(--type-small);
 }
 
+/* Place groups above the category orbs (Їжа, Покупки…), one scrolling row of pills. */
+.city-place-groups {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 16px 4px;
+  scrollbar-width: none;
+}
+
+.city-place-groups::-webkit-scrollbar {
+  display: none;
+}
+
+.city-place-groups [data-slot="toggle"] {
+  flex: none;
+  gap: 6px;
+}
+
+.city-place-group-count {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
 .city-place-results-heading {
   display: flex;
   align-items: baseline;
@@ -8593,7 +8616,12 @@ body {
 
 .map-camera-grid {
   display: grid;
-  place-items: center;
+  grid-column: 2;
+  grid-row: 2;
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(3, 40px);
+  align-items: center;
+  justify-items: center;
 }
 
 .map-camera-grid > span {
@@ -8629,12 +8657,7 @@ body {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  grid-column: 2;
-  grid-row: 2;
-  grid-template-columns: repeat(3, 40px);
-  grid-template-rows: repeat(3, 40px);
-  align-items: center;
-  justify-items: center;
+  place-items: center;
   border-radius: var(--radius-pill);
   background: var(--primary);
   color: var(--primary-foreground);

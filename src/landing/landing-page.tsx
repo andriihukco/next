@@ -41,7 +41,7 @@ export function LandingPage() {
               <BrandLogo />
             </a>
             <nav className="landing-nav-links" aria-label="Розділи сторінки">
-              <a href="#problem">Чому eway</a>
+              <a href="#problem">Чому NEXTCOM</a>
               <a href="#features">Можливості</a>
               <a href="#faq">Питання</a>
               <a href="#data">Дані</a>
@@ -142,7 +142,7 @@ export function LandingPage() {
             </StaggerGroup>
             <Reveal className="landing-solve">
               <p>
-                <strong>eway збирає це в одну мапу,</strong> де все під рукою.
+                <strong>NEXTCOM збирає це в одну мапу,</strong> де все під рукою.
               </p>
             </Reveal>
           </section>

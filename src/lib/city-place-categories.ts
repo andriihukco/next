@@ -360,3 +360,59 @@ export const cityPlaceIcons: Record<CityPlaceCategory, string> = {
   "taxi-stand": "local_taxi",
   "car-sharing": "directions_car",
 };
+
+/**
+ * Groups for the places picker (Google Maps "Directory" style): pick a group, then a
+ * category inside it. Every category belongs to one group; anything not listed is «Місто».
+ */
+export const cityPlaceGroups: { id: string; label: string; icon: string; categories: CityPlaceCategory[] }[] = [
+  { id: "eat", label: "Їжа", icon: "restaurant", categories: ["food", "groceries", "nightlife", "market"] },
+  {
+    id: "shop",
+    label: "Покупки",
+    icon: "shopping_bag",
+    categories: ["shopping", "flowers", "hardware", "pet-shop", "optician", "construction"],
+  },
+  {
+    id: "health",
+    label: "Здоров’я й краса",
+    icon: "favorite",
+    categories: ["health", "pharmacy", "dentist", "beauty", "veterinary", "fitness", "yoga"],
+  },
+  {
+    id: "leisure",
+    label: "Дозвілля",
+    icon: "local_activity",
+    categories: ["culture", "tourism", "parks", "sports", "dance", "playground", "stay", "religion"],
+  },
+  {
+    id: "auto",
+    label: "Авто й рух",
+    icon: "directions_car",
+    categories: [
+      "transport", "parking", "fuel", "charging-station", "car-wash", "car-repair", "tire-service",
+      "car-rental", "car-sharing", "bicycle-rental", "scooter-rental", "bicycle-parking",
+      "motorcycle-parking", "taxi-stand", "bus-stop", "tram-stop",
+    ],
+  },
+  {
+    id: "services",
+    label: "Послуги",
+    icon: "storefront",
+    categories: [
+      "services", "finance", "atm", "post-office", "laundry", "dry-cleaning", "copy-center",
+      "print-shop", "photo-studio", "shoe-repair", "key-cutting", "locksmith", "internet-cafe",
+      "real-estate", "jobs",
+    ],
+  },
+  {
+    id: "learn",
+    label: "Навчання",
+    icon: "school",
+    categories: ["education", "library", "music-school", "art-studio"],
+  },
+];
+
+export function cityPlaceGroupOf(category: CityPlaceCategory): string {
+  return cityPlaceGroups.find((group) => group.categories.includes(category))?.id ?? "city";
+}

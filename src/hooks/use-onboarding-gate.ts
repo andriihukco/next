@@ -65,20 +65,21 @@ export function useOnboardingGate(setActiveView: (view: AppView) => void) {
     saveOnboardingValue(BENEFITS_DISMISSED_KEY, "true");
     setShowBenefits(false);
   };
-  const requestNotificationPermission = (): void => {
+  /** Resolves once the browser prompt is answered, so callers can close after it. */
+  const requestNotificationPermission = (): Promise<void> => {
     if (typeof Notification === "undefined") {
       setNotificationMessage("Цей браузер не підтримує системні сповіщення.");
-      return;
+      return Promise.resolve();
     }
     if (Notification.permission === "granted") {
       setNotificationMessage(NOTIFICATIONS_GRANTED);
-      return;
+      return Promise.resolve();
     }
     if (Notification.permission === "denied") {
       setNotificationMessage("Доступ вимкнено в налаштуваннях браузера. Його можна змінити там.");
-      return;
+      return Promise.resolve();
     }
-    void Notification.requestPermission()
+    return Notification.requestPermission()
       .then((permission) => {
         setNotificationMessage(
           permission === "granted"

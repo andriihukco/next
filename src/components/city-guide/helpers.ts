@@ -77,7 +77,59 @@ export const PLACE_INFO_ICONS: Record<string, string> = {
   "Wi-Fi": "wifi",
   Кухня: "restaurant_menu",
   Оператор: "domain",
+  Доступність: "accessible",
+  Тераса: "deck",
+  "З собою": "takeout_dining",
+  Доставка: "delivery_dining",
+  Вегетаріанське: "eco",
+  "Оплата карткою": "credit_card",
+  Зірки: "hotel_class",
+  Опис: "notes",
 };
+
+const OSM_VALUES: Record<string, string> = {
+  yes: "Так", no: "Ні", limited: "Частково", only: "Лише", wlan: "Так", free: "Безкоштовно",
+  customers: "Для відвідувачів", designated: "Так",
+};
+
+function readableValue(value: string): string {
+  return value
+    .split(";")
+    .map((part) => OSM_VALUES[part.trim()] ?? part.trim().replace(/_/g, " "))
+    .join(", ");
+}
+
+/** Amenity chips for a place card, from OSM tags only. "no" values are left out. */
+const AMENITIES: { key: string; icon: string; short: string }[] = [
+  { key: "Wi-Fi", icon: "wifi", short: "Wi-Fi" },
+  { key: "Доступність", icon: "accessible", short: "Доступно" },
+  { key: "Тераса", icon: "deck", short: "Тераса" },
+  { key: "З собою", icon: "takeout_dining", short: "З собою" },
+  { key: "Доставка", icon: "delivery_dining", short: "Доставка" },
+  { key: "Вегетаріанське", icon: "eco", short: "Вегетаріанське" },
+  { key: "Оплата карткою", icon: "credit_card", short: "Картка" },
+];
+
+export function placeAmenities(place: CityPlace): { icon: string; label: string }[] {
+  return AMENITIES.filter(({ key }) => {
+    const value = place.details[key];
+    return value !== undefined && value !== "no";
+  }).map(({ icon, short, key }) => ({
+    icon,
+    label: key === "Доступність" && place.details[key] === "limited" ? "Частково доступно" : short,
+  }));
+}
+
+/** The second card line: category, cuisine or hotel stars, when OSM has them. */
+export function placeKindLine(place: CityPlace): string {
+  const cuisine = place.details["Кухня"];
+  const stars = Number.parseInt(place.details["Зірки"] ?? "", 10);
+  return [
+    place.categoryLabel,
+    cuisine ? readableValue(cuisine) : "",
+    Number.isFinite(stars) && stars > 0 ? `${stars}★ готель` : "",
+  ].filter(Boolean).join(" · ");
+}
 
 /** Detail rows shown for a place. Phone and website are actions, not rows. */
 export function placeInfoRows(place: CityPlace): InfoRow[] {
@@ -86,7 +138,7 @@ export function placeInfoRows(place: CityPlace): InfoRow[] {
     .map(([label, value]) => ({
       icon: PLACE_INFO_ICONS[label] ?? "info",
       label,
-      value: label === "Графік" ? formatOpeningHours(value) : value,
+      value: label === "Графік" ? formatOpeningHours(value) : label === "Email" || label === "Опис" ? value : readableValue(value),
       href: label === "Email" ? `mailto:${value}` : undefined,
     }));
 }

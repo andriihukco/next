@@ -41,7 +41,7 @@ export function EducationCard({
                 label === "Сайт" ? "language" :
                 label === "Email" ? "email" :
                 label === "Wi-Fi" ? "wifi" :
-                label === " wheelchair" ? "accessible" : "info";
+                label === "Доступність" ? "accessible" : "info";
 
               return (
                 <UnifiedCard.Meta

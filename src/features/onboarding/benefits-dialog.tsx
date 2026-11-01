@@ -1,7 +1,9 @@
-import { useRef } from "react";
-import { motion } from "motion/react";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Button } from "../../components/ui/button";
+import { ListRow } from "../../components/ui/detail-layout";
 import { MaterialIcon } from "../../components/ui/material-icon";
+import { Switch } from "../../components/ui/switch";
 import { exitTransition, spring } from "../../lib/motion";
 import { useDialogFocus } from "../../lib/use-dialog-focus";
 import "./onboarding.css";
@@ -9,7 +11,7 @@ import "./onboarding.css";
 type BenefitsDialogProps = {
   notificationMessage: string;
   onRequestLocation: () => void;
-  onRequestNotifications: () => void;
+  onRequestNotifications: () => Promise<void>;
   onDismiss: () => void;
 };
 
@@ -19,7 +21,17 @@ const BENEFITS = [
   { icon: "local_offer", label: "Місцеві знижки й пропозиції" },
 ] as const;
 
-/** Asked once, after onboarding: permissions are optional and requested only on tap. */
+const PERMISSIONS = [
+  { id: "location", icon: "my_location", title: "Геолокація", subtitle: "Найближчі зупинки й місця" },
+  { id: "notifications", icon: "notifications", title: "Сповіщення", subtitle: "Коли підключимо джерела подій" },
+] as const;
+
+type PermissionId = (typeof PERMISSIONS)[number]["id"];
+
+/**
+ * Asked once, after onboarding. Both switches start off; the browser prompts run only
+ * on «Зберегти», which appears once a switch is on and closes the dialog when done.
+ */
 export function BenefitsDialog({
   notificationMessage,
   onRequestLocation,
@@ -27,7 +39,17 @@ export function BenefitsDialog({
   onDismiss,
 }: BenefitsDialogProps) {
   const cardRef = useRef<HTMLElement>(null);
+  const [chosen, setChosen] = useState<Record<PermissionId, boolean>>({ location: false, notifications: false });
+  const [saving, setSaving] = useState(false);
+  const anyChosen = chosen.location || chosen.notifications;
   useDialogFocus(cardRef, { onEscape: onDismiss });
+
+  const save = async (): Promise<void> => {
+    setSaving(true);
+    if (chosen.location) onRequestLocation();
+    if (chosen.notifications) await onRequestNotifications();
+    onDismiss();
+  };
 
   return (
     <motion.div
@@ -70,20 +92,42 @@ export function BenefitsDialog({
             </li>
           ))}
         </ul>
-        <div className="benefits-actions">
-          <Button type="button" size="lg" onClick={onRequestLocation}>
-            <MaterialIcon name="my_location" size={18} />
-            Дозволити геолокацію
-          </Button>
-          <Button type="button" size="lg" variant="outline" onClick={onRequestNotifications}>
-            <MaterialIcon name="notifications" size={18} />
-            Увімкнути сповіщення
-          </Button>
+        <div className="benefits-permissions">
+          {PERMISSIONS.map((item) => (
+            <ListRow
+              key={item.id}
+              leading={<MaterialIcon name={item.icon} size={20} />}
+              title={item.title}
+              subtitle={item.subtitle}
+              trailing={
+                <Switch
+                  aria-label={item.title}
+                  checked={chosen[item.id]}
+                  disabled={saving}
+                  onCheckedChange={(checked) => setChosen((current) => ({ ...current, [item.id]: checked }))}
+                />
+              }
+            />
+          ))}
         </div>
         <p className="benefits-note" role="status" aria-live="polite">
-          {notificationMessage ||
-            "Сповіщення про ці теми з’являться після підключення відповідних джерел."}
+          {notificationMessage || "Браузер попросить підтвердити кожен дозвіл. Змінити їх можна в налаштуваннях."}
         </p>
+        <AnimatePresence initial={false}>
+          {anyChosen && (
+            <motion.div
+              key="save"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8, transition: exitTransition }}
+              transition={spring.default}
+            >
+              <Button type="button" size="lg" className="benefits-save" disabled={saving} onClick={() => void save()}>
+                Зберегти
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <Button type="button" variant="ghost" className="benefits-dismiss" onClick={onDismiss}>
           Не зараз
         </Button>

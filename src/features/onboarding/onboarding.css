@@ -279,9 +279,16 @@
   color: var(--primary);
 }
 
-.benefits-actions {
+.benefits-permissions {
   display: grid;
-  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.benefits-save {
+  width: 100%;
+  min-height: 44px;
 }
 
 .benefits-note {

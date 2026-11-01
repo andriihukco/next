@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { CategoryTiles } from "../category-tiles";
 import { ContextCard } from "../ui/context-card";
 import { EntityDetail } from "../entity-detail";
 import { MaterialIcon } from "../ui/material-icon";
+import { Toggle } from "../ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { UnifiedCard } from "../ui/unified-card";
 import {
@@ -14,7 +15,16 @@ import {
   type CityPlaceCategory,
 } from "../../lib/city-places";
 import type { CityItemActions, PlacesLayout } from "./constants";
-import { demoProductsFor, distanceToPlace, formatPlaceDistance, placeInfoRows } from "./helpers";
+import { openStatus } from "../../lib/opening-hours";
+import { cityPlaceGroupOf, cityPlaceGroups } from "../../lib/city-place-categories";
+import {
+  demoProductsFor,
+  distanceToPlace,
+  formatPlaceDistance,
+  placeAmenities,
+  placeInfoRows,
+  placeKindLine,
+} from "./helpers";
 import "../city-view-switch.css";
 
 export type PlaceFilter = "popular" | "nearby" | CityPlaceCategory;
@@ -68,23 +78,77 @@ export function PlacesSection({
     localStorage.setItem(LAYOUT_KEY, next);
   };
   const shownPlaces = visiblePlaces.slice(0, placeDisplayLimit);
+  // Categories are grouped (Їжа, Покупки…) so the row shows a handful, not sixty.
+  const [group, setGroup] = useState<string>(() =>
+    placeCategory === "popular" || placeCategory === "nearby" ? "all" : cityPlaceGroupOf(placeCategory),
+  );
+  const counts = useMemo(() => {
+    const byCategory = new Map<CityPlaceCategory, number>();
+    for (const place of places) byCategory.set(place.category, (byCategory.get(place.category) ?? 0) + 1);
+    return byCategory;
+  }, [places]);
+  const groups = [
+    ...cityPlaceGroups.map((item) => ({ id: item.id, label: item.label, icon: item.icon })),
+    { id: "city", label: "Місто", icon: "location_city" },
+  ]
+    .map((item) => ({
+      ...item,
+      count: availableCategories
+        .filter((category) => cityPlaceGroupOf(category.id) === item.id)
+        .reduce((sum, category) => sum + (counts.get(category.id) ?? 0), 0),
+    }))
+    .filter((item) => item.count > 0);
+  const groupCategories =
+    group === "all" ? availableCategories : availableCategories.filter((category) => cityPlaceGroupOf(category.id) === group);
 
   return (
     <section
       className={`city-section city-places${selectedPlaceId ? " place-detail-page" : ""}`}
       aria-label="Місця"
     >
+      {!selectedPlaceId && groups.length > 1 && (
+        <div className="city-place-groups" role="group" aria-label="Групи місць">
+          <Toggle variant="pill" size="sm" pressed={group === "all"} onClick={() => setGroup("all")}>
+            Усе
+          </Toggle>
+          {groups.map((item) => (
+            <Toggle
+              key={item.id}
+              variant="pill"
+              size="sm"
+              pressed={group === item.id}
+              onClick={() => {
+                setGroup(item.id);
+                const first = availableCategories.find((category) => cityPlaceGroupOf(category.id) === item.id);
+                if (first) {
+                  onPlaceCategoryChange(first.id);
+                  setPlaceDisplayLimit(PAGE_SIZE);
+                }
+              }}
+            >
+              <MaterialIcon name={item.icon} size={16} />
+              {item.label}
+              <span className="city-place-group-count">{item.count}</span>
+            </Toggle>
+          ))}
+        </div>
+      )}
       {!selectedPlaceId && (
         <CategoryTiles
           label="Категорії місць"
           items={[
-            { id: "popular", label: "Популярне", icon: "award_star", color: "var(--category-popular)" },
-            ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me", color: "var(--category-nearby)" }] : []),
-            ...availableCategories.map((category) => ({
+            ...(group === "all"
+              ? [
+                  { id: "popular", label: "Популярне", icon: "award_star", color: "var(--category-popular)" },
+                  ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me", color: "var(--category-nearby)" }] : []),
+                ]
+              : []),
+            ...groupCategories.map((category) => ({
               id: category.id,
               label: category.label,
               icon: cityPlaceIcons[category.id],
               color: CITY_PLACE_CATEGORY_COLORS[category.id],
+              count: counts.get(category.id),
             })),
           ]}
           value={placeCategory}
@@ -165,7 +229,8 @@ export function PlacesSection({
                       iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
                       imageUrl={place.imageUrl}
                       place={place}
-                      info={placeInfoRows(place)}
+                      description={place.details["Опис"]}
+                      info={placeInfoRows(place).filter((row) => row.label !== "Опис")}
                       menu={demoProductsFor(place)}
                       catalog={demoProductsFor(place)}
                       coordinates={[place.lng, place.lat]}
@@ -180,11 +245,16 @@ export function PlacesSection({
                 }
                 // List results are context cards (DESIGN.md §7). The grid keeps UnifiedCard's 4:3 photo tiles.
                 if (placesLayout === "list") {
+                  const phone = place.details["Телефон"] || place.details["Мобільний"];
+                  const site = place.details["Сайт"];
+                  const website = site && !/^https?:\/\//.test(site) ? `https://${site}` : site;
                   return (
                     <ContextCard
                       key={place.id}
                       title={place.name}
-                      category={place.categoryLabel}
+                      category={placeKindLine(place)}
+                      status={openStatus(place.details["Графік"])}
+                      amenities={placeAmenities(place)}
                       icon={cityPlaceIcons[place.category]}
                       iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
                       subtitle={[formatPlaceDistance(distanceToPlace(place, origin)), place.address].filter(Boolean).join(" · ")}
@@ -198,6 +268,12 @@ export function PlacesSection({
                           primary: true,
                           onClick: () => onDirections([place.lng, place.lat], place.name),
                         },
+                        ...(phone
+                          ? [{ label: "Дзвінок", icon: "call", onClick: () => window.open(`tel:${phone.split(";")[0].trim()}`, "_self") }]
+                          : []),
+                        ...(website
+                          ? [{ label: "Сайт", icon: "language", onClick: () => window.open(website, "_blank", "noopener") }]
+                          : []),
                         {
                           label: "На мапі",
                           icon: "map",
@@ -225,7 +301,7 @@ export function PlacesSection({
                     {place.details["Графік"] && (
                       <UnifiedCard.Meta
                         label="Графік"
-                        value={formatOpeningHours(place.details["Графік"])}
+                        value={openStatus(place.details["Графік"])?.text ?? formatOpeningHours(place.details["Графік"])}
                         icon="schedule"
                       />
                     )}

@@ -4,6 +4,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { CENTER, LVIV_REGION_BOUNDS, MAP_STYLE } from "../lib/app-constants";
 import { installAppLayers } from "../lib/map-app-layers";
+import { addSatelliteLayer, applyMapStyleMode, type MapStyleMode } from "../lib/map-style-mode";
 import { recolorMapForTheme } from "../lib/map-theme";
 import { useResolvedTheme } from "../lib/use-theme";
 import type { Building3DLayer } from "../lib/building-3d-layer";
@@ -28,6 +29,7 @@ export function useCityMap(mapNode: RefObject<HTMLDivElement | null>, handlers: 
   const [mapPitch, setMapPitch] = useState(60);
   const [mapBearing, setMapBearing] = useState(0);
   const [terrainEnabled, setTerrainEnabled] = useState(false);
+  const [mapStyleMode, setMapStyleMode] = useState<MapStyleMode>("standard");
   const handlersRef = useLatest(handlers);
 
   useEffect(() => {
@@ -112,15 +114,21 @@ export function useCityMap(mapNode: RefObject<HTMLDivElement | null>, handlers: 
     );
   }, [mapPitch, mapReady, terrainEnabled]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    addSatelliteLayer(map);
+    applyMapStyleMode(map, mapStyleMode);
+  }, [mapReady, mapStyleMode]);
+
   const resetOrientation = (): void => {
     mapRef.current?.easeTo({ bearing: 0, roll: 0, duration: 250 });
   };
-  /** Turns the bearing and tilts the pitch by degrees. Pitch stays within 0 and the map's max pitch. */
-  const orbit = (bearingDelta: number, pitchDelta: number, duration: number): void => {
+  /** Sets the bearing and pitch in degrees, at once. Pitch is clamped to the map's range. */
+  const setCamera = (bearing: number, pitch: number): void => {
     const map = mapRef.current;
     if (!map) return;
-    const pitch = Math.min(Math.max(map.getPitch() + pitchDelta, 0), map.getMaxPitch());
-    map.easeTo({ bearing: map.getBearing() + bearingDelta, pitch, duration });
+    map.jumpTo({ bearing, pitch: Math.min(Math.max(pitch, 0), map.getMaxPitch()) });
   };
   const toggleMapMode = (): void => {
     const pitch = mapPitch >= 0.5 ? 0 : 60;
@@ -137,8 +145,10 @@ export function useCityMap(mapNode: RefObject<HTMLDivElement | null>, handlers: 
     mapBearing,
     terrainEnabled,
     setTerrainEnabled,
+    mapStyleMode,
+    setMapStyleMode,
     resetOrientation,
-    orbit,
+    setCamera,
     toggleMapMode,
   };
 }

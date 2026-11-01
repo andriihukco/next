@@ -7,7 +7,9 @@ import { FLOWS, flowsForKind, type EntityFlow, type MenuItem } from "./entity-fl
 import { usePlacePhoto } from "../lib/place-images";
 import type { CityPlace } from "../lib/city-places";
 import { PlaceDetailsSection } from "./place-details-section";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { formatRating } from "../lib/rating";
+import { openStatus } from "../lib/opening-hours";
 import "./entity-detail.css";
 
 export type { EntityFlow, MenuItem };
@@ -102,6 +104,23 @@ export function EntityDetail({
     ...info,
     ...(website
       ? [{ icon: "language", label: "Сайт", value: website.replace(/^https?:\/\//, ""), href: website.startsWith("http") ? website : `https://${website}` }]
+      : []),
+  ];
+  // Places get Google-Maps-style tabs. Reviews show only when a real source has them.
+  const tabbed = Boolean(place) && !date;
+  const hours = place ? openStatus(place.details["Графік"]) : null;
+  const reviewCount = lookup.details?.reviews.length ?? 0;
+  const address = place?.address || lookup.details?.address;
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  const todayHours = lookup.details?.openHours.find((slot) => slot.day === today)?.hours;
+  const site = website || lookup.details?.website;
+  const keyFacts: QuickFact[] = [
+    ...(address ? [{ icon: "location_on", label: "Адреса", value: address }] : []),
+    ...(!hours && todayHours ? [{ icon: "schedule", label: "Сьогодні", value: todayHours }] : []),
+    ...quickFacts.filter((fact) => ["Графік", "Кухня"].includes(fact.label)),
+    ...(callPhone ? [{ icon: "call", label: "Телефон", value: callPhone, href: `tel:${callPhone.replace(/[^\d+]/g, "")}` }] : []),
+    ...(site
+      ? [{ icon: "language", label: "Сайт", value: site.replace(/^https?:\/\//, "").replace(/\/$/, ""), href: site.startsWith("http") ? site : `https://${site}` }]
       : []),
   ];
   const coverColor = iconColor ? ({ "--entity-color": iconColor } as CSSProperties) : undefined;
@@ -237,22 +256,56 @@ export function EntityDetail({
         </p>
       )}
 
-      {(info.length > 0 || website) && (
-        <DetailSection title="Інформація">
-          <QuickFacts facts={quickFacts} />
-        </DetailSection>
-      )}
+      {tabbed ? (
+        <Tabs defaultValue="overview" className="entity-tabs">
+          <TabsList variant="line" className="entity-tabs-list" aria-label="Розділи місця">
+            <TabsTrigger value="overview">Огляд</TabsTrigger>
+            {reviewCount > 0 && <TabsTrigger value="reviews">Відгуки</TabsTrigger>}
+            <TabsTrigger value="about">Про місце</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview" className="entity-tab-panel">
+            {hours && (
+              <p className={`entity-open-status${hours.open ? " is-open" : " is-closed"}`}>
+                <MaterialIcon name="schedule" size={18} />
+                {hours.text}
+              </p>
+            )}
+            {description && <p className="entity-description">{description}</p>}
+            {keyFacts.length > 0 && <QuickFacts facts={keyFacts} />}
+          </TabsContent>
+          {reviewCount > 0 && lookup.details && (
+            <TabsContent value="reviews" className="entity-tab-panel">
+              <PlaceDetailsSection details={lookup.details} />
+            </TabsContent>
+          )}
+          <TabsContent value="about" className="entity-tab-panel">
+            {quickFacts.length > 0 ? (
+              <QuickFacts facts={quickFacts} />
+            ) : (
+              <p className="entity-description">Для цього місця ще немає додаткових відомостей.</p>
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <>
+        {(info.length > 0 || website) && (
+          <DetailSection title="Інформація">
+            <QuickFacts facts={quickFacts} />
+          </DetailSection>
+        )}
 
-      {description && (
-        <DetailSection title="Опис">
-          <p className="entity-description">{description}</p>
-        </DetailSection>
-      )}
+        {description && (
+          <DetailSection title="Опис">
+            <p className="entity-description">{description}</p>
+          </DetailSection>
+        )}
 
-      {lookup.details && (
-        <section className="entity-scraped-details">
-          <PlaceDetailsSection details={lookup.details} />
-        </section>
+        {lookup.details && (
+          <section className="entity-scraped-details">
+            <PlaceDetailsSection details={lookup.details} />
+          </section>
+        )}
+        </>
       )}
 
       {children}

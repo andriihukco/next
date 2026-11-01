@@ -75,6 +75,10 @@ vehicles, stops, shelters, places, events, air-alert status and fixture settings
 so it has no password. The real admin is `/admin`: it needs a Supabase account with
 the `editor` or `admin` role in `public.profiles`, and admins confirm with a second
 factor (TOTP). Everyone else sees a 404.
+For a local admin, run `supabase start`, then `node scripts/create-local-admin.mjs`
+with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `LOCAL_ADMIN_PASSWORD` (8+ chars)
+from `supabase status`; it refuses any non-local host. On a hosted project, sign up
+in the app and set `role = 'admin'` for that user in `public.profiles`.
 Validated overrides are stored in this browser's local storage; they do not
 write to the transit API or a shared database.
 

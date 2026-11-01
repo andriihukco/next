@@ -402,6 +402,7 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
 - Every tour step's `data-tour` target must exist in the rendered UI. A missing target silently drops the spotlight. Check this when changing either side.
 - The profile step is optional. Skipping never blocks the app.
 - Location and notification permissions are requested only after the user asks for them. Do not imply notification delivery until the data source is connected.
+- The benefits dialog (after onboarding) lists each permission as a `Switch`, off by default. «Зберегти» appears only once a switch is on; it runs the browser prompts for the switched-on permissions and closes the dialog. «Не зараз» closes without asking.
 - Replay is available from the `/dev` tools.
 - If a step's target is missing at runtime, the card stays centered without a spotlight instead of breaking.
 
