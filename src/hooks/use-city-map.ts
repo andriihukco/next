@@ -13,8 +13,6 @@ import { useLatest } from "./use-latest";
 // MapLibre looks for its worker next to its own bundle chunk, where the build does not emit it.
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
-export type PanDirection = "up" | "down" | "left" | "right";
-
 type CityMapHandlers = {
   /** Reads places from the visible tiles. Called on idle and, throttled, while moving. */
   onViewportChange: () => void;
@@ -117,15 +115,12 @@ export function useCityMap(mapNode: RefObject<HTMLDivElement | null>, handlers: 
   const resetOrientation = (): void => {
     mapRef.current?.easeTo({ bearing: 0, roll: 0, duration: 250 });
   };
-  /** Pans the view one step in a direction. */
-  const pan = (direction: PanDirection): void => {
-    const step = 120;
-    const offset: [number, number] =
-      direction === "up" ? [0, step]
-      : direction === "down" ? [0, -step]
-      : direction === "left" ? [step, 0]
-      : [-step, 0];
-    mapRef.current?.panBy(offset, { duration: 250 });
+  /** Turns the bearing and tilts the pitch by degrees. Pitch stays within 0 and the map's max pitch. */
+  const orbit = (bearingDelta: number, pitchDelta: number, duration: number): void => {
+    const map = mapRef.current;
+    if (!map) return;
+    const pitch = Math.min(Math.max(map.getPitch() + pitchDelta, 0), map.getMaxPitch());
+    map.easeTo({ bearing: map.getBearing() + bearingDelta, pitch, duration });
   };
   const toggleMapMode = (): void => {
     const pitch = mapPitch >= 0.5 ? 0 : 60;
@@ -143,7 +138,7 @@ export function useCityMap(mapNode: RefObject<HTMLDivElement | null>, handlers: 
     terrainEnabled,
     setTerrainEnabled,
     resetOrientation,
-    pan,
+    orbit,
     toggleMapMode,
   };
 }

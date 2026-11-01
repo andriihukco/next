@@ -1,10 +1,15 @@
-import type { RefObject } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { Button } from "./ui/button";
 import { LocateFixed, MaterialIcon } from "./ui/material-icon";
 import { Toggle } from "./ui/toggle";
 import { CITY_PLACE_CATEGORY_COLORS, cityPlaceCategories, type CityPlaceCategory } from "../lib/city-places";
 
-export type PanDirection = "up" | "down" | "left" | "right";
+/** Button steps: one press turns the view 15° and tilts it 10°. */
+const STEP_BEARING = 15;
+const STEP_PITCH = 10;
+/** Drag sensitivity: degrees per pixel of pointer movement. */
+const DRAG_BEARING = 0.4;
+const DRAG_PITCH = 0.25;
 
 type MapControlsProps = {
   hidden: boolean;
@@ -14,7 +19,10 @@ type MapControlsProps = {
   onToggleTerrain: () => void;
   onResetOrientation: () => void;
   onToggleMapMode: () => void;
-  onPan: (direction: PanDirection) => void;
+  /** Turns the bearing and tilts the pitch by degrees. Duration 0 applies at once (drags). */
+  onOrbit: (bearingDelta: number, pitchDelta: number, duration: number) => void;
+  /** Called when the camera popover opens, so the mobile sheet can drop out of its way. */
+  onCameraOpen: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onLocate: () => void;
@@ -26,7 +34,7 @@ type MapControlsProps = {
   onClearLayers: () => void;
 };
 
-/** Floating map controls: compass, 2D/3D, terrain, pan pad, zoom, locate, and map layer chips. */
+/** Floating map controls: compass, 2D/3D, terrain, camera popover, zoom, locate, and map layer chips. */
 export function MapControls({
   hidden,
   pitch,
@@ -35,7 +43,8 @@ export function MapControls({
   onToggleTerrain,
   onResetOrientation,
   onToggleMapMode,
-  onPan,
+  onOrbit,
+  onCameraOpen,
   onZoomIn,
   onZoomOut,
   onLocate,
@@ -46,6 +55,42 @@ export function MapControls({
   onToggleLayerCategory,
   onClearLayers,
 }: MapControlsProps) {
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const cameraRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Close the camera popover on an outside click or Escape.
+  useEffect(() => {
+    if (!cameraOpen) return;
+    const handleOutside = (event: MouseEvent): void => {
+      if (cameraRef.current && !cameraRef.current.contains(event.target as Node)) setCameraOpen(false);
+    };
+    const handleKey = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") setCameraOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [cameraOpen]);
+
+  const handleCenterDown = (event: PointerEvent<HTMLButtonElement>): void => {
+    dragRef.current = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const handleCenterMove = (event: PointerEvent<HTMLButtonElement>): void => {
+    const last = dragRef.current;
+    if (!last) return;
+    dragRef.current = { x: event.clientX, y: event.clientY };
+    // Dragging up tilts toward the horizon, the same way the up arrow does.
+    onOrbit((event.clientX - last.x) * DRAG_BEARING, (last.y - event.clientY) * DRAG_PITCH, 0);
+  };
+  const handleCenterEnd = (): void => {
+    dragRef.current = null;
+  };
+
   return (
     <div
       className={`map-controls${pitch >= 0.5 ? " map-controls-3d" : " map-controls-2d"}`}
@@ -91,17 +136,60 @@ export function MapControls({
             <MaterialIcon name="terrain" size={20} />
           </Button>
         )}
-      </div>
-      <div className="map-control-set map-pan-pad" role="group" aria-label="Перемістити карту">
-        <span aria-hidden="true" />
-        <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту вгору" title="Вгору" onClick={() => onPan("up")}><MaterialIcon name="keyboard_arrow_up" size={22} /></Button>
-        <span aria-hidden="true" />
-        <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту ліворуч" title="Ліворуч" onClick={() => onPan("left")}><MaterialIcon name="keyboard_arrow_left" size={22} /></Button>
-        <span aria-hidden="true" className="map-pan-center" />
-        <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту праворуч" title="Праворуч" onClick={() => onPan("right")}><MaterialIcon name="keyboard_arrow_right" size={22} /></Button>
-        <span aria-hidden="true" />
-        <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту донизу" title="Донизу" onClick={() => onPan("down")}><MaterialIcon name="keyboard_arrow_down" size={22} /></Button>
-        <span aria-hidden="true" />
+        <div className="map-camera-wrap" ref={cameraRef}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="map-control map-camera-btn"
+            aria-label="Камера: нахил і поворот"
+            aria-expanded={cameraOpen}
+            aria-haspopup="dialog"
+            title="Камера: нахил і поворот"
+            onClick={() => {
+              if (!cameraOpen) onCameraOpen();
+              setCameraOpen((open) => !open);
+            }}
+          >
+            <MaterialIcon name="photo_camera" size={20} />
+          </Button>
+          {cameraOpen && (
+            <div className="map-settings-popover map-camera-popover" role="dialog" aria-label="Камера">
+              <div className="map-settings-header">
+                <span className="map-settings-title">Камера</span>
+              </div>
+              <div className="map-camera-pad" role="group" aria-label="Нахил і поворот карти">
+                <span className="map-camera-label map-camera-label-top" aria-hidden="true">Нахил до горизонту</span>
+                <span className="map-camera-label map-camera-label-left" aria-hidden="true">Повернути ліворуч</span>
+                <div className="map-camera-grid">
+                  <span aria-hidden="true" />
+                  <Button type="button" variant="ghost" className="map-control" aria-label="Нахил до горизонту" title="Нахил до горизонту" onClick={() => onOrbit(0, STEP_PITCH, 250)}><MaterialIcon name="keyboard_arrow_up" size={22} /></Button>
+                  <span aria-hidden="true" />
+                  <Button type="button" variant="ghost" className="map-control" aria-label="Повернути ліворуч" title="Повернути ліворуч" onClick={() => onOrbit(-STEP_BEARING, 0, 250)}><MaterialIcon name="keyboard_arrow_left" size={22} /></Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="map-control map-camera-center"
+                    aria-label="Перетягніть, щоб повернути й нахилити карту"
+                    title="Перетягніть, щоб повернути й нахилити карту"
+                    onPointerDown={handleCenterDown}
+                    onPointerMove={handleCenterMove}
+                    onPointerUp={handleCenterEnd}
+                    onPointerCancel={handleCenterEnd}
+                  >
+                    <span aria-hidden="true" className="map-camera-dot" />
+                  </Button>
+                  <Button type="button" variant="ghost" className="map-control" aria-label="Повернути праворуч" title="Повернути праворуч" onClick={() => onOrbit(STEP_BEARING, 0, 250)}><MaterialIcon name="keyboard_arrow_right" size={22} /></Button>
+                  <span aria-hidden="true" />
+                  <Button type="button" variant="ghost" className="map-control" aria-label="Вид зверху" title="Вид зверху" onClick={() => onOrbit(0, -STEP_PITCH, 250)}><MaterialIcon name="keyboard_arrow_down" size={22} /></Button>
+                  <span aria-hidden="true" />
+                </div>
+                <span className="map-camera-label map-camera-label-right" aria-hidden="true">Повернути праворуч</span>
+                <span className="map-camera-label map-camera-label-bottom" aria-hidden="true">Вид зверху</span>
+              </div>
+              <p className="map-settings-hint">Перетягніть точку в центрі, щоб повертати й нахиляти разом.</p>
+            </div>
+          )}
+        </div>
       </div>
       <div className="map-control-set map-zoom-controls" role="group" aria-label="Масштаб">
         <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={onZoomIn}><MaterialIcon name="add" size={22} /></Button>
@@ -156,7 +244,7 @@ export function MapControls({
                     <Toggle variant="pill"
                       key={cat.id}
                       size="sm"
-                     
+
                       disabled={atLimit}
                       className="map-layer-chip"
                       style={{ "--chip-color": CITY_PLACE_CATEGORY_COLORS[cat.id] } as React.CSSProperties}

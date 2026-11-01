@@ -338,7 +338,10 @@ export default function App() {
         onToggleTerrain={() => map.setTerrainEnabled((enabled) => !enabled)}
         onResetOrientation={map.resetOrientation}
         onToggleMapMode={map.toggleMapMode}
-        onPan={map.pan}
+        onOrbit={map.orbit}
+        onCameraOpen={() => {
+          if (isMobileLayout) sheet.setDetent("peek");
+        }}
         onZoomIn={() => mapRef.current?.zoomIn()}
         onZoomOut={() => mapRef.current?.zoomOut()}
         onLocate={geo.requestLocation}

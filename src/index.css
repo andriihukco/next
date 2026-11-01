@@ -8542,27 +8542,75 @@ body {
   transition: transform var(--duration-state) var(--ease);
 }
 
-/* Pan pad: a 3×3 grid, the center is an empty cell with a dot. Desktop only; touch pans by drag. */
-.map-pan-pad {
+/* Camera popover: the 3×3 orbit pad sits in the middle, each arrow has a label beside it.
+   Up and down tilt the view, left and right turn it. The center dot is a drag handle. */
+.map-camera-wrap {
+  position: relative;
+}
+
+.map-camera-pad {
   display: grid;
-  grid-template-columns: repeat(3, 36px);
-  grid-template-rows: repeat(3, 36px);
+  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
+  grid-template-rows: auto 120px auto;
+  gap: 8px;
   align-items: center;
   justify-items: center;
 }
 
-.map-pan-pad > span {
-  width: 36px;
-  height: 36px;
+.map-camera-label {
+  color: var(--muted-foreground);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+  text-align: center;
 }
 
-.map-pan-center {
+.map-camera-label-top,
+.map-camera-label-bottom {
+  grid-column: 1 / -1;
+}
+
+.map-camera-label-top {
+  grid-row: 1;
+}
+
+.map-camera-label-left {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: end;
+  text-align: right;
+}
+
+.map-camera-label-right {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: start;
+  text-align: left;
+}
+
+.map-camera-label-bottom {
+  grid-row: 3;
+}
+
+.map-camera-grid {
   display: grid;
   place-items: center;
 }
 
-.map-pan-center::after {
-  content: "";
+.map-camera-grid > span {
+  width: 40px;
+  height: 40px;
+}
+
+.map-camera-center {
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-camera-center:active {
+  cursor: grabbing;
+}
+
+.map-camera-dot {
   width: 6px;
   height: 6px;
   border-radius: var(--radius-pill);
@@ -8581,7 +8629,12 @@ body {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  place-items: center;
+  grid-column: 2;
+  grid-row: 2;
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(3, 40px);
+  align-items: center;
+  justify-items: center;
   border-radius: var(--radius-pill);
   background: var(--primary);
   color: var(--primary-foreground);
@@ -8663,8 +8716,7 @@ body {
   }
 
   /* Pinch zooms on touch screens; the zoom pair only costs map space. */
-  .map-zoom-controls,
-  .map-pan-pad {
+  .map-zoom-controls {
     display: none;
   }
 
