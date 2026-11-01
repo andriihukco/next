@@ -1,9 +1,9 @@
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useCityData } from "../../lib/city-data";
-import { distanceKm } from "../../lib/geo";
-import { formatDistance } from "../../lib/format";
-import { goToMap } from "../../lib/navigation";
-import { Badge, Button, EmptyState, ListRow, Page, Row, Section, Txt } from "../../ui";
+import { useCityData } from "../../../lib/city-data";
+import { distanceKm } from "../../../lib/geo";
+import { formatDistance } from "../../../lib/format";
+import { goToMap } from "../../../lib/navigation";
+import { Badge, Button, EmptyState, ListRow, Page, Row, Section, Txt } from "../../../ui";
 
 /** A shelter during an air alert: address, status, access, and how far it is. */
 export default function ShelterScreen() {

@@ -1,14 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TaxiFlow } from "../../components/services/taxi-flow";
-import { ShopFlow } from "../../components/services/shop-flow";
-import { TableFlow } from "../../components/services/table-flow";
-import { CinemaFlow } from "../../components/services/cinema-flow";
-import { AppointmentFlow } from "../../components/services/appointment-flow";
-import { MembershipFlow } from "../../components/services/membership-flow";
-import type { ServiceId } from "../../lib/services";
-import { colors, themed } from "../../lib/theme";
-import { layout } from "../../ui";
+import { TaxiFlow } from "../../../components/services/taxi-flow";
+import { ShopFlow } from "../../../components/services/shop-flow";
+import { TableFlow } from "../../../components/services/table-flow";
+import { CinemaFlow } from "../../../components/services/cinema-flow";
+import { AppointmentFlow } from "../../../components/services/appointment-flow";
+import { MembershipFlow } from "../../../components/services/membership-flow";
+import type { ServiceId } from "../../../lib/services";
+import { colors, themed } from "../../../lib/theme";
+import { layout } from "../../../ui";
 
 /**
  * A service flow as its own page. The flows have steps with their own back control, so the page

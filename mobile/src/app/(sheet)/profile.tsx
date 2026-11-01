@@ -2,11 +2,11 @@ import { useCallback, useState } from "react";
 import { Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import * as Location from "expo-location";
-import { clearDeviceData, EMPTY_PROFILE, readLocalProfile, type LocalProfile } from "../lib/local-profile";
-import { iconTileFor } from "../lib/icon-tiles";
-import { useThemePreference, type ThemePreference } from "../lib/theme-provider";
-import { accountLabel, useSession } from "../lib/supabase";
-import { Badge, ListRow, Page, Section, Segmented, SwitchRow } from "../ui";
+import { clearDeviceData, EMPTY_PROFILE, readLocalProfile, type LocalProfile } from "../../lib/local-profile";
+import { iconTileFor } from "../../lib/icon-tiles";
+import { useThemePreference, type ThemePreference } from "../../lib/theme-provider";
+import { accountLabel, useSession } from "../../lib/supabase";
+import { Badge, ListRow, Page, Section, Segmented, SwitchRow } from "../../ui";
 
 const THEME_OPTIONS: readonly { id: ThemePreference; label: string }[] = [
   { id: "system", label: "Системна" },
@@ -57,17 +57,6 @@ export default function ProfileScreen() {
         />
       </Section>
 
-      <Section title="Навігація" grouped footer="Улюблені вкладки стоять першими. Порядок і вимкнені вкладки зберігаються на цьому пристрої.">
-        <ListRow
-          icon="tune"
-          iconTile={iconTileFor("tabs")}
-          title="Вкладки"
-          subtitle="Що показувати, улюблені й порядок"
-          onPress={() => router.push("/sections")}
-          last
-        />
-      </Section>
-
       <Section title="Вигляд" footer="Системна тема змінюється разом із налаштуваннями телефона.">
         <Segmented options={THEME_OPTIONS} value={theme.preference} onChange={theme.setPreference} />
       </Section>
@@ -94,7 +83,7 @@ export default function ProfileScreen() {
       </Section>
 
       <Section title="Про застосунок" grouped>
-        <ListRow icon="tour" iconTile={iconTileFor("tour")} title="Показати знайомство ще раз" onPress={() => router.replace({ pathname: "/", params: { tour: "1" } })} />
+        <ListRow icon="tour" iconTile={iconTileFor("tour")} title="Показати знайомство ще раз" onPress={() => router.replace({ pathname: "/transport", params: { tour: "1" } })} />
         <ListRow icon="directions-walk" iconTile={iconTileFor("walk")} title="Прогулянка центром" subtitle="Демо маршруту з прогресом ходьби" onPress={() => router.push("/welcome")} />
         <ListRow icon="palette" iconTile={iconTileFor("design")} title="Дизайн-система" subtitle="Усі елементи для iOS і Android" onPress={() => router.push("/design")} last />
       </Section>

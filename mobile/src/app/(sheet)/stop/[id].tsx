@@ -1,12 +1,12 @@
 import { Linking, ScrollView } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useCityData } from "../../lib/city-data";
-import { distanceKm } from "../../lib/geo";
-import { formatDistance } from "../../lib/format";
-import { arrivalsAt } from "../../lib/transit-eta";
-import { goToMap, openVehicle } from "../../lib/navigation";
-import { FLEET_COLORS, VEHICLE_LABELS } from "../../lib/transit-types";
-import { Button, Chip, EmptyState, ListRow, Page, RouteBadge, Section, space, Txt } from "../../ui";
+import { useCityData } from "../../../lib/city-data";
+import { distanceKm } from "../../../lib/geo";
+import { formatDistance } from "../../../lib/format";
+import { arrivalsAt } from "../../../lib/transit-eta";
+import { goToMap, openVehicle } from "../../../lib/navigation";
+import { FLEET_COLORS, VEHICLE_LABELS } from "../../../lib/transit-types";
+import { Button, Chip, EmptyState, ListRow, Page, RouteBadge, Section, space, Txt } from "../../../ui";
 
 /** Only https links open (same rule as safeStopWebsite on the web). */
 function safeWebsite(value?: string): string | null {

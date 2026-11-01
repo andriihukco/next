@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { TextInput, View } from "react-native";
 import { router, Stack } from "expo-router";
-import { EMPTY_PROFILE, readLocalProfile, saveLocalProfile, VISITOR_TYPES, type LocalProfile } from "../lib/local-profile";
-import { colors, fonts, themed } from "../lib/theme";
-import { Button, Chip, Page, Section, space, radiusFor, useUiPlatform } from "../ui";
+import { EMPTY_PROFILE, readLocalProfile, saveLocalProfile, VISITOR_TYPES, type LocalProfile } from "../../lib/local-profile";
+import { colors, fonts, themed } from "../../lib/theme";
+import { Button, Chip, Page, Section, space, radiusFor, useUiPlatform } from "../../ui";
 
 /** Мій профіль: name, who you are in the city, home and work districts. Kept on the device only. */
 export default function ProfileEditScreen() {

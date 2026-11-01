@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useCityData } from "../../lib/city-data";
-import { distanceKm } from "../../lib/geo";
-import { formatDistance } from "../../lib/format";
-import { goToMap, openStop } from "../../lib/navigation";
-import { FLEET_COLORS, VEHICLE_LABELS } from "../../lib/transit-types";
-import { Badge, Button, EmptyState, ListRow, Page, RouteBadge, Row, Section, Txt } from "../../ui";
+import { useCityData } from "../../../lib/city-data";
+import { distanceKm } from "../../../lib/geo";
+import { formatDistance } from "../../../lib/format";
+import { goToMap, openStop } from "../../../lib/navigation";
+import { FLEET_COLORS, VEHICLE_LABELS } from "../../../lib/transit-types";
+import { Badge, Button, EmptyState, ListRow, Page, RouteBadge, Row, Section, Txt } from "../../../ui";
 
 /** A vehicle on the line: route, destination, plate, and the stops of its route nearest to it. */
 export default function VehicleScreen() {

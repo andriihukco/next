@@ -1,25 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
-import { useIsFocused, useLocalSearchParams } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, View } from "react-native";
+import { useGlobalSearchParams } from "expo-router";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Onboarding, ONBOARDING_COMPLETE_KEY } from "../../components/onboarding/onboarding";
-import { CityMap, type MapCommands, type Selection } from "../../components/city-map";
-import { MapControls, MAX_LAYER_CATEGORIES, type MapControlsHandle } from "../../components/map/map-controls";
-import { AirAlertPill } from "../../components/air-alert-pill";
+import { Onboarding, ONBOARDING_COMPLETE_KEY } from "../onboarding/onboarding";
+import { CityMap, type MapCommands, type Selection } from "../city-map";
+import { MapControls, MAX_LAYER_CATEGORIES, type MapControlsHandle } from "./map-controls";
+import { AirAlertPill } from "../air-alert-pill";
 import { useCityData, type Point } from "../../lib/city-data";
 import { fetchRouteShape } from "../../lib/transit-api";
 import type { MapStyleMode } from "../../lib/map-style";
 import { openPlace, openProfile, openShelter, openStop, openVehicle } from "../../lib/navigation";
 import { useDevSim } from "../../lib/dev-sim";
+import { requestSheet } from "../../lib/sheet-store";
 import { colors, themed } from "../../lib/theme";
 import { AvatarButton, Badge, layout, space, Txt } from "../../ui";
 
 /**
- * Мапа: the live city map, full screen. Controls float in the corners; tapping a vehicle, stop,
- * place or shelter opens its own page instead of a card over the map (design/screens.md#map).
+ * The live city map behind every page. It fills the screen; the sheet and the tab bar sit over it.
+ * Controls float in the corners; tapping a vehicle, stop, place or shelter opens its page in the sheet
+ * (design/navigation.md).
  */
-export default function MapScreen() {
+export function CityBackdrop() {
   const city = useCityData();
   const sim = useDevSim();
   const insets = useSafeAreaInsets();
@@ -32,10 +34,8 @@ export default function MapScreen() {
   const controls = useRef<MapControlsHandle>(null);
 
   // Onboarding on first launch, or again from Профіль («Показати знайомство ще раз» passes tour=1).
-  const { tour } = useLocalSearchParams<{ tour?: string }>();
+  const { tour } = useGlobalSearchParams<{ tour?: string }>();
   const [onboarding, setOnboarding] = useState(false);
-  // Only while the map tab is on screen; the tour points at its controls.
-  const focused = useIsFocused();
   useEffect(() => {
     if (tour === "1") {
       setOnboarding(true);
@@ -44,12 +44,13 @@ export default function MapScreen() {
     void AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY).then((done) => setOnboarding(done !== "1"));
   }, [tour]);
 
-  // «Показати на мапі» from another page: center there and highlight the item.
+  // «Показати на мапі» from another page: center there, minimise the sheet so the item is in view, and highlight it.
   const { mapFocus, clearMapFocus } = city;
   useEffect(() => {
     if (!mapFocus) return;
     setFocus(mapFocus.point);
     setSelection(mapFocus.selection ?? null);
+    requestSheet("minimised");
     clearMapFocus();
   }, [mapFocus, clearMapFocus]);
 
@@ -116,19 +117,22 @@ export default function MapScreen() {
         controller={mapCommands}
       />
 
-      <View style={[styles.topBar, { top: insets.top + space.sm }]} pointerEvents="box-none">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Львів, бета. Довго натисніть, щоб відкрити інструменти розробника"
-          delayLongPress={5000}
-          onLongPress={sim.openDevTools}
-          style={styles.cityPill}
-        >
-          <Txt variant="headline">Львів</Txt>
-          <Badge label="Beta" tone="accent" />
-        </Pressable>
-        <AvatarButton onPress={openProfile} />
-      </View>
+      {/* Native safe-area view: takes the real top inset, so the logo and city pill clear the iOS status bar. */}
+      <SafeAreaView edges={["top"]} style={styles.topFrame} pointerEvents="box-none">
+        <View style={styles.topBar} pointerEvents="box-none">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Львів, бета. Довго натисніть, щоб відкрити інструменти розробника"
+            delayLongPress={5000}
+            onLongPress={sim.openDevTools}
+            style={styles.cityPill}
+          >
+            <Txt variant="headline">Львів</Txt>
+            <Badge label="Beta" tone="accent" />
+          </Pressable>
+          <AvatarButton onPress={openProfile} />
+        </View>
+      </SafeAreaView>
 
       {city.sheltersOn && city.alert ? (
         <View style={[styles.alert, { top: insets.top + 64 }]}>
@@ -147,17 +151,21 @@ export default function MapScreen() {
         onClearLayers={() => setLayerCategories(new Set())}
       />
 
-      <Onboarding visible={onboarding && focused} onDone={() => setOnboarding(false)} />
+      <Onboarding visible={onboarding} onDone={() => setOnboarding(false)} />
     </View>
   );
 }
 
 const styles = themed(() => ({
-  screen: { flex: 1, backgroundColor: colors.background },
-  topBar: {
+  screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.background },
+  topFrame: {
     position: "absolute",
+    top: 0,
     left: layout.screenMargin,
     right: layout.screenMargin,
+  },
+  topBar: {
+    marginTop: space.sm,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

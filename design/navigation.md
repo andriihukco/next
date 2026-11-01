@@ -1,41 +1,63 @@
 # Navigation
 
-## Mobile: tabs and pages
+## Mobile: map, sheet and tab bar
+
+The live map is behind every page. It is not a tab. Pages slide up in one bottom sheet over the map, and the tab bar stays at the bottom.
 
 ```
-Root stack
-├── (tabs)                     system tab bar
-│   ├── Мапа          /         full-screen map, floating controls
-│   ├── Транспорт     /transport  large-title page
-│   ├── Місця         /places     large-title page, header search
-│   ├── Освіта        /education  large-title page
-│   └── Послуги       /services   large-title page
-├── route/[key]      Маршрут          pushed page
-├── vehicle/[id]     Транспорт         pushed page
-├── stop/[id]        Зупинка           pushed page
-├── shelter/[id]     Укриття           pushed page
-├── place            Місце             pushed page
-├── service/[id]     service flow      pushed page, the flow has its own steps
-├── profile          Профіль           pushed from the avatar
-├── profile-edit     Мій профіль       pushed page
-├── account          Обліковий запис   pushed page
-├── directions       Маршрут пішки     full screen
-└── design           Дизайн-система    pushed page
+App shell (mobile/src/app/(sheet)/_layout.tsx)
+├── CityBackdrop         live map, full screen, city pill, map controls   (behind everything)
+├── Sheet                one bottom sheet, snaps: minimised · half · full
+│   └── pages (native stack, one back stack per shell)
+│       ├── /transport       Транспорт      tab root, large title
+│       ├── /places          Місця          tab root, header search
+│       ├── /services        Послуги        tab root
+│       ├── /more            Більше         tab root: list of city sections
+│       │   └── /more/[id]   Освіта, Афіша, Робота, Нерухомість, Ринок, Парковка, АЗС, Електрозарядка
+│       ├── /vehicle/[id]    Транспорт      pushed page
+│       ├── /stop/[id]       Зупинка        pushed page
+│       ├── /shelter/[id]    Укриття        pushed page
+│       ├── /place           Місце          pushed page
+│       ├── /service/[id]    service flow   pushed page, the flow has its own steps
+│       ├── /route/[key]     Маршрут        pushed page
+│       ├── /profile         Профіль        pushed from the avatar
+│       ├── /profile-edit    Мій профіль    pushed page
+│       └── /account         Обліковий запис pushed page
+└── TabBar               Транспорт · Місця · Послуги · Більше (always visible)
+
+Full screen, above the shell: /directions (Маршрут пішки), /design (Дизайн-система), /welcome, /walk.
 ```
 
-Code: `mobile/src/app/`, routes in `mobile/src/lib/navigation.ts`.
+Code: `mobile/src/app/`, the shell in `mobile/src/components/sheet/`, the map in `mobile/src/components/map/city-backdrop.tsx`, tabs in `mobile/src/lib/section-tabs.ts`, sheet state in `mobile/src/lib/sheet-store.ts`, routes in `mobile/src/lib/navigation.ts`.
+
+## Sheet
+
+| Snap | Height | What shows |
+|---|---|---|
+| `minimised` | 0 | Only the tab bar. The map is whole. |
+| `half` | 46% of the screen | Default. The map stays most of the screen. |
+| `full` | 92% of the screen | The page fills the sheet. The city pill stays under it. |
+
+- Drag the grabber or the tab bar up or down. The sheet settles on the nearest snap, with a small fling.
+- Pushing a page while the sheet is minimised opens it to `half`.
+- «Показати на мапі» and the map «Мапа» return (`goToMap`) minimise the sheet, so the item is in view.
+- The sheet is one native stack. Back pops inside the sheet; the map and the tab bar stay put.
 
 ## Rules
 
-1. **A detail is a page.** Tapping a vehicle, stop, place, shelter or service pushes its page with a back button. Nothing slides up over the map or over another page to show details.
-2. **Five tabs, no more.** That is the HIG limit and matches the web sections. Профіль is the avatar at the top right of every tab root, not a tab. The map tab stays first. The four category tabs can be hidden and reordered in Профіль → «Вкладки» (`mobile/src/app/sections.tsx`): favourites come first, then the rest. The native bar cannot draw a divider, so favourites are separated on the «Вкладки» page only. Sorting by recent or most used is web-only for now, because the native tab bar has no tap history yet.
+1. **Every page is in the sheet.** Tabs, details and sections all open in the one sheet over the map. Full-screen exceptions are `directions`, `design`, `welcome` and `walk`.
+2. **Four tabs, fixed order, no more.** Транспорт, Місця, Послуги, Більше. Education, Events and the other city sections are under «Більше», as on the web. The user cannot hide or reorder tabs; «Вкладки» is removed.
 3. **Tab roots have a large title** (iOS) or an app bar title (Android), and nothing else in the header except the avatar.
-4. **The map stays a map.** Its controls float in the corners: map type, my location, compass, camera, layers. They open short panels (map type, camera, layers), which are allowed because they act on the map you are looking at.
-5. **«Показати на мапі» goes back to the Мапа tab**, centered on the item, with the item highlighted.
-6. **Sheets only for short choices**: a confirm alert, a share sheet, the map-control panels. Never for content you read.
-7. **Tapping the active tab returns to its root** (system behavior).
-8. **Onboarding** shows once, on the map tab, as a welcome card and a short spotlight tour.
+4. **The map stays a map.** Its controls float in the top corners: map type, my location, compass, camera, layers. They open short panels, which act on the map you are looking at.
+5. **Tapping the active tab returns to its root.** When the sheet is minimised, tapping the active tab opens it to `half`.
+6. **Sheets only for pages and short choices.** Pages live in the sheet. Confirm alerts, share sheets and the map-control panels are separate, short sheets.
+7. **Onboarding** shows once, over the map, as a welcome card and a short spotlight tour. «Показати знайомство ще раз» in Профіль reopens it.
+8. **Empty sections are honest.** Афіша shows an empty state until its event source is connected on mobile. It never shows sample events.
+
+## Platforms
+
+The shell, sheet and tab bar are one React Native implementation for iOS and Android, so both platforms behave the same. The tab bar uses Material icons on both, not SF Symbols.
 
 ## Web
 
-The desktop layout stays: rail on the left, map in the middle, one inspector on the right (DESIGN.md §5). It moves to these rules in the second pass of the rebuild.
+The desktop layout stays: rail on the left, map in the middle, one inspector on the right (DESIGN.md §5). The web already keeps the map behind its panels; the same «Більше» list and the four tabs are the target when the web rail is rebuilt.

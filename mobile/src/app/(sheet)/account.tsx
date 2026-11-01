@@ -8,9 +8,9 @@ import {
   PASSWORD_RESET_REDIRECT,
   supabase,
   useSession,
-} from "../lib/supabase";
-import { colors, fonts, themed } from "../lib/theme";
-import { Button, EmptyState, ListRow, Page, radiusFor, Section, Segmented, space, Surface, Txt, useUiPlatform } from "../ui";
+} from "../../lib/supabase";
+import { colors, fonts, themed } from "../../lib/theme";
+import { Button, EmptyState, ListRow, Page, radiusFor, Section, Segmented, space, Surface, Txt, useUiPlatform } from "../../ui";
 
 type Mode = "sign-in" | "sign-up" | "reset";
 type Notice = { icon: "mark-email-unread" | "lock-reset" | "check-circle"; title: string; text: string };

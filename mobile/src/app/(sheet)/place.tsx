@@ -1,15 +1,15 @@
 import { useMemo } from "react";
 import { Linking } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { PlaceExtras } from "../components/places/place-extras";
-import { useCityData } from "../lib/city-data";
-import { categoryColor, materialIconFor } from "../lib/category-icons";
-import { cityPlaceIcons, formatOpeningHours } from "../../../src/lib/city-places";
-import { distanceKm } from "../lib/geo";
-import { formatDistance } from "../lib/format";
-import { goToMap, openDirections } from "../lib/navigation";
-import type { CityPlace } from "../lib/places-api";
-import { Button, EmptyState, IconOrb, ListRow, Page, Row, Section, space, Txt, type IconName } from "../ui";
+import { PlaceExtras } from "../../components/places/place-extras";
+import { useCityData } from "../../lib/city-data";
+import { categoryColor, materialIconFor } from "../../lib/category-icons";
+import { cityPlaceIcons, formatOpeningHours } from "../../../../src/lib/city-places";
+import { distanceKm } from "../../lib/geo";
+import { formatDistance } from "../../lib/format";
+import { goToMap, openDirections } from "../../lib/navigation";
+import type { CityPlace } from "../../lib/places-api";
+import { Button, EmptyState, IconOrb, ListRow, Page, Row, Section, space, Txt, type IconName } from "../../ui";
 
 const INFO_ICONS: Record<string, string> = { Графік: "schedule", Email: "email", "Wi-Fi": "wifi", Кухня: "restaurant-menu", Оператор: "domain" };
 const HIDDEN = ["Тип", "Телефон", "Мобільний", "Сайт"];

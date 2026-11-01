@@ -36,17 +36,7 @@ function RootStack() {
   const page = pageHeaderOptions();
   return (
     <Stack screenOptions={{ ...page, headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="vehicle/[id]" options={{ ...page, title: "Транспорт" }} />
-      <Stack.Screen name="stop/[id]" options={{ ...page, title: "Зупинка" }} />
-      <Stack.Screen name="shelter/[id]" options={{ ...page, title: "Укриття" }} />
-      <Stack.Screen name="place" options={{ ...page, title: "" }} />
-      <Stack.Screen name="service/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="profile" options={{ ...page, title: "Профіль" }} />
-      <Stack.Screen name="profile-edit" options={{ ...page, title: "Мій профіль" }} />
-      <Stack.Screen name="route/[key]" options={{ ...page, title: "Маршрут" }} />
-      <Stack.Screen name="account" options={{ ...page, title: "Обліковий запис" }} />
-      <Stack.Screen name="sections" options={{ ...page, title: "Вкладки" }} />
+      <Stack.Screen name="(sheet)" />
       <Stack.Screen name="directions" options={{ headerShown: false }} />
       <Stack.Screen name="design" options={{ ...page, title: "Дизайн-система" }} />
     </Stack>
