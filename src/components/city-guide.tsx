@@ -15,6 +15,9 @@ import { cityPlaceCategories } from "../lib/city-places";
 import type { CityDirectoryListing } from "../lib/listing-types";
 import { sampleJobListings, sampleRealEstateListings } from "../lib/features";
 import { useSavedItems } from "../lib/use-saved-items";
+import { useSectionPrefs } from "../lib/use-section-prefs";
+import { railSections, recordSectionUse } from "../lib/section-prefs";
+import { SectionSettings } from "./city-guide/section-settings";
 import {
   type CitySection,
   type CityGuideProps,
@@ -37,6 +40,8 @@ import { SIMPLE_PLACE_SECTIONS, SimplePlaceSection } from "./city-guide/simple-p
 import { TransportSection } from "./city-guide/transport-section";
 
 // ─── Main Component ────────────────────────────────────────────────────────────
+
+const SECTION_IDS = CITY_SECTIONS.map((item) => item.id);
 
 export function CityGuide({
   userLocation,
@@ -77,6 +82,9 @@ export function CityGuide({
     const saved = localStorage.getItem("eway-last-section");
     return (saved as CitySection) || "transport";
   });
+  const [sectionPrefs, updateSectionPrefs] = useSectionPrefs(SECTION_IDS);
+  const [sectionSettingsOpen, setSectionSettingsOpen] = useState(false);
+  const rail = useMemo(() => railSections(SECTION_IDS, sectionPrefs), [sectionPrefs]);
   const [placeCategory, setPlaceCategory] = useState<PlaceFilter>("popular");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [selectedEducationId, setSelectedEducationId] = useState<string | null>(null);
@@ -179,6 +187,35 @@ export function CityGuide({
 
 
 
+  const renderSectionButton = (id: string) => {
+    const item = CITY_SECTIONS.find((section) => section.id === id);
+    if (!item) return null;
+    return (
+      <button
+        type="button"
+        key={item.id}
+        data-tour={item.id === "events" ? "city-events" : undefined}
+        className={section === item.id ? "active" : ""}
+        aria-current={section === item.id ? "page" : undefined}
+        aria-label={sectionPrefs.favorites.includes(item.id) ? `${item.label}, улюблене` : undefined}
+        onClick={() => {
+          setSelectedPlaceId(null);
+          setSelectedEducationId(null);
+          setSelectedEventId(null);
+          setSelectedListingId(null);
+          setSection(item.id);
+          localStorage.setItem("eway-last-section", item.id);
+          updateSectionPrefs((prefs) => recordSectionUse(prefs, item.id));
+          if (item.id === "places") setPlaceCategory("popular");
+          onPageNavigationChange(false, returnToSection);
+        }}
+      >
+        <MaterialIcon name={item.icon} size={24} />
+        {item.label}
+      </button>
+    );
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -191,29 +228,29 @@ export function CityGuide({
         data-tour="city-sections"
         hidden={isDetailPage}
       >
-        {CITY_SECTIONS.map((item) => (
-          <button
-            type="button"
-            key={item.id}
-            data-tour={item.id === "events" ? "city-events" : undefined}
-            className={section === item.id ? "active" : ""}
-            aria-current={section === item.id ? "page" : undefined}
-            onClick={() => {
-              setSelectedPlaceId(null);
-              setSelectedEducationId(null);
-              setSelectedEventId(null);
-              setSelectedListingId(null);
-              setSection(item.id);
-              localStorage.setItem("eway-last-section", item.id);
-              if (item.id === "places") setPlaceCategory("popular");
-              onPageNavigationChange(false, returnToSection);
-            }}
-          >
-            <MaterialIcon name={item.icon} size={24} />
-            {item.label}
-          </button>
-        ))}
+        {rail.favorites.map(renderSectionButton)}
+        {rail.favorites.length > 0 && rail.others.length > 0 && (
+          <span className="city-section-divider" aria-hidden="true" />
+        )}
+        {rail.others.map(renderSectionButton)}
+        <span className="city-section-divider" aria-hidden="true" />
+        <button
+          type="button"
+          className="city-section-settings"
+          aria-haspopup="dialog"
+          onClick={() => setSectionSettingsOpen(true)}
+        >
+          <MaterialIcon name="settings" size={24} />
+          Розділи
+        </button>
       </nav>
+
+      <SectionSettings
+        open={sectionSettingsOpen}
+        onOpenChange={setSectionSettingsOpen}
+        prefs={sectionPrefs}
+        onChange={updateSectionPrefs}
+      />
 
       {section === "transport" && (
         <TransportSection

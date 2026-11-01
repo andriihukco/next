@@ -46,6 +46,7 @@ function RootStack() {
       <Stack.Screen name="profile-edit" options={{ ...page, title: "Мій профіль" }} />
       <Stack.Screen name="route/[key]" options={{ ...page, title: "Маршрут" }} />
       <Stack.Screen name="account" options={{ ...page, title: "Обліковий запис" }} />
+      <Stack.Screen name="sections" options={{ ...page, title: "Вкладки" }} />
       <Stack.Screen name="directions" options={{ headerShown: false }} />
       <Stack.Screen name="design" options={{ ...page, title: "Дизайн-система" }} />
     </Stack>

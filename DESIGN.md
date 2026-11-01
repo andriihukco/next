@@ -266,6 +266,35 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
 - A tone becomes a role only when the shift is ΔE 4 or less, which a person can't see. Larger shifts keep the tone until a role fits.
 - The remaining tones are listed by usage in §2c. Add a role for a color family before adding a tone.
 
+### 2e. Liquid glass (proposed 2026-11-01)
+
+- Glass is for chrome that floats over content: the top bar, the tab bar, map markers and map controls, and a sheet's header. It is not for reading surfaces. Lists, forms and long text sit on opaque `--card` or `--background`.
+- Tokens: `--glass-fill` (72% of the surface color), `--glass-stroke` (the edge highlight), `--glass-shadow` (raised shadow with an inner top highlight), `--glass-blur` (blur and saturation). Dark values are in both dark blocks.
+- Web: `src/components/ui/glass.tsx` (`Glass`, `variant="regular" | "clear" | "tinted"`). It uses `backdrop-filter` only inside `@supports`. Without support, or with `prefers-reduced-transparency`, the fill is opaque.
+- Mobile iOS 26+: `GlassView` from `expo-glass-effect` (`mobile/src/ui/glass.tsx`). Older iOS and Android get the opaque fallback. Android has no liquid glass, so it always uses the fallback.
+- Never stack glass on glass. A glass control on a glass bar sits on an opaque or tinted element instead.
+- Text on glass needs 4.5:1 against the fill. Check it over the lightest and darkest map tile that can sit behind the element.
+- Motion: glass press and selection use the §8 curve. Reduced motion removes the transition, not the color change.
+
+### 2f. Settings icon tiles (proposed 2026-11-01)
+
+- Each settings row icon sits on a 36px square with a top-to-bottom gradient (the top color, then a slightly darker one of the same hue). The glyph is `--tile-glyph` (white).
+- The color is chosen by a stable hash of the row's key (`src/lib/icon-tiles.ts`, `mobile/src/lib/icon-tiles.ts`), so each row has its own color and the list does not change between renders. Only the nine tile colors below are used. Do not use the brand green for every row.
+- Web: `ListRow tile="…"` in `src/components/ui/detail-layout.tsx`. Mobile: `ListRow` and `SwitchRow` with `iconTile`, drawn with `expo-linear-gradient`. Both use the same values from `design/tokens.json` (`iconTiles`), checked by `npm run design:tokens`.
+- Tiles keep their colors in dark mode (accent rule, §2b). The white glyph has at least 3:1 contrast on each tile.
+
+| Tile | Top | Bottom |
+|---|---|---|
+| blue | `#2563eb` | `#1e40af` |
+| orange | `#ea580c` | `#9a3412` |
+| violet | `#7c3aed` | `#5b21b6` |
+| pink | `#db2777` | `#9d174d` |
+| teal | `#0d9488` | `#115e59` |
+| amber | `#d97706` | `#92400e` |
+| rose | `#e11d48` | `#9f1239` |
+| indigo | `#4f46e5` | `#3730a3` |
+| green | `#16a34a` | `#166534` |
+
 ## 3. Typography
 
 - UI font: **Manrope** (500, 600, 700, 800). Fallback: Arial, sans-serif.
@@ -357,6 +386,9 @@ Use these instead of a component tone. A role maps a color to its meaning. Light
 - Saved items are kept on the device (`src/lib/use-saved-items.ts`).
 - **Profile and settings** (`src/features/settings/`): profile card, account (sign-in labeled «Незабаром»), city, permissions with live status, replay onboarding, and clearing device data with a confirmation. Desktop side panel; full-height sheet on mobile. The profile (name, role, home, work) is stored on the device only.
 - Section navigation: the horizontally scrollable section rail stays visible while switching content. Only an opened item detail uses a back-only header, with a breadcrumb back to its list.
+- **Section list (phase 1, `src/lib/section-prefs.ts`).** The rail shows favourites first, then a 1px divider (`.city-section-divider`, `--border`), then the other visible sections, then a divider and a «Розділи» entry (settings icon). The entry opens a dialog: sort by Вручну / Нещодавні / Найчастіші (`ToggleGroup`), one row per section with a drag handle, a favourite `IconButton` (`aria-pressed`), move up and move down buttons (the keyboard path), and a `Switch` to show or hide it. Stored on this device only. Favourites are pinned by the user; the rail never reorders on its own unless a sort mode is chosen.
+- **Places tabs** (`src/components/city-guide/places-section.css`): one row of tabs above the places. «Поруч» (only with a location), «Мої місця», «Популярне» | «Категорії» | a settings icon («Налаштування категорій»). The active tab is filled with `--primary` and white text (`aria-pressed`). «Категорії» shows every category at once in a full-width grid under its group heading; a tap opens that category's list with a back button. The settings dialog turns categories on or off for that grid (`eway-category-prefs`). «Мої місця» holds saved places, lists the user makes (`eway-my-places`), and private marks. Public marks and shared lists are not built yet: they need the server and admin review.
+- **Section rail, active item**: the active section gets the `--accent` tint and an inset `--primary` underline, so the selected section is clear without relying on the green text alone.
 - **Places view switch** (`src/components/city-view-switch.css`, `docs/super-app-ia.md` §3): a two-segment control above the places list: «Список» and «Сітка» (shadcn `ToggleGroup`, full width, pill track). The selected segment is filled with `--primary` and white text, so it reads as the active tab. Unselected segments are muted. The list has no section title above it: the selected category already names it, and only the «Знайдено» count stays. There is no map segment; the map is the sheet's peek and the map itself. Grid cards flow in `minmax(160px, 1fr)` columns with a 4:3 photo on top. The list or grid choice is stored on the device as `eway-places-layout`.
 - Map actions use `Button` with `variant="ghost"` and the `map-control` class, each individually labeled. The column docks bottom-right on desktop and top-right on mobile. Buttons are 36px on desktop and 40px on mobile. Top to bottom (Apple Maps order):
   - **Map type** (`map-style-btn`, icon of the current type): opens a popover with three tiles, «Стандартна», «Гібридна», «Супутник». The selected tile has the primary border and `aria-pressed`. The imagery tiles show a real imagery preview of the city center, one Esri tile. Hybrid is imagery with roads and labels. Satellite is imagery only. Imagery is a raster layer under the base map (`src/lib/map-style-mode.ts`), and the app layers stay on top. Imagery is Esri World Imagery and its attribution shows on the map.

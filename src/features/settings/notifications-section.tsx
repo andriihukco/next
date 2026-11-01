@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { DetailSection, ListRow } from "../../components/ui/detail-layout";
+import { iconTileFor } from "../../lib/icon-tiles";
 import { Switch } from "../../components/ui/switch";
 import { MaterialIcon } from "../../components/ui/material-icon";
 import {
@@ -107,6 +108,7 @@ export function NotificationsSection({
     <DetailSection title="Сповіщення">
       <ListRow
         leading={<MaterialIcon name="notifications" size={20} />}
+        tile={iconTileFor("notifications")}
         title="Сповіщення на цьому пристрої"
         subtitle={
           push === null
@@ -129,6 +131,7 @@ export function NotificationsSection({
           <ListRow
             key={item.topic}
             leading={<MaterialIcon name={item.icon} size={20} />}
+            tile={iconTileFor(item.topic)}
             title={item.title}
             subtitle={item.subtitle}
             trailing={
@@ -144,6 +147,7 @@ export function NotificationsSection({
       {push === "on" && signedIn && (
         <ListRow
           leading={<MaterialIcon name="send" size={20} />}
+          tile={iconTileFor("test-push")}
           title="Тестове сповіщення"
           subtitle="Перевірте, чи сповіщення доходять"
           trailing={

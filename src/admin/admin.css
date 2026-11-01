@@ -161,6 +161,144 @@
   font-size: var(--type-small);
 }
 
+/* «Парсинг» section (admin toolkit). */
+
+button.admin-topbar-link {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.admin-parse {
+  display: grid;
+  gap: 24px;
+}
+
+.admin-parse-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.admin-parse h2 {
+  margin: 0 0 12px;
+  font-size: var(--type-small);
+  font-weight: 700;
+}
+
+.admin-parse-form {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.admin-parse-fieldset {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-parse-fieldset legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: var(--type-small);
+  font-weight: 600;
+}
+
+.admin-parse-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-parse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.admin-parse-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--type-small);
+}
+
+.admin-parse-list,
+.admin-parse-results {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-parse-job,
+.admin-parse-result {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.admin-parse-job-head,
+.admin-parse-result {
+  align-items: start;
+}
+
+.admin-parse-job-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-parse-job-head strong,
+.admin-parse-result strong {
+  display: block;
+  font-size: var(--type-small);
+}
+
+.admin-parse-meta {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: var(--type-caption);
+}
+
+.admin-parse-status {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+
+.admin-parse-status[data-status="done"] {
+  border-color: var(--primary-border);
+  color: var(--text-accent);
+}
+
+.admin-parse-job-actions,
+.admin-parse-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-parse-result-body {
+  display: grid;
+  gap: 4px;
+}
+
 @media (max-width: 800px) {
   .admin-shell {
     grid-template-columns: 1fr;

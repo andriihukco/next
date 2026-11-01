@@ -1,0 +1,323 @@
+/* «Місця»: tabs, the all-categories grid, My Places and the categories settings (DESIGN.md §7). */
+
+/* Tabs: the active tab is filled with --primary, so it reads as selected without relying on color alone. */
+.places-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.places-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.places-tab-group {
+  display: flex;
+  gap: 6px;
+}
+
+.places-tab {
+  display: inline-flex;
+  min-height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  color: var(--text-default);
+  font: inherit;
+  font-size: var(--type-small);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--duration-state) var(--ease), color var(--duration-state) var(--ease);
+}
+
+.places-tab:hover {
+  border-color: var(--primary-border);
+  color: var(--text-strong);
+}
+
+.places-tab[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.places-tab:focus-visible,
+.places-tab-settings:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.places-tab-divider {
+  width: 1px;
+  align-self: stretch;
+  flex: 0 0 auto;
+  background: var(--border);
+}
+
+.places-tab-settings {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* Categories grid: every category at once, full width, in the scrolling sheet. */
+.category-grid {
+  display: grid;
+  gap: 20px;
+  padding: 4px 4px 16px;
+}
+
+.category-grid-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  color: var(--text-strong);
+  font-size: var(--type-small);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.category-grid-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 14px 8px;
+}
+
+.category-grid-tile {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--text-default);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.category-grid-tile .category-tile-orb {
+  width: 64px;
+  height: 64px;
+}
+
+.category-grid-tile .category-tile-label {
+  font-size: var(--type-small);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.category-grid-tile:hover .category-tile-orb {
+  transform: scale(1.04);
+}
+
+.category-grid-tile:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.places-category-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--text-strong);
+  font-size: var(--type-title);
+  font-weight: 800;
+}
+
+/* My Places */
+.my-places {
+  display: grid;
+  gap: 24px;
+  padding: 0 4px 16px;
+}
+
+.my-places-section h3 {
+  margin: 0 0 10px;
+  color: var(--text-strong);
+  font-size: var(--type-title);
+  font-weight: 800;
+}
+
+.my-places-empty,
+.my-places-hint {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.my-places-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.my-places-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.my-places-place {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  color: var(--text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.my-places-place.is-static {
+  cursor: default;
+}
+
+.my-places-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--category-color, var(--primary));
+  color: var(--text-on-accent);
+}
+
+.my-places-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.my-places-copy strong {
+  overflow: hidden;
+  font-size: var(--type-body);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-places-copy span {
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+.my-places-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.my-places-form.is-stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.my-places-form > input {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.my-places-form.is-stacked > input {
+  flex: none;
+}
+
+.my-places-visibility {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text-default);
+  font-size: var(--type-small);
+}
+
+.my-places-visibility legend {
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.my-places-visibility label {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+}
+
+.my-places-visibility label.is-disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.my-places-list-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.my-places-list-head {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  color: var(--text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.my-places-list-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 8px 12px;
+}
+
+/* Categories settings dialog */
+.category-settings-groups {
+  display: grid;
+  gap: 16px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+.category-settings-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--text-strong);
+  font-size: var(--type-small);
+  font-weight: 800;
+}
+
+.category-settings-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -86,9 +86,9 @@ export async function fetchPlaceImages(
 }
 
 export type PlacePhotoState =
-  | { status: "loading"; details?: undefined }
-  | { status: "ok"; imageUrl: string; details?: PlaceDetails }
-  | { status: "none"; details?: PlaceDetails };
+  | { status: "loading"; images?: undefined; details?: undefined }
+  | { status: "ok"; imageUrl: string; images?: string[]; details?: PlaceDetails }
+  | { status: "none"; images?: string[]; details?: PlaceDetails };
 
 /**
  * Photo and listing details for a list card. Uses the OSM photo when there is
@@ -115,10 +115,11 @@ export function usePlacePhoto(place: CityPlace | undefined, enabled: boolean): P
   const result =
     resolved.get(place.id) ?? (fetched?.id === place.id ? fetched.result : undefined);
   const details = result?.status === "ok" ? result.details : undefined;
-  if (place.imageUrl) return { status: "ok", imageUrl: place.imageUrl, details };
+  const images = result?.status === "ok" ? result.images : undefined;
+  if (place.imageUrl) return { status: "ok", imageUrl: place.imageUrl, images, details };
   if (result?.status === "ok" && result.imageUrl) {
-    return { status: "ok", imageUrl: result.imageUrl, details };
+    return { status: "ok", imageUrl: result.imageUrl, images, details };
   }
-  if (result && result.status !== "pending") return { status: "none", details };
+  if (result && result.status !== "pending") return { status: "none", images, details };
   return { status: "loading" };
 }

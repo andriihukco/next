@@ -16,6 +16,8 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground shadow-[var(--shadow-raised)] hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline active:scale-100",
+        // Liquid glass control over map or media (DESIGN.md §2e). Not for text on opaque surfaces.
+        glass: "border border-[var(--glass-stroke)] bg-[var(--glass-fill)] text-foreground shadow-[var(--glass-shadow)] [-webkit-backdrop-filter:var(--glass-blur)] [backdrop-filter:var(--glass-blur)] hover:bg-accent hover:text-accent-foreground",
       },
       size: {
         default: "h-9 px-4 py-2",

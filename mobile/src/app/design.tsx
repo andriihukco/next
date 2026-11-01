@@ -25,6 +25,7 @@ import {
   type TypeRole,
   type UiPlatform,
 } from "../ui";
+import { MobileDemoPage } from "../design-demos";
 
 const PLATFORMS = [
   { id: "ios", label: "iOS" },
@@ -38,9 +39,18 @@ const SWATCHES = ["background", "card", "surfaceMuted", "border", "foreground", 
  * The web /design page embeds this screen (Expo web) for its iOS and Android tabs. Documented in design/.
  */
 export default function DesignScreen() {
-  const { os: param, embed } = useLocalSearchParams<{ os?: string; embed?: string }>();
+  const { os: param, embed, component } = useLocalSearchParams<{ os?: string; embed?: string; component?: string }>();
   const device = useUiPlatform();
   const [platform, setPlatform] = useState<UiPlatform>(param === "android" || param === "ios" ? param : device);
+  // ?component=<slug> renders one component's mobile demo (the web component page's device frame).
+  if (component) {
+    return (
+      <PlatformOverride platform={platform}>
+        <Stack.Screen options={{ title: "Компонент", headerShown: embed !== "1" }} />
+        <MobileDemoPage slug={component} />
+      </PlatformOverride>
+    );
+  }
   return (
     <>
       <Stack.Screen options={{ title: "Дизайн-система", headerShown: embed !== "1" }} />

@@ -620,3 +620,359 @@ body:has(.ds-page),
   font-size: var(--type-small);
   text-align: center;
 }
+
+/* Collapsible sidebar groups and categories (design-library.tsx). */
+.ds-sidebar summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.ds-sidebar summary::-webkit-details-marker {
+  display: none;
+}
+
+.ds-sidebar summary::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  vertical-align: 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+}
+
+.ds-sidebar details:not([open]) > summary::after {
+  transform: rotate(-45deg);
+}
+
+.ds-sidebar summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.ds-sidebar-category {
+  margin-top: 12px;
+}
+
+.ds-sidebar-category-label {
+  margin: 0 0 4px;
+  padding: 0 12px;
+  font-size: var(--type-small);
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* Component pages (component-page.tsx): live preview, code with copy, props. */
+.ds-component-lede {
+  max-width: 70ch;
+  margin: 0 0 8px;
+  color: var(--muted-foreground);
+}
+
+.ds-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  min-height: 200px;
+  margin: 0 0 16px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.ds-demo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.ds-demo-stack {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.ds-skeleton-short {
+  width: 60%;
+}
+
+.ds-code {
+  position: relative;
+  margin: 0 0 16px;
+}
+
+.ds-code pre {
+  margin: 0;
+}
+
+.ds-code-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  font-size: var(--type-small);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.ds-code-copy:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .ds-preview {
+    padding: 16px;
+  }
+}
+
+.ds-preview-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 12px;
+}
+
+/* Liquid glass and atomic builder (atomic.tsx, design-builder.tsx). Colors and shadows come from tokens. */
+.ds-builder-glass-surface {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+}
+
+.ds-builder {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.ds-builder-palette {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 24px;
+}
+
+.ds-builder-level-title {
+  margin: 0;
+  font-size: var(--type-title);
+}
+
+.ds-builder-level-rule {
+  margin: 4px 0 8px;
+  font-size: var(--type-small);
+  color: var(--muted-foreground);
+}
+
+.ds-builder-palette-list,
+.ds-builder-toolbar,
+.ds-builder-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ds-builder-stage {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ds-builder-toolbar {
+  justify-content: space-between;
+}
+
+.ds-builder-field {
+  display: grid;
+  gap: 4px;
+  min-width: 200px;
+}
+
+.ds-builder-field-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The screen the blocks are placed in. Map template: a map surface behind the glass. */
+.ds-builder-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 360px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+}
+
+.ds-builder-frame-map {
+  background:
+    linear-gradient(160deg, var(--map-wood) 0%, var(--map-grass) 35%, var(--map-water) 60%, var(--map-landuse) 100%);
+  justify-content: space-between;
+}
+
+.ds-builder-empty {
+  margin: auto;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.ds-builder-slot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.ds-builder-slot.is-selected {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.ds-builder-bar {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.ds-builder-bar-glass {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-stroke);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.ds-builder-bar-title {
+  overflow: hidden;
+  font-size: var(--type-title);
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-builder-bar-slot {
+  display: flex;
+}
+
+.ds-builder-bar-end {
+  justify-content: flex-end;
+}
+
+.ds-builder-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--glass-stroke);
+  border-radius: var(--radius-md);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.ds-builder-tab {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  font-size: var(--type-caption);
+  color: var(--muted-foreground);
+}
+
+.ds-builder-tab[aria-current="page"] {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.ds-builder-card {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.ds-builder-card-opaque {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.ds-builder-card-title {
+  font-size: var(--type-title);
+  font-weight: 700;
+}
+
+.ds-builder-card-sub {
+  font-size: var(--type-small);
+  color: var(--muted-foreground);
+}
+
+.ds-builder-list-title {
+  margin: 0;
+  font-size: var(--type-title);
+}
+
+.ds-builder-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.ds-builder-props {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.ds-builder-code {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+  white-space: pre;
+}
+
+@media (max-width: 1100px) {
+  .ds-builder {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ds-builder-palette {
+    position: static;
+  }
+}

@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Switch, View, type StyleProp, type ViewStyle } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors, themed } from "../lib/theme";
+import { iconTileColors, type IconTile } from "../lib/icon-tiles";
 import { radiusFor, space, touchMin, useUiPlatform } from "./platform";
 import { Txt } from "./text";
 
@@ -127,6 +129,7 @@ export function IconButton({
 export function ListRow({
   icon,
   iconColor,
+  iconTile,
   title,
   subtitle,
   value,
@@ -139,6 +142,8 @@ export function ListRow({
 }: {
   icon?: IconName;
   iconColor?: string;
+  /** Settings rows: a gradient tile in this color (DESIGN.md §2f). Takes precedence over iconColor. */
+  iconTile?: IconTile;
   title: string;
   subtitle?: string;
   value?: string;
@@ -153,9 +158,13 @@ export function ListRow({
   const ios = platform === "ios";
   const content = (
     <>
-      {icon ? (
+      {iconTile ? (
+        <LinearGradient colors={[...iconTileColors(iconTile)]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.rowIconTile}>
+          <MaterialIcons name={icon} size={20} color="#ffffff" />
+        </LinearGradient>
+      ) : icon ? (
         ios ? (
-          <View style={[styles.rowIconTile, { backgroundColor: iconColor ?? colors.primary }]}>
+          <View style={[styles.rowIconTileLegacy, { backgroundColor: iconColor ?? colors.primary }]}>
             <MaterialIcons name={icon} size={18} color="#ffffff" />
           </View>
         ) : (
@@ -204,6 +213,7 @@ export function ListRow({
 export function SwitchRow({
   icon,
   iconColor,
+  iconTile,
   title,
   subtitle,
   value,
@@ -213,6 +223,7 @@ export function SwitchRow({
 }: {
   icon?: IconName;
   iconColor?: string;
+  iconTile?: IconTile;
   title: string;
   subtitle?: string;
   value: boolean;
@@ -224,6 +235,7 @@ export function SwitchRow({
     <ListRow
       icon={icon}
       iconColor={iconColor}
+      iconTile={iconTile}
       title={title}
       subtitle={subtitle}
       disabled={disabled}
@@ -432,7 +444,9 @@ const styles = themed(() => ({
   iconButton: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
   iconButtonFilled: { backgroundColor: colors.surfaceMuted },
   row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingLeft: space.lg, backgroundColor: colors.card },
-  rowIconTile: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  // Settings tiles: the same 36pt gradient square on iOS and Android (DESIGN.md §2f).
+  rowIconTile: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  rowIconTileLegacy: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   rowIconAndroid: { width: 24 },
   rowMain: {
     flex: 1,

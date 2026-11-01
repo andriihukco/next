@@ -301,6 +301,13 @@ export default function App() {
             onShowOnMap={() => flyTo([selectedPlace.lng, selectedPlace.lat], 17, 500)}
             onDirections={() => nav.openDirections([selectedPlace.lng, selectedPlace.lat], selectedPlace.name)}
             onBack={nav.returnFromInspector}
+            similar={places.cityPlaces
+              .filter((other) => other.id !== selectedPlace.id && other.category === selectedPlace.category)
+              .map((other) => ({ other, distance: Math.hypot(other.lat - selectedPlace.lat, other.lng - selectedPlace.lng) }))
+              .sort((a, b) => a.distance - b.distance)
+              .slice(0, 5)
+              .map(({ other }) => other)}
+            onSelectPlace={(other) => nav.openPlace(other, true)}
             buildingModels={buildingModels}
           />
         )}
@@ -374,7 +381,6 @@ export default function App() {
         settingsOpen={settingsOpen}
         passwordRecovery={passwordRecovery}
         onCloseSettings={() => setSettingsOpen(false)}
-        onOpenCityPicker={cityLaunch.openPicker}
         onRequestLocation={geo.requestLocation}
       />
     </main>

@@ -1,22 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
-import { DOC_GROUPS, PAGE_IDS, findPage, type PageId } from "./design-docs";
+import { DOC_GROUPS, PAGE_IDS, findPage, type DocPage, type PageId } from "./design-docs";
 import { DesignSystemPage } from "./design-system-page";
+import { COMPONENT_HEADINGS, ComponentPage } from "./component-page";
+import { DesignBuilder } from "./design-builder";
 import { Markdown, pageHeadings, parseMarkdown, plainText } from "./design-markdown";
-
-type Platform = "web" | "ios" | "android";
-const PLATFORMS: { id: Platform; label: string }[] = [
-  { id: "web", label: "Web" },
-  { id: "ios", label: "iOS" },
-  { id: "android", label: "Android" },
-];
-
-/**
- * Where the mobile library runs: the Expo web server in development (`npm run design:mobile`),
- * or a hosted export set with VITE_DESIGN_MOBILE_URL. See design/README.md.
- */
-const MOBILE_URL: string | null =
-  import.meta.env.VITE_DESIGN_MOBILE_URL?.trim() || (import.meta.env.DEV ? "http://localhost:8094" : null);
+import { DeviceFrame, MOBILE_URL, PlatformSwitch, platformName, type Platform } from "./design-platform";
 
 function readPage(): PageId {
   const value = new URLSearchParams(window.location.search).get("page");
@@ -34,7 +22,8 @@ function pageHref(page: PageId, platform: Platform) {
   url.hash = "";
   if (page === "overview") url.searchParams.delete("page");
   else url.searchParams.set("page", page);
-  if (page === "live" && platform !== "web") url.searchParams.set("platform", platform);
+  const keepsPlatform = page === "live" || findPage(page).component !== undefined;
+  if (keepsPlatform && platform !== "web") url.searchParams.set("platform", platform);
   else url.searchParams.delete("platform");
   return `${url.pathname}${url.search}`;
 }
@@ -52,7 +41,13 @@ export function DesignLibrary() {
 
   const doc = findPage(page);
   const blocks = useMemo(() => (doc.source ? parseMarkdown(doc.source) : []), [doc.source]);
-  const headings = useMemo(() => pageHeadings(blocks), [blocks]);
+  const headings = useMemo(
+    () =>
+      doc.component
+        ? COMPONENT_HEADINGS.filter((heading) => heading.id !== "rules" || doc.component?.rules)
+        : pageHeadings(blocks),
+    [doc.component, blocks],
+  );
 
   useEffect(() => {
     const onPopState = () => {
@@ -101,32 +96,34 @@ export function DesignLibrary() {
         <p className="ds-sidebar-title">Design</p>
         <nav aria-label="Design docs">
           {DOC_GROUPS.map((group) => (
-            <div className="ds-sidebar-group" key={group.label}>
-              <p className="ds-sidebar-label">{group.label}</p>
-              <ul className="ds-sidebar-list">
-                {group.pages.map((item) => (
-                  <li key={item.id}>
-                    <a
-                      href={pageHref(item.id, platform)}
-                      className="ds-sidebar-link"
-                      aria-current={item.id === page ? "page" : undefined}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        openPage(item.id);
-                      }}
-                    >
-                      {item.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <details className="ds-sidebar-group" key={group.label} open>
+              <summary className="ds-sidebar-label">{group.label}</summary>
+              {group.pages.length > 0 && <SidebarLinks pages={group.pages} page={page} platform={platform} onOpen={openPage} />}
+              {group.categories.map((category) => (
+                <details className="ds-sidebar-category" key={category.label} open>
+                  <summary className="ds-sidebar-category-label">{category.label}</summary>
+                  <SidebarLinks pages={category.pages} page={page} platform={platform} onOpen={openPage} />
+                </details>
+              ))}
+            </details>
           ))}
         </nav>
       </aside>
 
       <main className="ds-article">
-        {doc.source ? (
+        {doc.component ? (
+          <ComponentPage doc={doc.component} platform={platform} onPlatform={choosePlatform} />
+        ) : doc.builder ? (
+          <article className="ds-article-body">
+            <p className="ds-eyebrow">{doc.group}</p>
+            <h1>Builder</h1>
+            <p className="ds-lede">
+              Compose atoms, molecules, organisms and a template into a screen. Copy the JSX when it looks right. The
+              same blocks exist on mobile in mobile/src/ui; see Atomic design.
+            </p>
+            <DesignBuilder />
+          </article>
+        ) : doc.source ? (
           <article className="ds-article-body">
             <p className="ds-eyebrow">{doc.group}</p>
             <Markdown blocks={blocks} onOpenDoc={openPage} />
@@ -142,40 +139,18 @@ export function DesignLibrary() {
               </p>
             </header>
             <div className="ds-live-switch">
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                value={platform}
-                onValueChange={(next) => next && choosePlatform(next as Platform)}
-                aria-label="Platform"
-              >
-                {PLATFORMS.map((item) => (
-                  <ToggleGroupItem key={item.id} value={item.id}>
-                    {item.label}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              <PlatformSwitch value={platform} onChange={choosePlatform} />
             </div>
 
             {platform === "web" ? (
               <DesignSystemPage embedded />
             ) : MOBILE_URL ? (
-              <div className="ds-device-wrap">
-                <div className={`ds-device ds-device-${platform}`}>
-                  <iframe
-                    key={platform}
-                    title={`Mobile design library, ${platform === "ios" ? "iOS" : "Android"}`}
-                    src={`${MOBILE_URL}/design?os=${platform}&embed=1`}
-                    className="ds-device-screen"
-                  />
-                </div>
-                <p className="ds-device-note">
-                  {platform === "ios"
-                    ? "Apple HIG: large titles, inset grouped lists, chevrons, rounded-rectangle buttons, light haptics."
-                    : "Material 3: top app bar, filled lists without chevrons, pill buttons, ripples, filter chips with a check."}{" "}
-                  Rendered live from mobile/src/ui.
-                </p>
-              </div>
+              <DeviceFrame
+                platform={platform}
+                src={`${MOBILE_URL}/design?os=${platform}&embed=1`}
+                title={`Mobile design library, ${platformName(platform)}`}
+                note={`${platform === "ios" ? "Apple HIG: large titles, inset grouped lists, chevrons, rounded-rectangle buttons, light haptics." : "Material 3: top app bar, filled lists without chevrons, pill buttons, ripples, filter chips with a check."} Rendered live from mobile/src/ui.`}
+              />
             ) : (
               <div className="ds-device-wrap">
                 <p className="ds-device-note">
@@ -206,5 +181,37 @@ export function DesignLibrary() {
         </aside>
       )}
     </div>
+  );
+}
+
+function SidebarLinks({
+  pages,
+  page,
+  platform,
+  onOpen,
+}: {
+  pages: DocPage[];
+  page: PageId;
+  platform: Platform;
+  onOpen: (id: PageId) => void;
+}) {
+  return (
+    <ul className="ds-sidebar-list">
+      {pages.map((item) => (
+        <li key={item.id}>
+          <a
+            href={pageHref(item.id, platform)}
+            className="ds-sidebar-link"
+            aria-current={item.id === page ? "page" : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              onOpen(item.id);
+            }}
+          >
+            {item.title}
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }

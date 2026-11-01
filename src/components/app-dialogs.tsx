@@ -20,7 +20,6 @@ type AppDialogsProps = {
   settingsOpen: boolean;
   passwordRecovery: boolean;
   onCloseSettings: () => void;
-  onOpenCityPicker: () => void;
   onRequestLocation: () => void;
 };
 
@@ -31,7 +30,6 @@ export function AppDialogs({
   settingsOpen,
   passwordRecovery,
   onCloseSettings,
-  onOpenCityPicker,
   onRequestLocation,
 }: AppDialogsProps) {
   return (
@@ -61,10 +59,8 @@ export function AppDialogs({
       {settingsOpen && (
         <SettingsDialog
           key="settings"
-          cityName="Львів"
           initialView={passwordRecovery ? "account" : "main"}
           onClose={onCloseSettings}
-          onOpenCityPicker={onOpenCityPicker}
           onRequestLocation={onRequestLocation}
           onReplayOnboarding={onboarding.restart}
         />

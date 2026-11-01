@@ -17,6 +17,8 @@ type PlaceInspectorProps = {
   onShowOnMap: () => void;
   onDirections: () => void;
   onBack: () => void;
+  similar: CityPlace[];
+  onSelectPlace: (place: CityPlace) => void;
   buildingModels: {
     models: BuildingModelData[];
     status: "loading" | "ready" | "error";
@@ -35,6 +37,8 @@ export function PlaceInspector({
   onShowOnMap,
   onDirections,
   onBack,
+  similar,
+  onSelectPlace,
   buildingModels,
 }: PlaceInspectorProps) {
   return (
@@ -49,9 +53,12 @@ export function PlaceInspector({
           icon={cityPlaceIcons[place.category]}
           iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
           place={place}
-          info={placeInfoRows(place)}
+          info={placeInfoRows(place).filter((row) => row.label !== "Опис")}
           phone={place.details["Телефон"]}
           website={place.details["Сайт"]}
+          similar={similar}
+          onSelectPlace={onSelectPlace}
+          description={place.details["Опис"]}
           coordinates={[place.lng, place.lat]}
           saved={saved}
           onToggleSaved={onToggleSaved}

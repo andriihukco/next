@@ -2,7 +2,9 @@ import type * as maplibregl from "maplibre-gl";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { resolveColor } from "./design-colors";
 import { snapshotMapPalette } from "./map-theme";
+import type { TransportLayer } from "./map-layers";
 import { CITY_PLACE_CATEGORY_COLORS, type CityPlaceCategory } from "./city-places";
+import { cityPlaceGroupCategories, cityPlaceGroups } from "./city-place-categories";
 import { TRANSIT_TYPE_COLORS as COLORS } from "./fleet";
 import { cityPlacePinImage, pinImageId } from "./map-pins";
 import { addBuildingExtrusions, addTerrain, paintBaseStyle } from "./map-base-style";
@@ -18,16 +20,26 @@ import {
 
 const BRAND_BLUE = "var(--brand-blue)";
 
+/** One clustered source per place group, so a cluster never mixes groups (DESIGN.md §5, map layers). */
+export const placeSourceId = (groupId: string): string => `wayme-places-${groupId}`;
+export const placeLayerId = (groupId: string, kind: PlaceLayerKind): string => `wayme-places-${groupId}-${kind}`;
+
+type PlaceLayerKind = "clusters" | "cluster-count" | "points" | "labels";
+const PLACE_LAYER_KINDS: PlaceLayerKind[] = ["clusters", "cluster-count", "points", "labels"];
+
 /** Layers the user can click: vehicles, stops, and city places with their clusters. */
 export const INTERACTIVE_LAYERS = [
   "wayme-vehicles-circles",
   "wayme-stops-icons",
   "wayme-stops-labels",
-  "wayme-city-place-clusters",
-  "wayme-city-place-cluster-count",
-  "wayme-city-place-points",
-  "wayme-city-place-labels",
+  ...cityPlaceGroups.flatMap((group) => PLACE_LAYER_KINDS.map((kind) => placeLayerId(group.id, kind))),
 ];
+
+/** Layers behind each transport toggle. The 3D vehicles hide with the 2D ones. */
+export const TRANSPORT_LAYER_IDS: Record<TransportLayer, string[]> = {
+  vehicles: ["wayme-vehicles-circles", "wayme-vehicles-badge", "wayme-vehicles-label", "un-vehicles-3d"],
+  stops: ["wayme-stops-icons", "wayme-stops-labels"],
+};
 
 /** The 3D layers are null when three.js could not load; the 2D map still works. */
 export type AppLayers = {
@@ -38,13 +50,15 @@ export type AppLayers = {
 function addAppSources(map: MapLibreMap): void {
   map.addSource("wayme-vehicles", { type: "geojson", data: vehicleFeatures([]) });
   map.addSource("wayme-stops", { type: "geojson", data: stopFeatures([]) });
-  map.addSource("wayme-city-places", {
-    type: "geojson",
-    data: cityPlaceFeatures([]),
-    cluster: true,
-    clusterMaxZoom: 16,
-    clusterRadius: 56,
-  });
+  for (const group of cityPlaceGroups) {
+    map.addSource(placeSourceId(group.id), {
+      type: "geojson",
+      data: cityPlaceFeatures([]),
+      cluster: true,
+      clusterMaxZoom: 16,
+      clusterRadius: 56,
+    });
+  }
   map.addSource("wayme-route", { type: "geojson", lineMetrics: true, data: routeFeatures() });
   map.addSource("wayme-location", {
     type: "geojson",
@@ -156,64 +170,73 @@ function addRouteAndStopLayers(map: MapLibreMap): void {
   });
 }
 
+/** Group color for its cluster bubbles: the first category's pin color. */
+function placeGroupColor(groupId: string): string {
+  const first = cityPlaceGroupCategories(groupId)[0]?.id ?? "other";
+  return CITY_PLACE_CATEGORY_COLORS[first];
+}
+
 function addPlaceLayers(map: MapLibreMap): void {
-  map.addLayer({
-    id: "wayme-city-place-clusters",
-    type: "circle",
-    source: "wayme-city-places",
-    filter: ["has", "point_count"],
-    paint: {
-      "circle-color": resolveColor(BRAND_BLUE),
-      "circle-radius": ["step", ["get", "point_count"], 15, 20, 19, 80, 24],
-      "circle-stroke-color": resolveColor("var(--card)"),
-      "circle-stroke-width": 2,
-    },
-  });
-  map.addLayer({
-    id: "wayme-city-place-cluster-count",
-    type: "symbol",
-    source: "wayme-city-places",
-    filter: ["has", "point_count"],
-    layout: {
-      "text-field": ["get", "point_count_abbreviated"],
-      "text-size": 12,
-      "text-font": ["Noto Sans Bold"],
-    },
-    paint: { "text-color": resolveColor("var(--card)") },
-  });
-  map.addLayer({
-    id: "wayme-city-place-points",
-    type: "symbol",
-    source: "wayme-city-places",
-    filter: ["!", ["has", "point_count"]],
-    layout: {
-      "icon-image": cityPlaceIconExpression(),
-      "icon-size": ["interpolate", ["linear"], ["zoom"], 12, 0.82, 17, 1.08],
-      "icon-anchor": "bottom",
-      "icon-allow-overlap": false,
-      "icon-ignore-placement": false,
-    },
-  });
-  map.addLayer({
-    id: "wayme-city-place-labels",
-    type: "symbol",
-    source: "wayme-city-places",
-    minzoom: 15,
-    filter: ["!", ["has", "point_count"]],
-    layout: {
-      "text-field": ["get", "name"],
-      "text-size": 10,
-      "text-offset": [0, 1.8],
-      "text-font": ["Noto Sans Regular"],
-      "text-max-width": 12,
-      "text-optional": true,
-    },
-    paint: {
-      "text-color": resolveColor("var(--map-label-strong)"),
-      "text-halo-color": resolveColor("var(--card)"),
-      "text-halo-width": 1.5,
-    },
-  });
+  for (const group of cityPlaceGroups) {
+    const source = placeSourceId(group.id);
+    map.addLayer({
+      id: placeLayerId(group.id, "clusters"),
+      type: "circle",
+      source,
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": resolveColor(placeGroupColor(group.id)),
+        "circle-radius": ["step", ["get", "point_count"], 15, 20, 19, 80, 24],
+        "circle-stroke-color": resolveColor("var(--card)"),
+        "circle-stroke-width": 2,
+      },
+    });
+    map.addLayer({
+      id: placeLayerId(group.id, "cluster-count"),
+      type: "symbol",
+      source,
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": ["get", "point_count_abbreviated"],
+        "text-size": 12,
+        "text-font": ["Noto Sans Bold"],
+      },
+      paint: { "text-color": resolveColor("var(--card)") },
+    });
+    map.addLayer({
+      id: placeLayerId(group.id, "points"),
+      type: "symbol",
+      source,
+      filter: ["!", ["has", "point_count"]],
+      layout: {
+        "icon-image": cityPlaceIconExpression(),
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 12, 0.82, 17, 1.08],
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+      },
+    });
+    map.addLayer({
+      id: placeLayerId(group.id, "labels"),
+      type: "symbol",
+      source,
+      minzoom: 15,
+      filter: ["!", ["has", "point_count"]],
+      layout: {
+        "text-field": ["get", "name"],
+        "text-size": 10,
+        "text-offset": [0, 1.8],
+        "text-font": ["Noto Sans Regular"],
+        "text-max-width": 12,
+        "text-optional": true,
+      },
+      paint: {
+        "text-color": resolveColor("var(--map-label-strong)"),
+        "text-halo-color": resolveColor("var(--card)"),
+        "text-halo-width": 1.5,
+      },
+    });
+  }
 }
 
 function addShelterLayers(map: MapLibreMap): void {

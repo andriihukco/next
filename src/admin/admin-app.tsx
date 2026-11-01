@@ -4,6 +4,8 @@ import { MaterialIcon } from "../components/ui/material-icon";
 import { apiUrl } from "../lib/api";
 import { supabase, useSession } from "../lib/supabase";
 import { AdminMfa } from "./admin-mfa";
+import { AdminSignIn } from "./admin-sign-in";
+import { ParseSection } from "./parse-section";
 import "./admin.css";
 
 /*
@@ -18,14 +20,25 @@ type Access =
   | { status: "mfa" }
   | { status: "ok"; role: "editor" | "admin" };
 
-const SECTIONS = [
+type Section = {
+  id: "places" | "models" | "releases" | "audit" | "parse";
+  icon: string;
+  label: string;
+  slice?: string;
+  text?: string;
+  /** Only admins see the section; the server refuses editors too. */
+  adminOnly?: boolean;
+};
+
+const SECTIONS: readonly Section[] = [
   { id: "places", icon: "place", label: "Місця", slice: "S3", text: "Пошук, редагування, переміщення й приховування місць на мапі." },
   { id: "models", icon: "deployed_code", label: "3D-моделі", slice: "S4", text: "Завантаження моделей будівель, перевірка бюджету й публікація." },
   { id: "releases", icon: "new_releases", label: "Що нового", slice: "S7", text: "Записи з PR з’являються автоматично; тут їх можна буде виправити." },
+  { id: "parse", icon: "travel_explore", label: "Парсинг", adminOnly: true },
   { id: "audit", icon: "history", label: "Журнал", slice: "S1", text: "Хто, що і коли змінив." },
-] as const;
+];
 
-type SectionId = (typeof SECTIONS)[number]["id"];
+type SectionId = Section["id"];
 
 function NotFound() {
   return (
@@ -80,6 +93,8 @@ export function AdminApp() {
       </p>
     );
   }
+  // Signed out: ask for the admin's email and password. Without Supabase there is nothing to sign in to.
+  if (!session && supabase) return <AdminSignIn />;
   if (access.status === "denied") return <NotFound />;
   if (access.status === "mfa") {
     return (
@@ -89,7 +104,8 @@ export function AdminApp() {
     );
   }
 
-  const current = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0];
+  const visible = SECTIONS.filter((item) => !item.adminOnly || access.role === "admin");
+  const current = visible.find((item) => item.id === section) ?? visible[0];
   return (
     <div className="admin-shell">
       <header className="admin-topbar">
@@ -100,9 +116,13 @@ export function AdminApp() {
           <MaterialIcon name="map" size={18} />
           До мапи
         </a>
+        <button type="button" className="admin-topbar-link" onClick={() => void supabase?.auth.signOut()}>
+          <MaterialIcon name="logout" size={18} />
+          Вийти
+        </button>
       </header>
       <nav className="admin-nav" aria-label="Розділи адмінки">
-        {SECTIONS.map((item) => (
+        {visible.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -116,12 +136,16 @@ export function AdminApp() {
       </nav>
       <main className="admin-content" aria-labelledby="admin-section-title">
         <h1 id="admin-section-title">{current.label}</h1>
-        <div className="admin-state" role="status">
-          <MaterialIcon name="schedule" size={20} />
-          <span>
-            Незабаром ({current.slice}). {current.text}
-          </span>
-        </div>
+        {current.id === "parse" ? (
+          <ParseSection />
+        ) : (
+          <div className="admin-state" role="status">
+            <MaterialIcon name="schedule" size={20} />
+            <span>
+              Незабаром ({current.slice}). {current.text}
+            </span>
+          </div>
+        )}
       </main>
     </div>
   );

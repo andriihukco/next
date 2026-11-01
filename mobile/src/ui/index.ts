@@ -17,3 +17,5 @@ export {
   type ButtonVariant,
   type IconName,
 } from "./controls";
+export { Glass, type GlassVariant } from "./glass";
+export { GlassBar } from "./organisms/glass-bar";

@@ -9,7 +9,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 8px 16px 16px;
+  padding: 0 0 16px;
+}
+
+.entity-hero-row {
+  padding: 0 16px;
 }
 
 /* Cover: a real photo when the place has one, otherwise a tinted panel with the category icon. */
@@ -17,11 +21,10 @@
   position: relative;
   display: grid;
   aspect-ratio: 16 / 9;
-  max-height: 240px;
   width: 100%;
   place-items: center;
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: color-mix(in srgb, var(--entity-color, var(--primary)) 16%, var(--card));
   color: var(--entity-color, var(--accent-foreground));
 }
@@ -385,7 +388,7 @@
 /* Place tabs (Огляд / Відгуки / Про місце), Google Maps place panel style. */
 .entity-tabs {
   gap: 0;
-  margin: 0 16px 16px;
+  margin: 0;
 }
 
 .entity-tabs-list {
@@ -401,8 +404,8 @@
 
 .entity-tab-panel {
   display: grid;
-  gap: 12px;
-  padding-top: 16px;
+  gap: 0;
+  padding: 0;
 }
 
 .entity-open-status {
@@ -420,4 +423,288 @@
 
 .entity-open-status.is-closed {
   color: var(--destructive);
+}
+
+/* Place tabs: blocks run edge to edge, separated by full-width dividers. */
+.entity-tabs-list [data-slot="tabs-trigger"] {
+  padding-inline: 4px;
+}
+
+.entity-tabs-list [data-slot="tabs-trigger"][data-state="active"] {
+  color: var(--primary);
+}
+
+.entity-tabs-list [data-slot="tabs-trigger"][data-state="active"]::after {
+  background: var(--primary);
+}
+
+.place-block {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.place-block > h3 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  font-weight: 800;
+}
+
+.place-photos {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scroll-snap-type: x proximity;
+}
+
+.place-photos img {
+  width: 40%;
+  min-width: 140px;
+  flex: 0 0 auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--surface-muted);
+  scroll-snap-align: start;
+}
+
+.place-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  line-height: 1.4;
+}
+
+.place-address .material-symbols-rounded {
+  color: var(--primary);
+}
+
+.place-address-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.place-hours-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.place-hours-label {
+  flex: 1;
+  font-weight: 600;
+}
+
+.place-hours-toggle .material-symbols-rounded:first-child {
+  color: var(--primary);
+}
+
+.place-hours-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.place-hours-toggle .is-open {
+  color: var(--primary);
+}
+
+.place-hours-toggle .is-closed {
+  color: var(--destructive);
+}
+
+.place-hours-raw {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.place-contacts,
+.place-similar,
+.place-menu {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-contacts a {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.place-contacts a .material-symbols-rounded {
+  color: var(--primary);
+}
+
+.place-similar button {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.place-similar button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.place-similar li + li {
+  border-top: 1px solid var(--border);
+}
+
+.place-similar-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.place-similar-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.place-similar-copy strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-similar-copy span {
+  overflow: hidden;
+  font-size: var(--type-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-menu-link {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 12px;
+  color: var(--primary);
+  font-size: var(--type-body);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.place-menu-link > span {
+  flex: 1;
+}
+
+.place-menu li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.place-menu li + li {
+  border-top: 1px solid var(--border);
+}
+
+.place-menu li div {
+  display: grid;
+  gap: 2px;
+}
+
+.place-menu li strong {
+  color: var(--foreground);
+  font-size: var(--type-body);
+}
+
+.place-menu li div span {
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.place-menu-price {
+  color: var(--foreground);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.place-empty {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.place-rating-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.place-rating-summary > strong {
+  color: var(--foreground);
+  font-size: var(--type-inspector);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.place-rating-summary > div {
+  display: grid;
+  gap: 2px;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.place-stars {
+  display: inline-flex;
+  color: var(--primary);
+}
+
+/* Reviews are divided rows, not cards. */
+.entity-tab-panel .place-reviews {
+  gap: 0;
+  margin: 0 -16px;
+}
+
+.entity-tab-panel .place-review {
+  padding: 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.entity-tab-panel .place-review + .place-review {
+  border-top: 1px solid var(--border);
 }

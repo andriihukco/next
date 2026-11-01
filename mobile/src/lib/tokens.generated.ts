@@ -64,6 +64,44 @@ export const tokens = {
       "pill": 999
     }
   },
+  "iconTiles": {
+    "blue": {
+      "top": "#2563eb",
+      "bottom": "#1e40af"
+    },
+    "orange": {
+      "top": "#ea580c",
+      "bottom": "#9a3412"
+    },
+    "violet": {
+      "top": "#7c3aed",
+      "bottom": "#5b21b6"
+    },
+    "pink": {
+      "top": "#db2777",
+      "bottom": "#9d174d"
+    },
+    "teal": {
+      "top": "#0d9488",
+      "bottom": "#115e59"
+    },
+    "amber": {
+      "top": "#d97706",
+      "bottom": "#92400e"
+    },
+    "rose": {
+      "top": "#e11d48",
+      "bottom": "#9f1239"
+    },
+    "indigo": {
+      "top": "#4f46e5",
+      "bottom": "#3730a3"
+    },
+    "green": {
+      "top": "#16a34a",
+      "bottom": "#166534"
+    }
+  },
   "type": {
     "ios": {
       "largeTitle": {

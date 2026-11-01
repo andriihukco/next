@@ -1,0 +1,39 @@
+/* Liquid glass surface (DESIGN.md §2e). Every color and shadow comes from the --glass-* tokens. */
+.glass {
+  position: relative;
+  border: 1px solid var(--glass-stroke);
+  border-radius: var(--radius-md);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  color: var(--foreground);
+}
+
+.glass[data-glass="clear"] {
+  background: color-mix(in srgb, var(--glass-fill) 55%, transparent);
+}
+
+.glass[data-glass="tinted"] {
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  color: var(--accent-foreground);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .glass {
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+}
+
+/* Reduced transparency: keep the same tokens, but make the fill opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass[data-glass="clear"] {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .glass[data-glass="tinted"] {
+    background: var(--accent);
+  }
+}

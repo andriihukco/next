@@ -5,6 +5,8 @@ import { LandingPage } from './landing/landing-page';
 import { isDevPathname } from './lib/dev-tools/route';
 import { isLegalSlug } from './legal/legal-content';
 import './index.css';
+import './lib/appearance.css';
+import './lib/appearance';
 
 // The map app and the design-system page pull in MapLibre and three.js, so the landing page does not load them.
 const App = lazy(() => import('./App.tsx'));

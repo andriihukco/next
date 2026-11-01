@@ -5,6 +5,7 @@ import { createPlaceImageService } from './place-images.mjs';
 import { signInWithTelegram } from './auth-telegram.mjs';
 import { deleteAccount } from './account.mjs';
 import { adminMe } from './admin-auth.mjs';
+import { handleParseRequest } from './parse-jobs.mjs';
 import { listReleases, publishRelease } from './releases.mjs';
 import { dispatchAirAlertPush, sendTestPush } from './push.mjs';
 import { getAirAlert, loadAirAlert } from './feeds/air-alert.mjs';
@@ -94,6 +95,8 @@ export async function handleApiRequest(req, res) {
     sendJson(res, result.status, result.body, { 'Cache-Control': 'no-store' });
     return;
   }
+
+  if (await handleParseRequest(req, res, url)) return;
 
   if (pathname === '/api/releases' && req.method === 'GET') {
     const result = await listReleases();

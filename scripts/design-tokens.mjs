@@ -15,6 +15,7 @@ const generated = {
   space: tokens.space,
   layout: Object.fromEntries(Object.entries(tokens.layout).map(([key, value]) => [camel(key), value])),
   radius: { ios: tokens.radius.ios, android: tokens.radius.android },
+  iconTiles: strip(tokens.iconTiles),
   type: { ios: strip(tokens.type.ios), android: strip(tokens.type.android) },
 };
 
@@ -38,6 +39,16 @@ for (const [scheme, selector] of [["light", ":root {"], ["dark", ':root[data-the
     const match = text.match(new RegExp(`--${name}:\\s*([^;]+);`));
     if (!match) drift.push(`${scheme} --${name}: missing in src/index.css`);
     else if (normalize(match[1]) !== normalize(value)) drift.push(`${scheme} --${name}: css ${match[1]} ≠ tokens ${value}`);
+  }
+}
+
+// Icon tiles (DESIGN.md §2f) are written as --tile-<name>-top and --tile-<name>-bottom in the light :root block.
+for (const [name, pair] of Object.entries(strip(tokens.iconTiles))) {
+  const text = block(":root {");
+  for (const [part, value] of Object.entries(pair)) {
+    const match = text.match(new RegExp(`--tile-${name}-${part}:\\s*([^;]+);`));
+    if (!match) drift.push(`--tile-${name}-${part}: missing in src/index.css`);
+    else if (normalize(match[1]) !== normalize(value)) drift.push(`--tile-${name}-${part}: css ${match[1]} ≠ tokens ${value}`);
   }
 }
 

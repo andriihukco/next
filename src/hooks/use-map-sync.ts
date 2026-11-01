@@ -5,7 +5,8 @@ import { resolveColor } from "../lib/design-colors";
 import type { AirAlert, Shelter, Stop, Vehicle } from "../lib/app-types";
 import { isNumber } from "../lib/app-validators";
 import type { Building3DLayer, BuildingModelData } from "../lib/building-3d-layer";
-import type { CityPlace, CityPlaceCategory } from "../lib/city-places";
+import type { CityPlace } from "../lib/city-places";
+import { cityPlaceGroupOf, cityPlaceGroups } from "../lib/city-place-categories";
 import { createFixtureRoute } from "../lib/dev-fixtures";
 import { TRANSIT_TYPE_COLORS as COLORS } from "../lib/fleet";
 import {
@@ -17,6 +18,8 @@ import {
   updateGeoJSONSource,
   vehicleFeatures,
 } from "../lib/map-features";
+import { placeSourceId, TRANSPORT_LAYER_IDS } from "../lib/map-app-layers";
+import type { MapLayerPrefs } from "../lib/map-layers";
 import type { Vehicle3DLayer } from "../lib/vehicle-3d-layer";
 
 type MapSyncInput = {
@@ -28,7 +31,7 @@ type MapSyncInput = {
   selectedVehicle: Vehicle | null;
   stops: Stop[];
   mapPlaces: CityPlace[];
-  layerCategories: Set<CityPlaceCategory>;
+  layerPrefs: MapLayerPrefs;
   selectedPlaceId: string | undefined;
   userLocation: [number, number] | null;
   shelters: Shelter[];
@@ -109,14 +112,31 @@ export function useMapSync(input: MapSyncInput): void {
     updateGeoJSONSource(map, "wayme-stops", stopFeatures(stops));
   }, [mapRef, mapReady, stops]);
 
-  const { mapPlaces, layerCategories, selectedPlaceId } = input;
+  // Pins are the places in view, minus the hidden categories, split into one source per group.
+  const { mapPlaces, layerPrefs, selectedPlaceId } = input;
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    const visible =
-      layerCategories.size > 0 ? mapPlaces.filter((place) => layerCategories.has(place.category)) : mapPlaces;
-    updateGeoJSONSource(map, "wayme-city-places", cityPlaceFeatures(visible, selectedPlaceId));
-  }, [layerCategories, mapPlaces, mapReady, mapRef, selectedPlaceId]);
+    const hidden = new Set(layerPrefs.hiddenCategories);
+    const visible = mapPlaces.filter((place) => !hidden.has(place.category));
+    for (const group of cityPlaceGroups) {
+      const inGroup = visible.filter((place) => cityPlaceGroupOf(place.category) === group.id);
+      updateGeoJSONSource(map, placeSourceId(group.id), cityPlaceFeatures(inGroup, selectedPlaceId));
+    }
+  }, [layerPrefs.hiddenCategories, mapPlaces, mapReady, mapRef, selectedPlaceId]);
+
+  // Transport toggles hide the vehicle and stop layers; the route and the air-alert shelters keep their own rules.
+  const hiddenTransport = layerPrefs.hiddenTransport;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    for (const layer of ["vehicles", "stops"] as const) {
+      const visibility = hiddenTransport.includes(layer) ? "none" : "visible";
+      for (const id of TRANSPORT_LAYER_IDS[layer]) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
+      }
+    }
+  }, [hiddenTransport, mapReady, mapRef]);
 
   const { userLocation } = input;
   useEffect(() => {

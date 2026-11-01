@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import * as Location from "expo-location";
 import { clearDeviceData, EMPTY_PROFILE, readLocalProfile, type LocalProfile } from "../lib/local-profile";
+import { iconTileFor } from "../lib/icon-tiles";
 import { useThemePreference, type ThemePreference } from "../lib/theme-provider";
 import { accountLabel, useSession } from "../lib/supabase";
 import { Badge, ListRow, Page, Section, Segmented, SwitchRow } from "../ui";
@@ -16,7 +17,7 @@ const PERMISSION_LABEL: Record<string, string> = { granted: "Дозволено"
 
 /** Профіль: account, your profile, permissions, look, and data on the device. Same groups as the web settings. */
 export default function ProfileScreen() {
-  const [profile, setProfile] = useState<LocalProfile>(EMPTY_PROFILE);
+  const [, setProfile] = useState<LocalProfile>(EMPTY_PROFILE);
   const [location, setLocation] = useState("undetermined");
   const theme = useThemePreference();
   const { session } = useSession();
@@ -47,16 +48,22 @@ export default function ProfileScreen() {
     <Page>
       <Section grouped>
         <ListRow
-          icon="person"
-          title={profile.name || "Додати імʼя"}
-          subtitle={profile.visitorType || "Зберігається лише на цьому пристрої"}
-          onPress={() => router.push("/profile-edit")}
-        />
-        <ListRow
-          icon="account-circle"
-          title={session ? accountLabel(session.user) : "Увійти в обліковий запис"}
-          subtitle={session ? "Ви ввійшли" : "Пошта й пароль, як на сайті"}
+          icon={session ? "account-circle" : "login"}
+          iconTile={iconTileFor("my-profile")}
+          title="Мій профіль"
+          subtitle={session ? accountLabel(session.user) : "Увійти або зареєструватися"}
           onPress={() => router.push("/account")}
+          last
+        />
+      </Section>
+
+      <Section title="Навігація" grouped footer="Улюблені вкладки стоять першими. Порядок і вимкнені вкладки зберігаються на цьому пристрої.">
+        <ListRow
+          icon="tune"
+          iconTile={iconTileFor("tabs")}
+          title="Вкладки"
+          subtitle="Що показувати, улюблені й порядок"
+          onPress={() => router.push("/sections")}
           last
         />
       </Section>
@@ -68,6 +75,7 @@ export default function ProfileScreen() {
       <Section title="Дозволи" grouped>
         <ListRow
           icon="my-location"
+          iconTile={iconTileFor("location")}
           title="Геолокація"
           value={PERMISSION_LABEL[location] ?? location}
           onPress={
@@ -80,19 +88,19 @@ export default function ProfileScreen() {
       </Section>
 
       <Section title="Сповіщення" grouped footer="Сповіщення з’являться, коли підключимо push у збірці застосунку.">
-        <SwitchRow icon="campaign" iconColor="#dc2626" title="Початок тривоги" value={false} onValueChange={() => {}} disabled />
-        <SwitchRow icon="verified-user" title="Відбій тривоги" value={false} onValueChange={() => {}} disabled />
-        <ListRow icon="radar" title="Загрози для Львова" trailing={<Badge label="Незабаром" />} last />
+        <SwitchRow icon="campaign" iconTile={iconTileFor("alert-start")} title="Початок тривоги" value={false} onValueChange={() => {}} disabled />
+        <SwitchRow icon="verified-user" iconTile={iconTileFor("alert-end")} title="Відбій тривоги" value={false} onValueChange={() => {}} disabled />
+        <ListRow icon="radar" iconTile={iconTileFor("threats")} title="Загрози для Львова" trailing={<Badge label="Незабаром" />} last />
       </Section>
 
       <Section title="Про застосунок" grouped>
-        <ListRow icon="tour" title="Показати знайомство ще раз" onPress={() => router.replace({ pathname: "/", params: { tour: "1" } })} />
-        <ListRow icon="directions-walk" title="Прогулянка центром" subtitle="Демо маршруту з прогресом ходьби" onPress={() => router.push("/welcome")} />
-        <ListRow icon="palette" title="Дизайн-система" subtitle="Усі елементи для iOS і Android" onPress={() => router.push("/design")} last />
+        <ListRow icon="tour" iconTile={iconTileFor("tour")} title="Показати знайомство ще раз" onPress={() => router.replace({ pathname: "/", params: { tour: "1" } })} />
+        <ListRow icon="directions-walk" iconTile={iconTileFor("walk")} title="Прогулянка центром" subtitle="Демо маршруту з прогресом ходьби" onPress={() => router.push("/welcome")} />
+        <ListRow icon="palette" iconTile={iconTileFor("design")} title="Дизайн-система" subtitle="Усі елементи для iOS і Android" onPress={() => router.push("/design")} last />
       </Section>
 
       <Section grouped>
-        <ListRow icon="delete-outline" iconColor="#b42318" title="Очистити дані на пристрої" destructive onPress={clearData} navigates={false} last />
+        <ListRow icon="delete-outline" iconTile={iconTileFor("clear-data")} title="Очистити дані на пристрої" destructive onPress={clearData} navigates={false} last />
       </Section>
     </Page>
   );

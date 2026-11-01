@@ -284,6 +284,27 @@ button.list-row {
   color: var(--muted-foreground);
 }
 
+/* Settings icon tile: white glyph on a top-to-bottom gradient of one token color (DESIGN.md §2f). */
+.list-row-leading.is-tile {
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--tile-glyph);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.list-row-leading.is-tile[data-tile="blue"] { background: linear-gradient(180deg, var(--tile-blue-top), var(--tile-blue-bottom)); }
+.list-row-leading.is-tile[data-tile="orange"] { background: linear-gradient(180deg, var(--tile-orange-top), var(--tile-orange-bottom)); }
+.list-row-leading.is-tile[data-tile="violet"] { background: linear-gradient(180deg, var(--tile-violet-top), var(--tile-violet-bottom)); }
+.list-row-leading.is-tile[data-tile="pink"] { background: linear-gradient(180deg, var(--tile-pink-top), var(--tile-pink-bottom)); }
+.list-row-leading.is-tile[data-tile="teal"] { background: linear-gradient(180deg, var(--tile-teal-top), var(--tile-teal-bottom)); }
+.list-row-leading.is-tile[data-tile="amber"] { background: linear-gradient(180deg, var(--tile-amber-top), var(--tile-amber-bottom)); }
+.list-row-leading.is-tile[data-tile="rose"] { background: linear-gradient(180deg, var(--tile-rose-top), var(--tile-rose-bottom)); }
+.list-row-leading.is-tile[data-tile="indigo"] { background: linear-gradient(180deg, var(--tile-indigo-top), var(--tile-indigo-bottom)); }
+.list-row-leading.is-tile[data-tile="green"] { background: linear-gradient(180deg, var(--tile-green-top), var(--tile-green-bottom)); }
+
 .list-row-copy {
   display: flex;
   min-width: 0;
@@ -366,4 +387,21 @@ button.list-row {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* Stacked actions: one full-width button per row, icon beside the label. */
+.detail-actions.is-stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.detail-actions.is-stacked .detail-action {
+  min-height: 48px;
+  flex-direction: row;
+  gap: 8px;
+  font-size: var(--type-body);
+}
+
+.detail-actions.is-stacked .detail-action-icon {
+  width: 28px;
+  height: 28px;
 }

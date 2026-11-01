@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Button } from "../ui/button";
-import { CategoryTiles } from "../category-tiles";
 import { ContextCard } from "../ui/context-card";
 import { EntityDetail } from "../entity-detail";
+import { IconButton } from "../ui/icon-button";
 import { MaterialIcon } from "../ui/material-icon";
-import { Toggle } from "../ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { UnifiedCard } from "../ui/unified-card";
 import {
@@ -17,6 +16,9 @@ import {
 import type { CityItemActions, PlacesLayout } from "./constants";
 import { openStatus } from "../../lib/opening-hours";
 import { cityPlaceGroupOf, cityPlaceGroups } from "../../lib/city-place-categories";
+import { useHiddenCategories } from "../../lib/category-prefs";
+import { CategorySettings } from "./category-settings";
+import { MyPlacesView } from "./my-places-view";
 import {
   demoProductsFor,
   distanceToPlace,
@@ -26,8 +28,12 @@ import {
   placeKindLine,
 } from "./helpers";
 import "../city-view-switch.css";
+import "./places-section.css";
 
 export type PlaceFilter = "popular" | "nearby" | CityPlaceCategory;
+
+/** Tabs of «Місця». «Категорії» shows the category grid, and a chosen category opens its list. */
+type PlacesTab = "nearby" | "mine" | "popular" | "categories";
 
 const PAGE_SIZE = 40;
 const LAYOUT_KEY = "eway-places-layout";
@@ -49,7 +55,7 @@ type PlacesSectionProps = CityItemActions & {
   onOpenPlace: (id: string) => void;
 };
 
-/** «Місця»: category tiles, list or grid of nearby places, and the open place. */
+/** «Місця»: tabs (Поруч, Мої місця, Популярне | Категорії, settings), then the chosen list or grid. */
 export function PlacesSection({
   places,
   visiblePlaces,
@@ -77,11 +83,28 @@ export function PlacesSection({
     setPlacesLayout(next);
     localStorage.setItem(LAYOUT_KEY, next);
   };
-  const shownPlaces = visiblePlaces.slice(0, placeDisplayLimit);
-  // Categories are grouped (Їжа, Покупки…) so the row shows a handful, not sixty.
-  const [group, setGroup] = useState<string>(() =>
-    placeCategory === "popular" || placeCategory === "nearby" ? "all" : cityPlaceGroupOf(placeCategory),
+  const [tab, setTab] = useState<PlacesTab>(() =>
+    placeCategory === "nearby" ? "nearby" : placeCategory === "popular" ? "popular" : "categories",
   );
+  const [hiddenCategories, setCategoryShown, resetCategories] = useHiddenCategories();
+  const [categorySettingsOpen, setCategorySettingsOpen] = useState(false);
+
+  /** A category picked from the grid. «popular» or «nearby» means no category is chosen. */
+  const chosenCategory = placeCategory === "popular" || placeCategory === "nearby" ? null : placeCategory;
+  const showList = selectedPlaceId !== null || (tab !== "mine" && !(tab === "categories" && !chosenCategory));
+
+  const selectTab = (next: PlacesTab): void => {
+    setTab(next);
+    setPlaceDisplayLimit(PAGE_SIZE);
+    if (next === "nearby" || next === "popular") onPlaceCategoryChange(next);
+    if (next === "categories" && !chosenCategory) onPlaceCategoryChange("popular");
+  };
+  const pickCategory = (id: CityPlaceCategory): void => {
+    onPlaceCategoryChange(id);
+    setPlaceDisplayLimit(PAGE_SIZE);
+  };
+
+  const listPlaces = selectedPlaceId ? places.filter((place) => place.id === selectedPlaceId) : visiblePlaces.slice(0, placeDisplayLimit);
   const counts = useMemo(() => {
     const byCategory = new Map<CityPlaceCategory, number>();
     for (const place of places) byCategory.set(place.category, (byCategory.get(place.category) ?? 0) + 1);
@@ -89,76 +112,95 @@ export function PlacesSection({
   }, [places]);
   const groups = [
     ...cityPlaceGroups.map((item) => ({ id: item.id, label: item.label, icon: item.icon })),
-    { id: "city", label: "Місто", icon: "location_city" },
-  ]
-    .map((item) => ({
-      ...item,
-      count: availableCategories
-        .filter((category) => cityPlaceGroupOf(category.id) === item.id)
-        .reduce((sum, category) => sum + (counts.get(category.id) ?? 0), 0),
-    }))
-    .filter((item) => item.count > 0);
-  const groupCategories =
-    group === "all" ? availableCategories : availableCategories.filter((category) => cityPlaceGroupOf(category.id) === group);
+  ];
+  const shownCategories = availableCategories.filter((category) => !hiddenCategories.has(category.id));
+  const chosenLabel = chosenCategory ? availableCategories.find((category) => category.id === chosenCategory)?.label : undefined;
 
   return (
     <section
       className={`city-section city-places${selectedPlaceId ? " place-detail-page" : ""}`}
       aria-label="Місця"
     >
-      {!selectedPlaceId && groups.length > 1 && (
-        <div className="city-place-groups" role="group" aria-label="Групи місць">
-          <Toggle variant="pill" size="sm" pressed={group === "all"} onClick={() => setGroup("all")}>
-            Усе
-          </Toggle>
-          {groups.map((item) => (
-            <Toggle
-              key={item.id}
-              variant="pill"
-              size="sm"
-              pressed={group === item.id}
-              onClick={() => {
-                setGroup(item.id);
-                const first = availableCategories.find((category) => cityPlaceGroupOf(category.id) === item.id);
-                if (first) {
-                  onPlaceCategoryChange(first.id);
-                  setPlaceDisplayLimit(PAGE_SIZE);
-                }
-              }}
-            >
-              <MaterialIcon name={item.icon} size={16} />
-              {item.label}
-              <span className="city-place-group-count">{item.count}</span>
-            </Toggle>
-          ))}
+      {!selectedPlaceId && (
+        <nav className="places-tabs" aria-label="Вкладки місць">
+          <div className="places-tab-group" role="group" aria-label="Місця поруч і популярні">
+            {userLocation && (
+              <button type="button" className="places-tab" aria-pressed={tab === "nearby"} onClick={() => selectTab("nearby")}>
+                <MaterialIcon name="near_me" size={18} filled={tab === "nearby"} />
+                Поруч
+              </button>
+            )}
+            <button type="button" className="places-tab" aria-pressed={tab === "mine"} onClick={() => selectTab("mine")}>
+              <MaterialIcon name="bookmarks" size={18} filled={tab === "mine"} />
+              Мої місця
+            </button>
+            <button type="button" className="places-tab" aria-pressed={tab === "popular"} onClick={() => selectTab("popular")}>
+              <MaterialIcon name="award_star" size={18} filled={tab === "popular"} />
+              Популярне
+            </button>
+          </div>
+          <span className="places-tab-divider" aria-hidden="true" />
+          <button type="button" className="places-tab" aria-pressed={tab === "categories"} onClick={() => selectTab("categories")}>
+            <MaterialIcon name="category" size={18} filled={tab === "categories"} />
+            Категорії
+          </button>
+          <IconButton label="Налаштування категорій" className="places-tab-settings" onClick={() => setCategorySettingsOpen(true)}>
+            <MaterialIcon name="tune" size={20} />
+          </IconButton>
+        </nav>
+      )}
+
+      {!selectedPlaceId && tab === "mine" && (
+        <MyPlacesView places={places} saved={saved} userLocation={userLocation} onOpenPlace={onOpenPlace} />
+      )}
+
+      {!selectedPlaceId && tab === "categories" && !chosenCategory && (
+        <div className="category-grid" aria-label="Усі категорії">
+          {groups.map((group) => {
+            const items = shownCategories.filter((category) => cityPlaceGroupOf(category.id) === group.id);
+            if (items.length === 0) return null;
+            return (
+              <section key={group.id} className="category-grid-group" aria-label={group.label}>
+                <h3 className="category-grid-title">
+                  <MaterialIcon name={group.icon} size={18} />
+                  {group.label}
+                </h3>
+                <div className="category-grid-tiles">
+                  {items.map((category) => {
+                    const count = counts.get(category.id) ?? 0;
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        className="category-grid-tile"
+                        data-filter={category.id}
+                        onClick={() => pickCategory(category.id)}
+                      >
+                        <span className="category-tile-orb" style={{ "--category-color": CITY_PLACE_CATEGORY_COLORS[category.id] } as CSSProperties}>
+                          <MaterialIcon name={cityPlaceIcons[category.id]} size={30} />
+                          {count > 0 && <span className="category-tile-count">{count}</span>}
+                        </span>
+                        <span className="category-tile-label">{category.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
         </div>
       )}
-      {!selectedPlaceId && (
-        <CategoryTiles
-          label="Категорії місць"
-          items={[
-            ...(group === "all"
-              ? [
-                  { id: "popular", label: "Популярне", icon: "award_star", color: "var(--category-popular)" },
-                  ...(userLocation ? [{ id: "nearby", label: "Поруч", icon: "near_me", color: "var(--category-nearby)" }] : []),
-                ]
-              : []),
-            ...groupCategories.map((category) => ({
-              id: category.id,
-              label: category.label,
-              icon: cityPlaceIcons[category.id],
-              color: CITY_PLACE_CATEGORY_COLORS[category.id],
-              count: counts.get(category.id),
-            })),
-          ]}
-          value={placeCategory}
-          onChange={(id) => {
-            onPlaceCategoryChange(id as PlaceFilter);
-            setPlaceDisplayLimit(PAGE_SIZE);
-          }}
-        />
+
+      {!selectedPlaceId && tab === "categories" && chosenCategory && (
+        <div className="places-category-head">
+          <IconButton label="Усі категорії" onClick={() => onPlaceCategoryChange("popular")}>
+            <MaterialIcon name="arrow_back" size={20} />
+          </IconButton>
+          <span>{chosenLabel}</span>
+        </div>
       )}
-      {!selectedPlaceId && (
+
+      {!selectedPlaceId && showList && (
         <ToggleGroup
           type="single"
           className="city-view-switch"
@@ -179,18 +221,18 @@ export function PlacesSection({
           </ToggleGroupItem>
         </ToggleGroup>
       )}
-      {!selectedPlaceId && locationError && (
+      {!selectedPlaceId && showList && locationError && (
         <p className="city-location-error" role="status">
           {locationError} Показуємо місця від центру Львова.
         </p>
       )}
-      {!selectedPlaceId && placesStatus === "loading" && (
+      {!selectedPlaceId && showList && placesStatus === "loading" && (
         <div className="city-places-state" role="status">
           <MaterialIcon name="progress_activity" size={20} />
           <span>Завантажуємо місця поруч…</span>
         </div>
       )}
-      {!selectedPlaceId && placesStatus === "error" && (
+      {!selectedPlaceId && showList && placesStatus === "error" && (
         <div className="city-places-state city-places-error" role="alert">
           <MaterialIcon name="cloud_off" size={20} />
           <span>{placesError}</span>
@@ -199,7 +241,8 @@ export function PlacesSection({
           </Button>
         </div>
       )}
-      {placesStatus === "ready" &&
+      {showList &&
+        placesStatus === "ready" &&
         (selectedPlaceId
           ? places.some((p) => p.id === selectedPlaceId)
           : visiblePlaces.length > 0) && (
@@ -212,9 +255,7 @@ export function PlacesSection({
           <div
             className={`city-place-list city-osm-place-list${selectedPlaceId ? " place-detail-list" : ""}${placesLayout === "grid" ? " is-grid" : ""}`}
           >
-            {shownPlaces
-              .filter((place) => !selectedPlaceId || place.id === selectedPlaceId)
-              .map((place) => {
+            {listPlaces.map((place) => {
                 const detailOpen = selectedPlaceId === place.id;
                 if (detailOpen) {
                   const phone = place.details["Телефон"] || place.details["Мобільний"];
@@ -311,7 +352,7 @@ export function PlacesSection({
           </div>
         </>
       )}
-      {!selectedPlaceId && placesStatus === "ready" && shownPlaces.length < visiblePlaces.length && (
+      {!selectedPlaceId && showList && placesStatus === "ready" && listPlaces.length < visiblePlaces.length && (
         <Button
           type="button"
           variant="outline"
@@ -319,15 +360,24 @@ export function PlacesSection({
           onClick={() => setPlaceDisplayLimit((l) => l + PAGE_SIZE)}
         >
           <MaterialIcon name="expand_more" size={18} />
-          Показати ще ({visiblePlaces.length - shownPlaces.length})
+          Показати ще ({visiblePlaces.length - listPlaces.length})
         </Button>
       )}
-      {!selectedPlaceId && placesStatus === "ready" && visiblePlaces.length === 0 && (
+      {!selectedPlaceId && showList && placesStatus === "ready" && visiblePlaces.length === 0 && (
         <div className="city-places-state">
           <MaterialIcon name="search_off" size={20} />
           <span>Місць за цим фільтром не знайдено.</span>
         </div>
       )}
+
+      <CategorySettings
+        open={categorySettingsOpen}
+        onOpenChange={setCategorySettingsOpen}
+        categories={availableCategories}
+        hidden={hiddenCategories}
+        onShownChange={setCategoryShown}
+        onReset={resetCategories}
+      />
     </section>
   );
 }

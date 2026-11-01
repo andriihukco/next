@@ -50,6 +50,11 @@
   /* Elevation */
   --shadow-raised: 0 2px 8px rgba(18, 43, 31, 0.1), 0 1px 2px rgba(18, 43, 31, 0.06);
   --shadow-overlay: 0 12px 32px rgba(18, 43, 31, 0.13), 0 2px 6px rgba(18, 43, 31, 0.06);
+  /* Liquid glass (DESIGN.md §2e). Text on glass must keep 4.5:1 against the fill. */
+  --glass-fill: rgba(255, 255, 255, 0.72);
+  --glass-stroke: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 8px 24px rgba(18, 43, 31, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(20px) saturate(160%);
   --shadow: var(--shadow-overlay);
 
   /* Type scale */
@@ -71,6 +76,27 @@
   --duration-press: 120ms;
   --duration-state: 200ms;
   --duration-panel: 320ms;
+
+  /* Settings icon tiles: top to bottom gradient, white glyph (DESIGN.md §2f). Values come from design/tokens.json. */
+  --tile-blue-top: #2563eb;
+  --tile-blue-bottom: #1e40af;
+  --tile-orange-top: #ea580c;
+  --tile-orange-bottom: #9a3412;
+  --tile-violet-top: #7c3aed;
+  --tile-violet-bottom: #5b21b6;
+  --tile-pink-top: #db2777;
+  --tile-pink-bottom: #9d174d;
+  --tile-teal-top: #0d9488;
+  --tile-teal-bottom: #115e59;
+  --tile-amber-top: #d97706;
+  --tile-amber-bottom: #92400e;
+  --tile-rose-top: #e11d48;
+  --tile-rose-bottom: #9f1239;
+  --tile-indigo-top: #4f46e5;
+  --tile-indigo-bottom: #3730a3;
+  --tile-green-top: #16a34a;
+  --tile-green-bottom: #166534;
+  --tile-glyph: #ffffff;
 
   /* Accents: category, route, and map colors (DESIGN.md §2a). Canvas and map code reads them with resolveColor(). */
   --map-background: #f6f7f6;
@@ -554,6 +580,9 @@
     --page-shell: #0b110e;
     --shadow-raised: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --glass-fill: rgba(23, 34, 29, 0.72);
+    --glass-stroke: rgba(255, 255, 255, 0.12);
+    --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     --map-background: #141d19;
     --map-landuse: #18241f;
     --map-wood: #1c2e25;
@@ -922,6 +951,9 @@
     --page-shell: #0b110e;
     --shadow-raised: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --glass-fill: rgba(23, 34, 29, 0.72);
+    --glass-stroke: rgba(255, 255, 255, 0.12);
+    --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     --map-background: #141d19;
     --map-landuse: #18241f;
     --map-wood: #1c2e25;
@@ -1776,11 +1808,13 @@ body,
   padding: 0 9px;
   display: grid;
   place-items: center;
-  background:var(--card);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   color: var(--route-color);
-  border: 3px solid white;
+  border: 1px solid var(--glass-stroke);
   border-radius: 11px 5px 5px 11px;
-  box-shadow: 0 3px 9px rgba(20, 33, 53, 0.2);
+  box-shadow: var(--glass-shadow);
   font-family: "JetBrains Mono", monospace;
   font-weight: 800;
   font-size: var(--type-body);
@@ -1792,10 +1826,13 @@ body,
   top: 0;
   min-width: 45px;
   padding: 3px 6px;
+  border: 1px solid var(--glass-stroke);
   border-radius: 6px;
-  background: white;
-  color:var(--tone-35445a);
-  box-shadow: 0 2px 6px rgba(20, 33, 53, 0.15);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--foreground);
+  box-shadow: var(--glass-shadow);
   font: 700 9px "JetBrains Mono", monospace;
   text-align: center;
 }
@@ -2223,7 +2260,7 @@ body,
 
 .place-inspector-body {
   display: grid;
-  gap: 14px;
+  gap: 0;
 }
 
 .place-inspector-body > .osm-place-icon {
@@ -3654,7 +3691,7 @@ body,
 
 .un-shell {
   --rail-width: min(400px, calc(100vw - 40px));
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .brand-rail {
@@ -5630,8 +5667,11 @@ body,
 }
 
 .city-section-nav button.active {
-  color:var(--text-accent);
+  color: var(--accent-foreground);
   font-weight: 800;
+  background: var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 -3px 0 var(--primary);
 }
 
 .city-section-nav button:focus-visible,
@@ -8291,7 +8331,7 @@ a.education-open {
 }
 
 .place-inspector-body {
-  padding: 0 4px 10px;
+  padding: 0 0 10px;
 }
 
 .place-details-menu {
@@ -11080,4 +11120,111 @@ body {
   .tooltip-content {
     animation: none;
   }
+}
+
+/* Section rail: favourites group, divider, and the settings entry at the end (DESIGN.md §7). */
+.city-section-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  margin: 12px 4px;
+  background: var(--border);
+}
+
+.city-section-nav button.city-section-settings {
+  color: var(--muted-foreground);
+}
+
+.city-section-nav button.city-section-settings:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Section settings dialog: one row per section, grip, favourite, move, visibility. */
+.section-settings {
+  display: grid;
+  gap: 12px;
+  max-height: min(640px, 88vh);
+  overflow-y: auto;
+}
+
+.section-settings-sort {
+  width: 100%;
+}
+
+.section-settings-sort [data-slot="toggle-group-item"] {
+  flex: 1 1 0;
+}
+
+.section-settings-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.section-settings-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 36px 36px 36px 44px;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.section-settings-row[data-dragging="true"],
+.section-settings-row:active {
+  box-shadow: var(--shadow-raised);
+}
+
+.section-settings-grip {
+  display: grid;
+  place-items: center;
+  color: var(--muted-foreground);
+  cursor: grab;
+  touch-action: none;
+}
+
+.section-settings-name {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-small);
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.section-settings-name span:last-child {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.section-settings-action[aria-pressed="true"] {
+  color: var(--primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-settings-row {
+    transition: none;
+  }
+}
+
+/* Place detail pages run edge to edge: no side margins, dividers touch the sheet edges. */
+.city-guide:has(.place-detail-page) {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.city-section.place-detail-page {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.place-detail-page .city-place-list.place-detail-list {
+  padding-bottom: 0;
 }

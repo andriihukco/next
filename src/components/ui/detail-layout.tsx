@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { IconTile } from "@/lib/icon-tiles";
 import { MaterialIcon } from "./material-icon";
 import "./detail-layout.css";
 
@@ -82,9 +83,10 @@ export function DetailChip({ icon, tone = "neutral", children }: DetailChipProps
   );
 }
 
-export function ActionBar({ children }: { children: ReactNode }) {
+/** `stacked` puts each action on its own full-width row (place and entity details). */
+export function ActionBar({ children, stacked }: { children: ReactNode; stacked?: boolean }) {
   return (
-    <div className="detail-actions" role="toolbar">
+    <div className={cn("detail-actions", stacked && "is-stacked")} role="toolbar">
       {children}
     </div>
   );
@@ -154,16 +156,22 @@ export function StatGrid({ items }: { items: { label: string; value: ReactNode }
 
 type ListRowProps = {
   leading?: ReactNode;
+  /** Settings rows: the leading icon sits on a gradient tile of this color (DESIGN.md §2f). */
+  tile?: IconTile;
   title: string;
   subtitle?: string;
   trailing?: ReactNode;
   onClick?: () => void;
 };
 
-export function ListRow({ leading, title, subtitle, trailing, onClick }: ListRowProps) {
+export function ListRow({ leading, tile, title, subtitle, trailing, onClick }: ListRowProps) {
   const content = (
     <>
-      {leading && <span className="list-row-leading">{leading}</span>}
+      {leading && (
+        <span className={cn("list-row-leading", tile && "is-tile")} data-tile={tile}>
+          {leading}
+        </span>
+      )}
       <span className="list-row-copy">
         <span className="list-row-title">{title}</span>
         {subtitle && <span className="list-row-subtitle">{subtitle}</span>}

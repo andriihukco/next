@@ -3,8 +3,14 @@ import { GeoJSONSource, type Map as MapLibreMap, type MapGeoJSONFeature, type Ma
 import type { Point } from "geojson";
 import type { Stop, Vehicle } from "../lib/app-types";
 import { cityBuildingFromMapFeature, type CityPlace } from "../lib/city-places";
-import { INTERACTIVE_LAYERS } from "../lib/map-app-layers";
+import { INTERACTIVE_LAYERS, placeLayerId } from "../lib/map-app-layers";
 import { useLatest } from "./use-latest";
+
+/** Group id of a place layer, or null for any other layer. Group ids have no hyphens. */
+function placeGroupOfLayer(layerId: string): string | null {
+  const match = /^wayme-places-([a-z]+)-/.exec(layerId);
+  return match ? match[1] : null;
+}
 
 type MapInteractionTargets = {
   places: CityPlace[];
@@ -63,8 +69,10 @@ export function useMapInteractions(
       }
       if (!feature.properties) return;
       const layerId = feature.layer.id;
-      if (layerId === "wayme-city-place-clusters" || layerId === "wayme-city-place-cluster-count") {
-        const source = map.getSource("wayme-city-places");
+      const placeGroup = placeGroupOfLayer(layerId);
+      if (placeGroup && (layerId === placeLayerId(placeGroup, "clusters") || layerId === placeLayerId(placeGroup, "cluster-count"))) {
+        // A cluster belongs to the source of its group; feature.source names that source.
+        const source = map.getSource(feature.source);
         if (!(source instanceof GeoJSONSource)) return;
         void source
           .getClusterExpansionZoom(Number(feature.properties.cluster_id))
@@ -81,7 +89,7 @@ export function useMapInteractions(
         return;
       }
       const { id } = feature.properties;
-      if (layerId === "wayme-city-place-points" || layerId === "wayme-city-place-labels") {
+      if (placeGroup) {
         const place = current.places.find((candidate) => candidate.id === id);
         if (place) current.onSelectPlace(place);
         return;

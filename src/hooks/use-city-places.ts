@@ -5,11 +5,10 @@ import type { AppView } from "../lib/app-types";
 import { isArrayOf, isCityEvent, isCityPlace } from "../lib/app-validators";
 import { sampleEvents } from "../lib/features";
 import type { CityEvent } from "../lib/listing-types";
-import { cityPlacesFromMapFeatures, type CityPlace, type CityPlaceCategory } from "../lib/city-places";
+import { cityPlacesFromMapFeatures, type CityPlace } from "../lib/city-places";
 import { useLatest } from "./use-latest";
 import type { LoadStatus } from "./use-transit-feed";
 
-const MAX_LAYER_CATEGORIES = 3;
 
 /**
  * Places read from the visible OSM tiles (the city list), places shown as pins on the map,
@@ -29,8 +28,6 @@ export function useCityPlaces(
   const [eventData, setEventData] = useState<CityEvent[]>(() =>
     readAdminOverride("events", sampleEvents, isArrayOf(isCityEvent)),
   );
-  const [mapCityPlaces, setMapCityPlaces] = useState<CityPlace[]>([]);
-  const [mapLayerCategories, setMapLayerCategories] = useState<Set<CityPlaceCategory>>(new Set());
   const [cityPlacesStatus, setCityPlacesStatus] = useState<LoadStatus>("loading");
   const [cityPlacesError, setCityPlacesError] = useState("");
 
@@ -60,10 +57,7 @@ export function useCityPlaces(
         return typeof lng === "number" && typeof lat === "number" && bounds.contains([lng, lat]);
       });
       const nextPlaces = readAdminOverride("places", cityPlacesFromMapFeatures(features), isArrayOf(isCityPlace));
-      if (!nextPlaces.length && cityPlacesRef.current.length) {
-        setCityPlacesStatus("ready");
-        return;
-      }
+      // An empty view clears the pins too; keeping the old ones showed places from another area.
       if (JSON.stringify(nextPlaces) !== JSON.stringify(cityPlacesRef.current)) {
         setCityPlaces(nextPlaces);
       }
@@ -82,15 +76,6 @@ export function useCityPlaces(
     if (activeView === "city") refreshRef.current();
   }, [activeView, refreshRef]);
 
-  const toggleLayerCategory = (id: CityPlaceCategory): void => {
-    setMapLayerCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else if (next.size < MAX_LAYER_CATEGORIES) next.add(id);
-      return next;
-    });
-  };
-
   return {
     cityPlaces,
     setCityPlaces,
@@ -99,10 +84,5 @@ export function useCityPlaces(
     refreshCityPlaces,
     eventData,
     setEventData,
-    mapCityPlaces,
-    setMapCityPlaces,
-    mapLayerCategories,
-    toggleLayerCategory,
-    clearLayerCategories: () => setMapLayerCategories(new Set()),
   };
 }

@@ -28,7 +28,7 @@ Code: `mobile/src/app/`, routes in `mobile/src/lib/navigation.ts`.
 ## Rules
 
 1. **A detail is a page.** Tapping a vehicle, stop, place, shelter or service pushes its page with a back button. Nothing slides up over the map or over another page to show details.
-2. **Five tabs, no more.** That is the HIG limit and matches the web sections. Профіль is the avatar at the top right of every tab root, not a tab.
+2. **Five tabs, no more.** That is the HIG limit and matches the web sections. Профіль is the avatar at the top right of every tab root, not a tab. The map tab stays first. The four category tabs can be hidden and reordered in Профіль → «Вкладки» (`mobile/src/app/sections.tsx`): favourites come first, then the rest. The native bar cannot draw a divider, so favourites are separated on the «Вкладки» page only. Sorting by recent or most used is web-only for now, because the native tab bar has no tap history yet.
 3. **Tab roots have a large title** (iOS) or an app bar title (Android), and nothing else in the header except the avatar.
 4. **The map stays a map.** Its controls float in the corners: map type, my location, compass, camera, layers. They open short panels (map type, camera, layers), which are allowed because they act on the map you are looking at.
 5. **«Показати на мапі» goes back to the Мапа tab**, centered on the item, with the item highlighted.

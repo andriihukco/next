@@ -7,7 +7,7 @@ import { FLOWS, flowsForKind, type EntityFlow, type MenuItem } from "./entity-fl
 import { usePlacePhoto } from "../lib/place-images";
 import type { CityPlace } from "../lib/city-places";
 import { PlaceDetailsSection } from "./place-details-section";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { PlaceDetailTabs } from "./place-detail-tabs";
 import { formatRating } from "../lib/rating";
 import { openStatus } from "../lib/opening-hours";
 import "./entity-detail.css";
@@ -52,6 +52,9 @@ type EntityDetailProps = {
   menu?: MenuItem[];
   catalog?: MenuItem[];
   coordinates: [number, number];
+  /** Other places of the same kind, nearest first. */
+  similar?: CityPlace[];
+  onSelectPlace?: (place: CityPlace) => void;
   phone?: string;
   website?: string;
   saved: boolean;
@@ -77,6 +80,8 @@ export function EntityDetail({
   info = [],
   menu = [],
   catalog = [],
+  similar = [],
+  onSelectPlace,
   phone,
   website,
   saved,
@@ -109,19 +114,18 @@ export function EntityDetail({
   // Places get Google-Maps-style tabs. Reviews show only when a real source has them.
   const tabbed = Boolean(place) && !date;
   const hours = place ? openStatus(place.details["Графік"]) : null;
-  const reviewCount = lookup.details?.reviews.length ?? 0;
   const address = place?.address || lookup.details?.address;
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-  const todayHours = lookup.details?.openHours.find((slot) => slot.day === today)?.hours;
   const site = website || lookup.details?.website;
   const keyFacts: QuickFact[] = [
-    ...(address ? [{ icon: "location_on", label: "Адреса", value: address }] : []),
-    ...(!hours && todayHours ? [{ icon: "schedule", label: "Сьогодні", value: todayHours }] : []),
-    ...quickFacts.filter((fact) => ["Графік", "Кухня"].includes(fact.label)),
     ...(callPhone ? [{ icon: "call", label: "Телефон", value: callPhone, href: `tel:${callPhone.replace(/[^\d+]/g, "")}` }] : []),
     ...(site
       ? [{ icon: "language", label: "Сайт", value: site.replace(/^https?:\/\//, "").replace(/\/$/, ""), href: site.startsWith("http") ? site : `https://${site}` }]
       : []),
+  ];
+  const photos = [...new Set([...(photoUrl ? [photoUrl] : []), ...(lookup.images ?? [])])].slice(0, 12);
+  const aboutFacts: QuickFact[] = [
+    ...(address ? [{ icon: "location_on", label: "Адреса", value: address }] : []),
+    ...quickFacts.filter((fact) => fact.label !== "Адреса"),
   ];
   const coverColor = iconColor ? ({ "--entity-color": iconColor } as CSSProperties) : undefined;
 
@@ -214,7 +218,7 @@ export function EntityDetail({
         </div>
       </header>
 
-      <ActionBar>
+      <ActionBar stacked={tabbed}>
         {flows.map((flow, index) => (
           <ActionBarButton
             key={flow}
@@ -225,12 +229,15 @@ export function EntityDetail({
             onClick={() => toggleFlow(flow)}
           />
         ))}
-        <ActionBarButton icon="directions" label="Маршрут" primary={flows.length === 0} onClick={onDirections} />
-        {callPhone ? (
-          <ActionBarButton icon="call" label="Дзвінок" onClick={() => window.open(`tel:${callPhone.replace(/[^\d+]/g, "")}`, "_self")} />
-        ) : flows.length < 2 ? (
-          <ActionBarButton icon="map" label="На мапі" onClick={onShowOnMap} />
-        ) : null}
+        {(!tabbed || flows.length === 0) && (
+          <ActionBarButton icon="directions" label="Маршрут" primary={flows.length === 0} onClick={onDirections} />
+        )}
+        {!tabbed &&
+          (callPhone ? (
+            <ActionBarButton icon="call" label="Дзвінок" onClick={() => window.open(`tel:${callPhone.replace(/[^\d+]/g, "")}`, "_self")} />
+          ) : flows.length < 2 ? (
+            <ActionBarButton icon="map" label="На мапі" onClick={onShowOnMap} />
+          ) : null)}
       </ActionBar>
 
       {EntityFlowPanel && (openFlow || orderOpen) && (
@@ -256,36 +263,26 @@ export function EntityDetail({
         </p>
       )}
 
-      {tabbed ? (
-        <Tabs defaultValue="overview" className="entity-tabs">
-          <TabsList variant="line" className="entity-tabs-list" aria-label="Розділи місця">
-            <TabsTrigger value="overview">Огляд</TabsTrigger>
-            {reviewCount > 0 && <TabsTrigger value="reviews">Відгуки</TabsTrigger>}
-            <TabsTrigger value="about">Про місце</TabsTrigger>
-          </TabsList>
-          <TabsContent value="overview" className="entity-tab-panel">
-            {hours && (
-              <p className={`entity-open-status${hours.open ? " is-open" : " is-closed"}`}>
-                <MaterialIcon name="schedule" size={18} />
-                {hours.text}
-              </p>
-            )}
-            {description && <p className="entity-description">{description}</p>}
-            {keyFacts.length > 0 && <QuickFacts facts={keyFacts} />}
-          </TabsContent>
-          {reviewCount > 0 && lookup.details && (
-            <TabsContent value="reviews" className="entity-tab-panel">
-              <PlaceDetailsSection details={lookup.details} />
-            </TabsContent>
-          )}
-          <TabsContent value="about" className="entity-tab-panel">
-            {quickFacts.length > 0 ? (
-              <QuickFacts facts={quickFacts} />
-            ) : (
-              <p className="entity-description">Для цього місця ще немає додаткових відомостей.</p>
-            )}
-          </TabsContent>
-        </Tabs>
+      {tabbed && place ? (
+        <PlaceDetailTabs
+          kind={kind}
+          place={place}
+          details={lookup.details}
+          images={photos}
+          description={description}
+          hours={hours}
+          rawHours={place.details["Графік"]}
+          address={address}
+          facts={keyFacts}
+          aboutFacts={aboutFacts}
+          menu={menu.length > 0 ? menu : catalog}
+          demoMenu
+          similar={similar}
+          directionsInBar={flows.length === 0}
+          onDirections={onDirections}
+          onShowOnMap={onShowOnMap}
+          onSelectPlace={onSelectPlace}
+        />
       ) : (
         <>
         {(info.length > 0 || website) && (

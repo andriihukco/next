@@ -15,10 +15,13 @@ export const PLACE_INFO_ICONS: Record<string, string> = {
   "Телефон": "call",
 };
 
+/** Social networks from the source tags. They are shown as links, not as facts. */
+export const SOCIAL_LABELS = ["Instagram", "Facebook", "Telegram", "TikTok", "YouTube"];
+
 /** Source tags as quick facts. Website and phone are handled by the detail layout. */
 export function placeInfoRows(place: CityPlace): InfoRow[] {
   return Object.entries(place.details)
-    .filter(([label]) => label !== "Сайт" && label !== "Телефон")
+    .filter(([label]) => label !== "Сайт" && label !== "Телефон" && !SOCIAL_LABELS.includes(label))
     .map(([label, value]) => ({
       icon: PLACE_INFO_ICONS[label] ?? "info",
       label,

@@ -3,7 +3,7 @@ import { formatRating } from "../lib/rating";
 import type { PlaceDetails, PlaceReview } from "../lib/place-images";
 import { MaterialIcon } from "./ui/material-icon";
 
-const DAY_LABELS: Record<string, string> = {
+export const DAY_LABELS: Record<string, string> = {
   Monday: "Понеділок",
   Tuesday: "Вівторок",
   Wednesday: "Середа",
@@ -18,7 +18,7 @@ const shortUrl = (url: string): string => url.replace(/^https?:\/\//, "").replac
 
 const REVIEW_PREVIEW_CHARS = 180;
 
-function ReviewItem({ review }: { review: PlaceReview }) {
+export function ReviewItem({ review }: { review: PlaceReview }) {
   const [expanded, setExpanded] = useState(false);
   const long = review.text.length > REVIEW_PREVIEW_CHARS;
   const text =

@@ -411,8 +411,17 @@ export const cityPlaceGroups: { id: string; label: string; icon: string; categor
     icon: "school",
     categories: ["education", "library", "music-school", "art-studio"],
   },
+  { id: CITY_PLACE_GROUP_OTHER, label: "Інше", icon: "more_horiz", categories: [] },
 ];
 
+/** Groups are the unit of map clustering and bulk show/hide (DESIGN.md §5, map layers). */
+export const CITY_PLACE_GROUP_OTHER = "other";
+
 export function cityPlaceGroupOf(category: CityPlaceCategory): string {
-  return cityPlaceGroups.find((group) => group.categories.includes(category))?.id ?? "city";
+  return cityPlaceGroups.find((group) => group.categories.includes(category))?.id ?? CITY_PLACE_GROUP_OTHER;
+}
+
+/** Every category in a group, in list order. Categories no group names fall into «Інше». */
+export function cityPlaceGroupCategories(groupId: string): { id: CityPlaceCategory; label: string }[] {
+  return cityPlaceCategories.filter((category) => cityPlaceGroupOf(category.id) === groupId);
 }
