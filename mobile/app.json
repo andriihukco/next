@@ -17,7 +17,8 @@
         {
           "locationWhenInUsePermission": "Геолокація показує вас на маршруті під час прогулянки."
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "scheme": "eway",
     "experiments": {

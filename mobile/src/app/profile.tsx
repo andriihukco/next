@@ -9,6 +9,7 @@ import { ChipRow } from "../components/services/flow-parts";
 import { clearDeviceData, EMPTY_PROFILE, readLocalProfile, saveLocalProfile, VISITOR_TYPES, type LocalProfile } from "../lib/local-profile";
 import { colors, fonts, MIN_TOUCH, radius, HIT_SLOP, themed } from "../lib/theme";
 import { useThemePreference, type ThemePreference } from "../lib/theme-provider";
+import { accountLabel, useSession } from "../lib/supabase";
 
 type View_ = "main" | "profile";
 const THEME_OPTIONS: { id: ThemePreference; label: string }[] = [
@@ -18,7 +19,7 @@ const THEME_OPTIONS: { id: ThemePreference; label: string }[] = [
 ];
 const PERMISSION_LABEL: Record<string, string> = { granted: "Дозволено", denied: "Заборонено", undetermined: "Не запитано" };
 
-/** Settings and profile, grouped as in the web's settings dialog. Account sign-in is not built yet. */
+/** Settings and profile, grouped as in the web's settings dialog. */
 export default function ProfileScreen() {
   const [view, setView] = useState<View_>("main");
   const [profile, setProfile] = useState<LocalProfile>(EMPTY_PROFILE);
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const [location, setLocation] = useState<string>("undetermined");
   const [notifications, setNotifications] = useState(false);
   const theme = useThemePreference();
+  const { session } = useSession();
 
   useEffect(() => {
     void readLocalProfile().then((saved) => {
@@ -115,6 +117,15 @@ export default function ProfileScreen() {
           <MaterialIcons name="chevron-right" size={22} color={colors.mutedForeground} />
         </Pressable>
 
+        <SettingsSection title="Обліковий запис">
+          <SettingsRow
+            icon="account-circle"
+            title={session ? accountLabel(session.user) : "Увійти"}
+            subtitle={session ? "Ви ввійшли" : "Пошта й пароль, як на сайті"}
+            onPress={() => router.push("/account")}
+          />
+        </SettingsSection>
+
         <SettingsSection title="Місто">
           <SettingsRow icon="location-city" title="Львів" subtitle="Місто поки одне" disabled />
         </SettingsSection>
@@ -176,8 +187,6 @@ export default function ProfileScreen() {
         <SettingsSection title="Дані на пристрої">
           <SettingsRow icon="delete-outline" title="Очистити дані на пристрої" onPress={clearData} />
         </SettingsSection>
-
-        <Text style={styles.footnote}>Вхід в обліковий запис буде доступний після підключення бекенду.</Text>
       </ScrollView>
     </View>
   );
