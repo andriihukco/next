@@ -29,6 +29,20 @@
         "4173"
       ],
       "port": 4173
+    },
+    {
+      "name": "design-mobile",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "mobile",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8094"
+      ],
+      "port": 8094
     }
   ]
 }

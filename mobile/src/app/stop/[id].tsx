@@ -42,7 +42,7 @@ export default function StopScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: stop.name }} />
+      <Stack.Screen options={{ title: "" }} />
       <Page>
         <Txt variant="title">{stop.name}</Txt>
         <Txt variant="subhead" tone="muted" style={{ marginTop: -space.lg }}>

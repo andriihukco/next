@@ -11,16 +11,16 @@ const App = lazy(() => import('./App.tsx'));
 const AdminApp = lazy(() => import('./admin/admin-app').then((module) => ({ default: module.AdminApp })));
 const UpdatesPage = lazy(() => import('./updates/updates-page').then((module) => ({ default: module.UpdatesPage })));
 const LegalPage = lazy(() => import('./legal/legal-page').then((module) => ({ default: module.LegalPage })));
-const DesignSystemPage = lazy(() =>
-  import('./design-system/design-system-page').then((module) => ({ default: module.DesignSystemPage })),
+const DesignLibrary = lazy(() =>
+  import('./design-system/design-library').then((module) => ({ default: module.DesignLibrary })),
 );
 
 // Routes: `/` is the landing page, `/app` is the app (`/dev` keeps the developer
-// tools on the app, see lib/dev-tools/route.ts), and `/design-system` is a
-// developer reference page. `/terms`, `/privacy`, `/cookies`, `/contacts`, `/sources`
+// tools on the app, see lib/dev-tools/route.ts), and `/design` (alias `/design-system`) is the
+// design library for web, iOS and Android. `/terms`, `/privacy`, `/cookies`, `/contacts`, `/sources`
 // and `/accessibility` are the legal and trust pages (platform-plan S8); `/updates` is «Що нового» (S7); `/admin` is the role-gated admin (S2).
 const path = window.location.pathname.replace(/\/+$/, '') || '/';
-const isDesignSystem = path === '/design-system';
+const isDesignSystem = path === '/design' || path === '/design-system';
 const isApp = path === '/app' || path.startsWith('/app/') || isDevPathname(path);
 const legalSlug = path.slice(1);
 
@@ -46,7 +46,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       </Suspense>
     ) : isDesignSystem ? (
       <Suspense fallback={null}>
-        <DesignSystemPage />
+        <DesignLibrary />
       </Suspense>
     ) : isApp ? (
       <AppErrorBoundary>

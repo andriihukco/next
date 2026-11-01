@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useIsFocused, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Onboarding, ONBOARDING_COMPLETE_KEY } from "../../components/onboarding/onboarding";
@@ -34,6 +34,8 @@ export default function MapScreen() {
   // Onboarding on first launch, or again from Профіль («Показати знайомство ще раз» passes tour=1).
   const { tour } = useLocalSearchParams<{ tour?: string }>();
   const [onboarding, setOnboarding] = useState(false);
+  // Only while the map tab is on screen; the tour points at its controls.
+  const focused = useIsFocused();
   useEffect(() => {
     if (tour === "1") {
       setOnboarding(true);
@@ -145,7 +147,7 @@ export default function MapScreen() {
         onClearLayers={() => setLayerCategories(new Set())}
       />
 
-      <Onboarding visible={onboarding} onDone={() => setOnboarding(false)} />
+      <Onboarding visible={onboarding && focused} onDone={() => setOnboarding(false)} />
     </View>
   );
 }

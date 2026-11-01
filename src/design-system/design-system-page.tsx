@@ -70,7 +70,7 @@ import {
  */
 
 
-function DesignSystemPage() {
+function DesignSystemPage({ embedded = false }: { embedded?: boolean }) {
   const [tab, setTab] = useState("places");
   const [choice, setChoice] = useState("list");
   const [pressed, setPressed] = useState(true);
@@ -80,13 +80,13 @@ function DesignSystemPage() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="ds-page">
+      <div className={embedded ? "ds-page-embedded" : "ds-page"}>
         <header className="ds-header">
           <div>
-            <p className="ds-eyebrow">Developer reference</p>
-            <h1>Design system</h1>
+            {!embedded && <p className="ds-eyebrow">Developer reference</p>}
+            {!embedded && <h1>Design system</h1>}
             <p className="ds-lede">
-              Every token and component, in its states. Build from these before adding anything new. Rules live in
+              Every web token and component, in its states. Build from these before adding anything new. Rules live in
               DESIGN.md.
             </p>
           </div>

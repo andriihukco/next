@@ -94,14 +94,14 @@ export async function fetchPlacesIn(bounds: Bounds): Promise<CityPlace[]> {
     }
   }
 
-  const places = (await Promise.all(jobs)).flat();
-  return places.filter(
-    (place) =>
-      place.lat >= bounds.south &&
-      place.lat <= bounds.north &&
-      place.lng >= bounds.west &&
-      place.lng <= bounds.east,
-  );
+  // A place near a tile edge comes back from each tile that holds it; keep one per id.
+  const unique = new Map<string, CityPlace>();
+  for (const place of (await Promise.all(jobs)).flat()) {
+    const inside =
+      place.lat >= bounds.south && place.lat <= bounds.north && place.lng >= bounds.west && place.lng <= bounds.east;
+    if (inside && !unique.has(place.id)) unique.set(place.id, place);
+  }
+  return [...unique.values()];
 }
 
 export type { CityPlace };

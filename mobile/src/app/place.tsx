@@ -46,7 +46,7 @@ export default function PlaceScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: place.name }} />
+      <Stack.Screen options={{ title: "" }} />
       <Page>
         <Row gap={space.lg}>
           <IconOrb icon={icon} color={color} size={56} />

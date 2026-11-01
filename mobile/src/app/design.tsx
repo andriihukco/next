@@ -38,7 +38,7 @@ const SWATCHES = ["background", "card", "surfaceMuted", "border", "foreground", 
  * The web /design page embeds this screen (Expo web) for its iOS and Android tabs. Documented in design/.
  */
 export default function DesignScreen() {
-  const { platform: param, embed } = useLocalSearchParams<{ platform?: string; embed?: string }>();
+  const { os: param, embed } = useLocalSearchParams<{ os?: string; embed?: string }>();
   const device = useUiPlatform();
   const [platform, setPlatform] = useState<UiPlatform>(param === "android" || param === "ios" ? param : device);
   return (

@@ -15,7 +15,8 @@
     "test:server": "node scripts/server-logic.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "design:tokens": "node scripts/design-tokens.mjs"
+    "design:tokens": "node scripts/design-tokens.mjs",
+    "design:mobile": "npm --prefix mobile run web -- --port 8094"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.4.1",

@@ -241,3 +241,84 @@ body:has(.ds-page),
     animation: none !important;
   }
 }
+
+/* /design library (src/design-system/design-library.tsx): the web reference sits inside it
+   without its own page padding; iOS and Android render the Expo /design screen in a device frame.
+   The device frame is an illustration, like map artwork, so its corner radius is exempt (DESIGN.md §4). */
+.ds-page-embedded {
+  color: var(--foreground);
+}
+
+.ds-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 1120px;
+  margin: 0 auto 32px;
+}
+
+.ds-doc {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  font-size: var(--type-small);
+  color: var(--muted-foreground);
+}
+
+.ds-doc code {
+  color: var(--foreground);
+}
+
+.ds-device-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.ds-device {
+  width: 390px;
+  max-width: 100%;
+  height: 844px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--foreground);
+  box-shadow: var(--shadow-overlay);
+}
+
+.ds-device-ios {
+  border-radius: 56px;
+}
+
+.ds-device-android {
+  border-radius: 32px;
+}
+
+.ds-device-screen {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: var(--background);
+}
+
+.ds-device-ios .ds-device-screen {
+  border-radius: 44px;
+}
+
+.ds-device-android .ds-device-screen {
+  border-radius: 22px;
+}
+
+.ds-device-note {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  text-align: center;
+}
