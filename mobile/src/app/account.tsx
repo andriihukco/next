@@ -1,9 +1,6 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { router } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
+import { ActivityIndicator, Alert, TextInput } from "react-native";
 import type { AuthError } from "@supabase/supabase-js";
-import { PrimaryButton } from "../components/primary-button";
 import {
   ACCOUNT_DELETION_ENABLED,
   accountLabel,
@@ -12,7 +9,8 @@ import {
   supabase,
   useSession,
 } from "../lib/supabase";
-import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius, themed } from "../lib/theme";
+import { colors, fonts, themed } from "../lib/theme";
+import { Button, EmptyState, ListRow, Page, radiusFor, Section, Segmented, space, Surface, Txt, useUiPlatform } from "../ui";
 
 type Mode = "sign-in" | "sign-up" | "reset";
 type Notice = { icon: "mark-email-unread" | "lock-reset" | "check-circle"; title: string; text: string };
@@ -32,8 +30,14 @@ function authErrorMessage(error: AuthError | Error): string {
   return "Не вдалося виконати дію. Спробуйте ще раз.";
 }
 
+const MODES = [
+  { id: "sign-in", label: "Вхід" },
+  { id: "sign-up", label: "Реєстрація" },
+] as const;
+
 /** Профіль → Обліковий запис: email sign-in and sign-up on the same Supabase project as the web. */
 export default function AccountScreen() {
+  const platform = useUiPlatform();
   const { session, loading } = useSession();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
@@ -41,6 +45,7 @@ export default function AccountScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const field = { borderRadius: radiusFor(platform).control };
 
   const run = async (action: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -91,193 +96,144 @@ export default function AccountScreen() {
   };
 
   const confirmDelete = (): void => {
-    Alert.alert(
-      "Видалити обліковий запис?",
-      "Обліковий запис і підписки на сповіщення буде стерто. Дію не можна скасувати.",
-      [
-        { text: "Скасувати", style: "cancel" },
-        {
-          text: "Видалити",
-          style: "destructive",
-          onPress: () =>
-            void run(async () => {
-              if (!supabase || !session) return;
-              await deleteAccount(session);
-              await supabase.auth.signOut({ scope: "local" });
-              setNotice({
-                icon: "check-circle",
-                title: "Обліковий запис видалено",
-                text: "Обліковий запис і підписки на сповіщення стерто. Мапою можна користуватися й далі.",
-              });
-            }),
-        },
-      ],
-    );
+    Alert.alert("Видалити обліковий запис?", "Обліковий запис і підписки на сповіщення буде стерто. Дію не можна скасувати.", [
+      { text: "Скасувати", style: "cancel" },
+      {
+        text: "Видалити",
+        style: "destructive",
+        onPress: () =>
+          void run(async () => {
+            if (!supabase || !session) return;
+            await deleteAccount(session);
+            await supabase.auth.signOut({ scope: "local" });
+            setNotice({
+              icon: "check-circle",
+              title: "Обліковий запис видалено",
+              text: "Обліковий запис і підписки на сповіщення стерто. Мапою можна користуватися й далі.",
+            });
+          }),
+      },
+    ]);
   };
 
+  if (!supabase) {
+    return (
+      <Page>
+        <EmptyState icon="cloud-off" title="Вхід поки недоступний" text="Застосунок не підключено до сервера облікових записів." />
+      </Page>
+    );
+  }
+  if (loading) {
+    return (
+      <Page>
+        <ActivityIndicator color={colors.primary} />
+      </Page>
+    );
+  }
+  if (notice) {
+    return (
+      <Page>
+        <Surface>
+          <EmptyState icon={notice.icon} title={notice.title} text={notice.text} action={{ label: "Зрозуміло", onPress: () => setNotice(null) }} />
+        </Surface>
+      </Page>
+    );
+  }
+  if (session) {
+    return (
+      <Page>
+        <Section grouped>
+          <ListRow icon="account-circle" title={accountLabel(session.user)} subtitle={session.user.email ? `Пошта · ${session.user.email}` : undefined} last />
+        </Section>
+        <Button label="Вийти" variant="outline" stretch onPress={() => void supabase?.auth.signOut()} />
+        {ACCOUNT_DELETION_ENABLED ? <Button label="Видалити обліковий запис" variant="danger" stretch onPress={confirmDelete} /> : null}
+      </Page>
+    );
+  }
+
   return (
-    <View style={styles.screen}>
-      <View style={styles.nav}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Назад" hitSlop={HIT_SLOP} onPress={() => router.back()} style={styles.back}>
-          <MaterialIcons name="chevron-left" size={26} color={colors.primary} />
-          <Text style={styles.backText}>Профіль</Text>
-        </Pressable>
-      </View>
+    <Page>
+      {mode === "reset" ? (
+        <Txt variant="callout" tone="muted">
+          Надішлемо посилання для нового пароля на вашу пошту.
+        </Txt>
+      ) : (
+        <Segmented
+          options={MODES}
+          value={mode}
+          onChange={(next) => {
+            setMode(next);
+            setError("");
+          }}
+        />
+      )}
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Text style={styles.largeTitle}>Обліковий запис</Text>
+      <Section title="Пошта">
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          placeholder="name@example.com"
+          placeholderTextColor={colors.mutedForeground}
+          style={[styles.input, field]}
+        />
+      </Section>
+      {mode !== "reset" ? (
+        <Section title="Пароль">
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
+            textContentType={mode === "sign-up" ? "newPassword" : "password"}
+            placeholder="Щонайменше 6 символів"
+            placeholderTextColor={colors.mutedForeground}
+            style={[styles.input, field]}
+          />
+        </Section>
+      ) : null}
 
-        {!supabase ? (
-          <Text style={styles.caption}>Вхід поки недоступний: застосунок не підключено до сервера облікових записів.</Text>
-        ) : loading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : notice ? (
-          <View style={styles.card}>
-            <MaterialIcons name={notice.icon} size={32} color={colors.primary} />
-            <Text style={styles.cardTitle}>{notice.title}</Text>
-            <Text style={styles.caption}>{notice.text}</Text>
-            <Pressable accessibilityRole="button" onPress={() => setNotice(null)} style={styles.outline}>
-              <Text style={styles.outlineText}>Зрозуміло</Text>
-            </Pressable>
-          </View>
-        ) : session ? (
-          <View style={styles.card}>
-            <MaterialIcons name="account-circle" size={40} color={colors.primary} />
-            <Text style={styles.cardTitle}>{accountLabel(session.user)}</Text>
-            {session.user.email ? <Text style={styles.caption}>Пошта · {session.user.email}</Text> : null}
-            <Pressable accessibilityRole="button" onPress={() => void supabase?.auth.signOut()} style={styles.outline}>
-              <Text style={styles.outlineText}>Вийти</Text>
-            </Pressable>
-            {ACCOUNT_DELETION_ENABLED && (
-              <Pressable accessibilityRole="button" onPress={confirmDelete} style={styles.ghost}>
-                <Text style={styles.danger}>Видалити обліковий запис</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : (
-          <>
-            {mode !== "reset" && (
-              <View style={styles.segment} accessibilityRole="tablist">
-                {(
-                  [
-                    { id: "sign-in", label: "Вхід" },
-                    { id: "sign-up", label: "Реєстрація" },
-                  ] as const
-                ).map((tab) => {
-                  const active = mode === tab.id;
-                  return (
-                    <Pressable
-                      key={tab.id}
-                      accessibilityRole="tab"
-                      accessibilityState={{ selected: active }}
-                      onPress={() => {
-                        setMode(tab.id);
-                        setError("");
-                      }}
-                      style={[styles.segmentItem, active && styles.segmentActive]}
-                    >
-                      <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{tab.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-            {mode === "reset" && <Text style={styles.caption}>Надішлемо посилання для нового пароля на вашу пошту.</Text>}
+      {error ? (
+        <Txt variant="subhead" tone="danger" accessibilityRole="alert">
+          {error}
+        </Txt>
+      ) : null}
 
-            <Text style={styles.label}>Пошта</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              placeholder="name@example.com"
-              placeholderTextColor={colors.mutedForeground}
-              style={styles.input}
-            />
-            {mode !== "reset" && (
-              <>
-                <Text style={styles.label}>Пароль</Text>
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
-                  textContentType={mode === "sign-up" ? "newPassword" : "password"}
-                  placeholder="Щонайменше 6 символів"
-                  placeholderTextColor={colors.mutedForeground}
-                  style={styles.input}
-                />
-              </>
-            )}
-            {error ? (
-              <Text accessibilityRole="alert" style={styles.error}>{error}</Text>
-            ) : null}
-            {busy ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <PrimaryButton
-                label={mode === "sign-in" ? "Увійти" : mode === "sign-up" ? "Зареєструватися" : "Надіслати посилання"}
-                onPress={submit}
-              />
-            )}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setMode(mode === "reset" ? "sign-in" : "reset");
-                setError("");
-              }}
-              style={styles.ghost}
-            >
-              <Text style={styles.link}>{mode === "reset" ? "Назад до входу" : "Забули пароль?"}</Text>
-            </Pressable>
-          </>
-        )}
-      </ScrollView>
-    </View>
+      {busy ? (
+        <ActivityIndicator color={colors.primary} />
+      ) : (
+        <Button
+          label={mode === "sign-in" ? "Увійти" : mode === "sign-up" ? "Зареєструватися" : "Надіслати посилання"}
+          size="lg"
+          stretch
+          onPress={submit}
+        />
+      )}
+      <Button
+        label={mode === "reset" ? "Назад до входу" : "Забули пароль?"}
+        variant="plain"
+        stretch
+        onPress={() => {
+          setMode(mode === "reset" ? "sign-in" : "reset");
+          setError("");
+        }}
+      />
+    </Page>
   );
 }
 
 const styles = themed(() => ({
-  screen: { flex: 1, backgroundColor: colors.background, paddingTop: 52 },
-  nav: { paddingHorizontal: 12, minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center" },
-  back: { flexDirection: "row", alignItems: "center", minHeight: MIN_TOUCH },
-  backText: { fontFamily: fonts.bold, fontSize: 17, color: colors.primary },
-  body: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
-  largeTitle: { fontFamily: fonts.extrabold, fontSize: 34, lineHeight: 40, letterSpacing: -0.8, color: colors.foreground },
-  caption: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.mutedForeground },
-  card: { gap: 10, padding: 16, borderRadius: radius.xl, backgroundColor: colors.card, alignItems: "flex-start" },
-  cardTitle: { fontFamily: fonts.extrabold, fontSize: 20, letterSpacing: -0.3, color: colors.foreground },
-  label: { fontFamily: fonts.bold, fontSize: 14, color: colors.foreground, marginTop: 4 },
   input: {
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
+    minHeight: 48,
+    paddingHorizontal: space.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
     color: colors.foreground,
     fontFamily: fonts.regular,
-    fontSize: 16,
+    fontSize: 17,
   },
-  segment: { flexDirection: "row", padding: 3, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted },
-  segmentItem: { flex: 1, minHeight: MIN_TOUCH - 8, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
-  segmentActive: { backgroundColor: colors.primary },
-  segmentText: { fontFamily: fonts.bold, fontSize: 14, color: colors.foreground },
-  segmentTextActive: { color: colors.onPrimary },
-  error: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 19, color: colors.destructive },
-  outline: {
-    minHeight: MIN_TOUCH,
-    alignSelf: "stretch",
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  outlineText: { fontFamily: fonts.bold, fontSize: 16, color: colors.foreground },
-  ghost: { minHeight: MIN_TOUCH, alignSelf: "stretch", alignItems: "center", justifyContent: "center" },
-  link: { fontFamily: fonts.bold, fontSize: 15, color: colors.accentForeground },
-  danger: { fontFamily: fonts.bold, fontSize: 15, color: colors.destructive },
 }));

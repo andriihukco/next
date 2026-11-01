@@ -27,8 +27,8 @@ const STEP_PITCH = 10;
 /** Drag sensitivity: degrees per point of finger movement. */
 const DRAG_BEARING = 0.4;
 const DRAG_PITCH = 0.25;
-/** Below the floating header (logo, city, profile). */
-const HEADER_CLEARANCE = 68;
+/** Below the map top bar (city and profile), from the safe area. */
+const HEADER_CLEARANCE = 60;
 const PANEL_GAP = 12;
 
 const SATELLITE_PREVIEW = satellitePreviewUrl(LVIV_REGION.latitude, LVIV_REGION.longitude, 15);
@@ -79,7 +79,7 @@ export function MapControls({
   const [panel, setPanel] = useState<Panel>(null);
   useImperativeHandle(ref, () => ({ setCamera }), []);
 
-  const top = Math.max(HEADER_CLEARANCE, insets.top + 8);
+  const top = insets.top + HEADER_CLEARANCE;
   const is3D = camera.pitch >= 0.5;
   const imagery = mapStyle !== "standard";
   const panelStyle = { top, right: 12 + MIN_TOUCH + PANEL_GAP, width: Math.min(300, width - (12 + MIN_TOUCH + PANEL_GAP) - 12) };

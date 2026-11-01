@@ -1,21 +1,11 @@
 import { StyleSheet, type ImageStyle, type TextStyle, type ViewStyle } from "react-native";
+import { tokens } from "./tokens.generated";
 
-// Tokens ported from src/index.css and DESIGN.md (§2, §2a, §2b). Keep in sync with the web tokens.
+// Core colors come from design/tokens.json (npm run design:tokens), the same values as the web.
+// The rest are mobile-only roles: accents, map route states and surfaces over the map.
 const light = {
-  background: "#f8faf9",
-  foreground: "#18251f",
-  card: "#ffffff",
-  surfaceMuted: "#f1f4f2",
-  mutedForeground: "#5f6e66",
-  border: "#dce5df",
-  primary: "#087a50",
-  primaryHover: "#066a45",
-  primaryBorder: "#a9d3bf",
-  onPrimary: "#ffffff",
-  accent: "#e5f2eb",
-  accentForeground: "#075c3d",
-  ring: "#11835b",
-  destructive: "#b42318",
+  ...tokens.light,
+  onPrimary: tokens.light.primaryForeground,
   // Transport orbs (DESIGN.md §2a, Transport).
   transportNearby: "#1caa63",
   transportBus: "#d89418",
@@ -33,28 +23,15 @@ const light = {
   glass: "rgba(255,255,255,0.94)",
   glassSoft: "rgba(255,255,255,0.86)",
   shadow: "#0f172a",
-  scrim: "rgba(13,24,19,0.48)",
 };
 
 export type Palette = Record<keyof typeof light, string>;
 
-/** Dark values from the web dark theme (DESIGN.md §2b, src/index.css). Accents keep their values. */
+/** Dark core colors from design/tokens.json (web DESIGN.md §2b). Accents keep their values. */
 const dark: Palette = {
   ...light,
-  background: "#0f1714",
-  foreground: "#e6efe9",
-  card: "#17221d",
-  surfaceMuted: "#1d2a24",
-  mutedForeground: "#9fb3a7",
-  border: "#2c3d35",
-  primary: "#34b87e",
-  primaryHover: "#5cc996",
-  primaryBorder: "#2f6e53",
-  onPrimary: "#04150d",
-  accent: "#1e3a2e",
-  accentForeground: "#bfead3",
-  ring: "#4fd1a0",
-  destructive: "#f87171",
+  ...tokens.dark,
+  onPrimary: tokens.dark.primaryForeground,
   routeWalked: "#34b87e",
   walker: "#3b9cff",
   amberSurface: "#3a2f14",
@@ -62,7 +39,6 @@ const dark: Palette = {
   glass: "rgba(23,34,29,0.94)",
   glassSoft: "rgba(23,34,29,0.86)",
   shadow: "#000000",
-  scrim: "rgba(0,0,0,0.6)",
 };
 
 export type ColorScheme = "light" | "dark";

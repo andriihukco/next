@@ -5,11 +5,8 @@ import { cityPlaceIcons } from "../../../../src/lib/city-places";
 import type { CityPlace } from "../../lib/places-api";
 import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
-export function formatDistance(meters: number): string {
-  return meters >= 1000
-    ? `${(meters / 1000).toFixed(1).replace(".", ",")} км`
-    : `${Math.round(meters / 10) * 10} м`;
-}
+export { formatDistance } from "../../lib/format";
+import { formatDistance } from "../../lib/format";
 
 type CardProps = {
   place: CityPlace;

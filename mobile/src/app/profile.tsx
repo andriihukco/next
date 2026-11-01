@@ -1,52 +1,33 @@
-import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useCallback, useState } from "react";
+import { Alert } from "react-native";
+import { router, useFocusEffect } from "expo-router";
 import * as Location from "expo-location";
-import { MaterialIcons } from "@expo/vector-icons";
-import { PrimaryButton } from "../components/primary-button";
-import { SettingsRow, SettingsSection } from "../components/settings/settings-parts";
-import { ChipRow } from "../components/services/flow-parts";
-import { clearDeviceData, EMPTY_PROFILE, readLocalProfile, saveLocalProfile, VISITOR_TYPES, type LocalProfile } from "../lib/local-profile";
-import { colors, fonts, MIN_TOUCH, radius, HIT_SLOP, themed } from "../lib/theme";
+import { clearDeviceData, EMPTY_PROFILE, readLocalProfile, type LocalProfile } from "../lib/local-profile";
 import { useThemePreference, type ThemePreference } from "../lib/theme-provider";
 import { accountLabel, useSession } from "../lib/supabase";
+import { Badge, ListRow, Page, Section, Segmented, SwitchRow } from "../ui";
 
-type View_ = "main" | "profile";
-const THEME_OPTIONS: { id: ThemePreference; label: string }[] = [
+const THEME_OPTIONS: readonly { id: ThemePreference; label: string }[] = [
   { id: "system", label: "Системна" },
   { id: "light", label: "Світла" },
   { id: "dark", label: "Темна" },
 ];
 const PERMISSION_LABEL: Record<string, string> = { granted: "Дозволено", denied: "Заборонено", undetermined: "Не запитано" };
 
-/** Settings and profile, grouped as in the web's settings dialog. */
+/** Профіль: account, your profile, permissions, look, and data on the device. Same groups as the web settings. */
 export default function ProfileScreen() {
-  const [view, setView] = useState<View_>("main");
   const [profile, setProfile] = useState<LocalProfile>(EMPTY_PROFILE);
-  const [draft, setDraft] = useState<LocalProfile>(EMPTY_PROFILE);
-  const [location, setLocation] = useState<string>("undetermined");
-  const [notifications, setNotifications] = useState(false);
+  const [location, setLocation] = useState("undetermined");
   const theme = useThemePreference();
   const { session } = useSession();
 
-  useEffect(() => {
-    void readLocalProfile().then((saved) => {
-      setProfile(saved);
-      setDraft(saved);
-    });
-    void Location.getForegroundPermissionsAsync().then(({ status }) => setLocation(status));
-  }, []);
-
-  const requestLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    setLocation(status);
-  };
-
-  const saveProfile = async () => {
-    await saveLocalProfile(draft);
-    setProfile(draft);
-    setView("main");
-  };
+  // Re-read when the page shows again, e.g. after editing the profile.
+  useFocusEffect(
+    useCallback(() => {
+      void readLocalProfile().then(setProfile);
+      void Location.getForegroundPermissionsAsync().then(({ status }) => setLocation(status));
+    }, []),
+  );
 
   const clearData = () => {
     Alert.alert("Видалити профіль і налаштування?", "Буде очищено все, що застосунок зберігає на цьому пристрої. Дію не можна скасувати.", [
@@ -57,172 +38,62 @@ export default function ProfileScreen() {
         onPress: async () => {
           await clearDeviceData();
           setProfile(EMPTY_PROFILE);
-          setDraft(EMPTY_PROFILE);
         },
       },
     ]);
   };
 
-  if (view === "profile") {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.nav}>
-          <Pressable accessibilityRole="button" onPress={() => setView("main")} style={styles.back}>
-            <MaterialIcons name="chevron-left" size={26} color={colors.primary} />
-            <Text style={styles.backText}>Профіль</Text>
-          </Pressable>
-        </View>
-        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-          <Text style={styles.largeTitle}>Мій профіль</Text>
-          <Text style={styles.caption}>Зберігається лише на цьому пристрої. Нічого не надсилається.</Text>
-          <Text style={styles.label}>Імʼя</Text>
-          <TextInput value={draft.name} onChangeText={(name) => setDraft({ ...draft, name })} placeholder="Як до вас звертатися" placeholderTextColor={colors.mutedForeground} style={styles.input} />
-          <Text style={styles.label}>Хто ви в місті</Text>
-          <ChipRow
-            items={VISITOR_TYPES.map((type) => ({ key: type, label: type }))}
-            selected={draft.visitorType || null}
-            onSelect={(visitorType) => setDraft({ ...draft, visitorType })}
-          />
-          <Text style={styles.label}>Дім (район)</Text>
-          <TextInput value={draft.home} onChangeText={(home) => setDraft({ ...draft, home })} placeholder="Наприклад, Личаків" placeholderTextColor={colors.mutedForeground} style={styles.input} />
-          <Text style={styles.label}>Робота (район)</Text>
-          <TextInput value={draft.work} onChangeText={(work) => setDraft({ ...draft, work })} placeholder="Наприклад, Центр" placeholderTextColor={colors.mutedForeground} style={styles.input} />
-          <PrimaryButton label="Зберегти" onPress={() => void saveProfile()} />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  const initial = profile.name ? profile.name.trim().charAt(0).toUpperCase() : "?";
-
   return (
-    <View style={styles.screen}>
-      <View style={styles.nav}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Закрити" hitSlop={HIT_SLOP} onPress={() => router.back()} style={styles.close}>
-          <MaterialIcons name="close" size={22} color={colors.foreground} />
-        </Pressable>
-      </View>
+    <Page>
+      <Section grouped>
+        <ListRow
+          icon="person"
+          title={profile.name || "Додати імʼя"}
+          subtitle={profile.visitorType || "Зберігається лише на цьому пристрої"}
+          onPress={() => router.push("/profile-edit")}
+        />
+        <ListRow
+          icon="account-circle"
+          title={session ? accountLabel(session.user) : "Увійти в обліковий запис"}
+          subtitle={session ? "Ви ввійшли" : "Пошта й пароль, як на сайті"}
+          onPress={() => router.push("/account")}
+          last
+        />
+      </Section>
 
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.largeTitle}>Профіль</Text>
+      <Section title="Вигляд" footer="Системна тема змінюється разом із налаштуваннями телефона.">
+        <Segmented options={THEME_OPTIONS} value={theme.preference} onChange={theme.setPreference} />
+      </Section>
 
-        <Pressable accessibilityRole="button" onPress={() => setView("profile")} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
-          <View style={styles.cardCopy}>
-            <Text style={styles.cardTitle}>{profile.name || "Додати імʼя"}</Text>
-            <Text style={styles.caption}>{profile.visitorType || "Для сповіщень про тривогу"}</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={22} color={colors.mutedForeground} />
-        </Pressable>
+      <Section title="Дозволи" grouped>
+        <ListRow
+          icon="my-location"
+          title="Геолокація"
+          value={PERMISSION_LABEL[location] ?? location}
+          onPress={
+            location === "undetermined"
+              ? () => void Location.requestForegroundPermissionsAsync().then(({ status }) => setLocation(status))
+              : undefined
+          }
+          last
+        />
+      </Section>
 
-        <SettingsSection title="Обліковий запис">
-          <SettingsRow
-            icon="account-circle"
-            title={session ? accountLabel(session.user) : "Увійти"}
-            subtitle={session ? "Ви ввійшли" : "Пошта й пароль, як на сайті"}
-            onPress={() => router.push("/account")}
-          />
-        </SettingsSection>
+      <Section title="Сповіщення" grouped footer="Сповіщення з’являться, коли підключимо push у збірці застосунку.">
+        <SwitchRow icon="campaign" iconColor="#dc2626" title="Початок тривоги" value={false} onValueChange={() => {}} disabled />
+        <SwitchRow icon="verified-user" title="Відбій тривоги" value={false} onValueChange={() => {}} disabled />
+        <ListRow icon="radar" title="Загрози для Львова" trailing={<Badge label="Незабаром" />} last />
+      </Section>
 
-        <SettingsSection title="Місто">
-          <SettingsRow icon="location-city" title="Львів" subtitle="Місто поки одне" disabled />
-        </SettingsSection>
+      <Section title="Про застосунок" grouped>
+        <ListRow icon="tour" title="Показати знайомство ще раз" onPress={() => router.replace({ pathname: "/", params: { tour: "1" } })} />
+        <ListRow icon="directions-walk" title="Прогулянка центром" subtitle="Демо маршруту з прогресом ходьби" onPress={() => router.push("/welcome")} />
+        <ListRow icon="palette" title="Дизайн-система" subtitle="Усі елементи для iOS і Android" onPress={() => router.push("/design")} last />
+      </Section>
 
-        <SettingsSection title="Дозволи">
-          <SettingsRow
-            icon="my-location"
-            title="Геолокація"
-            subtitle={PERMISSION_LABEL[location] ?? location}
-            trailing={
-              location === "undetermined" ? (
-                <Pressable accessibilityRole="button" onPress={() => void requestLocation()} style={styles.smallButton}>
-                  <Text style={styles.smallButtonText}>Дозволити</Text>
-                </Pressable>
-              ) : undefined
-            }
-          />
-        </SettingsSection>
-
-        <SettingsSection title="Сповіщення">
-          <SettingsRow
-            icon="campaign"
-            title="Початок тривоги"
-            subtitle="Скоро: сповіщення з’являться в наступній версії"
-            disabled
-            trailing={<Switch value={notifications} disabled onValueChange={setNotifications} />}
-          />
-          <SettingsRow icon="verified-user" title="Відбій тривоги" subtitle="Коли загрозу знято" disabled trailing={<Switch value={false} disabled />} />
-          <SettingsRow icon="radar" title="Загрози для Львова" subtitle="Нові повідомлення про дрони й авіабомби" disabled trailing={<Switch value={false} disabled />} />
-        </SettingsSection>
-
-        <SettingsSection title="Вигляд">
-          <View style={styles.themeBox}>
-            <Text style={styles.themeTitle}>Тема</Text>
-            <View style={styles.segment} accessibilityRole="radiogroup">
-              {THEME_OPTIONS.map((option) => {
-                const active = option.id === theme.preference;
-                return (
-                  <Pressable
-                    key={option.id}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: active }}
-                    onPress={() => theme.setPreference(option.id)}
-                    style={[styles.segmentItem, active && styles.segmentActive]}
-                  >
-                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{option.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={styles.caption}>Системна тема змінюється разом із налаштуваннями телефона.</Text>
-          </View>
-        </SettingsSection>
-
-        <SettingsSection title="Про застосунок">
-          <SettingsRow
-            icon="tour"
-            title="Показати знайомство ще раз"
-            onPress={() => router.replace({ pathname: "/", params: { tour: "1" } })}
-          />
-          <SettingsRow icon="directions-walk" title="Прогулянка центром" subtitle="Демо маршруту з прогресом ходьби" onPress={() => router.push("/welcome")} />
-        </SettingsSection>
-
-        <SettingsSection title="Дані на пристрої">
-          <SettingsRow icon="delete-outline" title="Очистити дані на пристрої" onPress={clearData} />
-        </SettingsSection>
-      </ScrollView>
-    </View>
+      <Section grouped>
+        <ListRow icon="delete-outline" iconColor="#b42318" title="Очистити дані на пристрої" destructive onPress={clearData} navigates={false} last />
+      </Section>
+    </Page>
   );
 }
-
-const styles = themed(() => ({
-  screen: { flex: 1, backgroundColor: colors.background, paddingTop: 52 },
-  nav: { paddingHorizontal: 12, minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  back: { flexDirection: "row", alignItems: "center", minHeight: MIN_TOUCH },
-  backText: { fontFamily: fonts.bold, fontSize: 17, color: colors.primary },
-  close: { width: MIN_TOUCH, height: MIN_TOUCH, borderRadius: MIN_TOUCH / 2, backgroundColor: colors.surfaceMuted, alignItems: "center", justifyContent: "center", marginLeft: "auto" },
-  body: { paddingHorizontal: 16, paddingBottom: 40, gap: 16 },
-  largeTitle: { fontFamily: fonts.extrabold, fontSize: 34, lineHeight: 40, letterSpacing: -0.8, color: colors.foreground },
-  caption: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground },
-  card: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: colors.card },
-  pressed: { opacity: 0.92 },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontFamily: fonts.extrabold, fontSize: 24, color: colors.onPrimary },
-  cardCopy: { flex: 1, gap: 2 },
-  cardTitle: { fontFamily: fonts.extrabold, fontSize: 18, letterSpacing: -0.3, color: colors.foreground },
-  smallButton: { minHeight: MIN_TOUCH - 8, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: colors.accent, justifyContent: "center" },
-  smallButtonText: { fontFamily: fonts.bold, fontSize: 14, color: colors.accentForeground },
-  themeBox: { padding: 14, gap: 10 },
-  themeTitle: { fontFamily: fonts.bold, fontSize: 16, color: colors.foreground },
-  segment: { flexDirection: "row", padding: 3, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted },
-  segmentItem: { flex: 1, minHeight: MIN_TOUCH - 8, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
-  segmentActive: { backgroundColor: colors.primary },
-  segmentText: { fontFamily: fonts.bold, fontSize: 14, color: colors.foreground },
-  segmentTextActive: { color: colors.onPrimary },
-  segmentDisabled: { color: colors.mutedForeground },
-  label: { fontFamily: fonts.semibold, fontSize: 13, color: colors.mutedForeground, marginTop: 8 },
-  input: { minHeight: MIN_TOUCH, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, paddingHorizontal: 14, fontFamily: fonts.regular, fontSize: 16, color: colors.foreground },
-  footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 12 },
-}));
