@@ -5,6 +5,7 @@ import { CategoryTiles } from "../category-tiles";
 import { EntityDetail } from "../entity-detail";
 import { flowsForKind } from "../entity-flow-spec";
 import { UnifiedCard } from "../ui/unified-card";
+import { SAMPLE_CONTENT_ENABLED } from "../../lib/features";
 
 /** Shown where a section has no data source yet, instead of sample content (platform-plan S6). */
 export function ComingSoonState() {
@@ -87,7 +88,7 @@ export function DirectoryListingPage({
             <UnifiedCard.Header
               title={item.name}
               subtitle={item.summary}
-              category={sample ? `${item.location} · демо` : item.location}
+              category={SAMPLE_CONTENT_ENABLED && sample ? `${item.location} · демо` : item.location}
               icon={filters.find((filter) => filter.id === item.category)?.icon ?? "business"}
             />
             <UnifiedCard.Action

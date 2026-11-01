@@ -8988,6 +8988,7 @@ body {
 .unified-card {
   position: relative;
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 8px;
   padding: 12px;

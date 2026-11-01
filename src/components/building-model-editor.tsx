@@ -72,15 +72,17 @@ export function BuildingModelEditor({
     setDraft((current) => current ?? model);
   }, [model]);
 
+  const draftSource = draft?.source;
+  const draftUpAxis = draft?.upAxis;
   const inspection = useMemo<BuildingModelInspection | null>(() => {
-    if (!draft) return null;
+    if (draftSource === undefined || draftUpAxis === undefined) return null;
     try {
-      return inspectBuildingModel(draft.source, draft.upAxis);
+      return inspectBuildingModel(draftSource, draftUpAxis);
     } catch (inspectionError) {
       console.error("Could not inspect the uploaded OBJ model.", inspectionError);
       return null;
     }
-  }, [draft?.source, draft?.upAxis]);
+  }, [draftSource, draftUpAxis]);
 
   const updateDraft = (patch: Partial<BuildingModelData>): void => {
     if (!draft) return;

@@ -1,9 +1,9 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 
-export default defineConfig(() => ({
+export default defineConfig(({ mode }) => ({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   optimizeDeps: { exclude: ["maplibre-gl"] },
   plugins: [react(), tailwindcss()],
@@ -22,7 +22,8 @@ export default defineConfig(() => ({
     port: 5173,
     open: true,
     proxy: {
-      "/api": "http://localhost:3001",
+      // Override with DEV_API_PROXY in .env.local when port 3001 is taken.
+      "/api": loadEnv(mode, process.cwd(), "DEV_API_PROXY").DEV_API_PROXY || "http://localhost:3001",
     },
   },
 }));

@@ -3,6 +3,7 @@ import { CategoryTiles } from "../category-tiles";
 import { EntityDetail } from "../entity-detail";
 import { MaterialIcon } from "../ui/material-icon";
 import { UnifiedCard } from "../ui/unified-card";
+import { SAMPLE_CONTENT_ENABLED } from "../../lib/features";
 import type { CityEvent } from "../../lib/listing-types";
 import { EVENT_FILTERS, type CityItemActions } from "./constants";
 import { ComingSoonState } from "./directory-listing-page";
@@ -77,7 +78,7 @@ export function EventsSection({
                 <UnifiedCard.Header
                   title={event.name}
                   subtitle={`${event.time} · ${event.venue}`}
-                  category={`${event.category} · демо`}
+                  category={SAMPLE_CONTENT_ENABLED ? `${event.category} · демо` : event.category}
                   date={{ day: event.day, month: event.month }}
                 />
                 <UnifiedCard.Action

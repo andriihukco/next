@@ -21,12 +21,13 @@ export function AdminPanel({ datasets, onSave, onClose }: AdminPanelProps) {
   const [draftDirty, setDraftDirty] = useState(false);
   const [status, setStatus] = useState("");
   const dataset = datasets.find((item) => item.id === selectedDataset);
+  const datasetData = dataset?.data;
 
   useEffect(() => {
     if (!draftDirty) {
-      setDraft(dataset ? JSON.stringify(dataset.data, null, 2) : "");
+      setDraft(datasetData === undefined ? "" : JSON.stringify(datasetData, null, 2));
     }
-  }, [dataset?.data, draftDirty, selectedDataset]);
+  }, [datasetData, draftDirty, selectedDataset]);
 
   const save = (): void => {
     if (!dataset) return;
