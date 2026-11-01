@@ -40,3 +40,17 @@ export const cityPlacePinImage = async (
   context.fillText(iconName, 16, 16);
   return context.getImageData(0, 0, canvas.width, canvas.height);
 };
+
+/** A DOM pin for a place opened from a list. Only one is shown at a time. */
+export function createPlaceMarker(placeName: string, color: string): HTMLElement {
+  const markerElement = document.createElement("span");
+  markerElement.className = "city-map-pin";
+  markerElement.style.setProperty("--pin-color", color);
+  markerElement.setAttribute("role", "img");
+  markerElement.setAttribute("aria-label", placeName);
+  const markerIcon = document.createElement("span");
+  markerIcon.className = "material-symbols-rounded";
+  markerIcon.textContent = "place";
+  markerElement.append(markerIcon);
+  return markerElement;
+}

@@ -8,3 +8,4 @@ dist/
 static.zip
 data/place-images.json
 .vercel
+.playwright-mcp/
