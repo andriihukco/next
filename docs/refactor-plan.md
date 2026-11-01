@@ -1,6 +1,6 @@
 # Refactor plan: code quality, performance, scale
 
-Status: in progress, 2026-11-01. Companion to [platform-plan.md](platform-plan.md) (product, data, admin, delivery). This file covers code structure only. Local development first: nothing here deploys to production.
+Status: in progress, 2026-11-01. Branches are stacked: r1 → r2 → s6 → r6 → r5 → r3 (merge in that order). Companion to [platform-plan.md](platform-plan.md) (product, data, admin, delivery). This file covers code structure only. Local development first: nothing here deploys to production.
 
 ## 1. Rules
 
@@ -45,11 +45,11 @@ Other findings:
 | Slice | Scope | Status |
 |---|---|---|
 | **R1** Extract pure helpers from `App.tsx` | Types, validators, admin overrides, constants, map pins, formatters, GeoJSON builders | Done locally (branch `refactor/r1-app-helpers`). `tsc`, lint (0 errors), fixtures, build, and a browser smoke test on `/` and `/app` pass. |
-| **R2** Split the `App()` component | Hooks: `useMapLayers`, `useTransitFeed`, `useCityPlaces`, `useSheetState`, `useAdminOverrides`, `useOnboardingGate`. Views: city, map, admin. Target: `App.tsx` under 400 lines | Next |
-| **R3** `city-guide.tsx` | Split by section (transport, places, events, jobs, real estate) | After R2 |
+| **R2** Split the `App()` component | Hooks: `useMapLayers`, `useTransitFeed`, `useCityPlaces`, `useSheetState`, `useAdminOverrides`, `useOnboardingGate`. Views: city, map, admin. Target: `App.tsx` under 400 lines | Done locally 2026-11-01 (`refactor/r2-app-split`): 3,196 → 390 lines, hooks in `src/hooks/`, views in `src/features/transport`, `src/features/places`. Also fixed: route reload on every poll, unresolved route color. |
+| **R3** `city-guide.tsx` | Split by section (transport, places, events, jobs, real estate) | Part 1 done (`refactor/r3-city-guide`): 1,498 → 843 lines, constants, helpers and sub-components in `src/components/city-guide/`. Part 2 (split the component body by section) open. |
 | **R4** Feature components over 400 lines | Settings, entity detail, landing, design system, onboarding. Each lazy-loaded where it is not on the first screen | After R2 |
-| **R5** `city-places.ts` | Categories and colors, icons, OSM feature parsing, formatting | Independent |
-| **R6** `server/transit-api.mjs` | Routes per file: vehicles, stops, shelters, alerts, push, buildings, routes. One entry for the Vercel function | Independent |
+| **R5** `city-places.ts` | Categories and colors, icons, OSM feature parsing, formatting | Done locally (`refactor/r5-city-places`): 878 → 311 lines plus `city-place-categories.ts` and `city-place-classify.ts`. |
+| **R6** `server/transit-api.mjs` | Routes per file: vehicles, stops, shelters, alerts, push, buildings, routes. One entry for the Vercel function | Done locally (`refactor/r6-server-split`): 801 → 203 lines, feeds in `server/feeds`, pure helpers in `server/lib`, `npm run test:server` (17 checks) in CI. Output matched the old server. |
 | **R7** 3D layers | Shared loader and material setup. Vehicle and building layers become thin | Pairs with platform-plan S5 |
 | **R8** `index.css` | Split per feature, remove the 1,122 overridden declarations already listed in DESIGN.md §15, merge the 6 `:root` blocks | Independent, large diff, do last |
 | **R9** Performance | Virtualize long lists (places, transit routes), memoize map sources, cap re-renders on the 2.5 s vehicle poll | After R2 |
