@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_VAPID_PUBLIC_KEY?: string;
   readonly VITE_AUTH_GOOGLE?: string;
   readonly VITE_TELEGRAM_BOT_ID?: string;
+  /** "1" shows the demo service flows in a non-development build. */
+  readonly VITE_FEATURE_SERVICES?: string;
 }
 
 interface ImportMeta {

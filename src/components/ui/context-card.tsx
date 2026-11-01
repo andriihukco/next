@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { formatRating } from "../../lib/demo-rating";
+import { formatRating } from "../../lib/rating";
 import type { CityPlace } from "../../lib/city-places";
 import { usePlacePhoto } from "../../lib/place-images";
 import { useInView } from "../../lib/use-in-view";

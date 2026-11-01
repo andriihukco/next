@@ -1,6 +1,6 @@
 /** Runtime guards for values read from storage, the API, or dev fixtures. */
 import { CITY_PLACE_CATEGORY_COLORS } from "./city-places";
-import type { CityEvent } from "./city-fixtures";
+import type { CityEvent } from "./listing-types";
 import type { CityPlace } from "./city-places";
 import { isFixtureScenario, type FixtureSettings } from "./dev-fixture-settings";
 import type { AirAlert, AirAlertThreat, Shelter, Stop, Vehicle } from "./app-types";

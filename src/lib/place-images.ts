@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiUrl } from "./api";
+import { PLACE_LOOKUP_ENABLED } from "./features";
 import type { CityPlace } from "./city-places";
 
 /**
@@ -98,16 +99,19 @@ export type PlacePhotoState =
 export function usePlacePhoto(place: CityPlace | undefined, enabled: boolean): PlacePhotoState {
   const [fetched, setFetched] = useState<{ id: string; result: PlaceImageResult } | null>(null);
 
+  // The scraper is development only (platform-plan D-B): production never asks for it.
+  const lookupEnabled = enabled && PLACE_LOOKUP_ENABLED;
   useEffect(() => {
-    if (!place || !enabled || resolved.has(place.id)) return;
+    if (!place || !lookupEnabled || resolved.has(place.id)) return;
     const controller = new AbortController();
     fetchPlaceImages(place, controller.signal)
       .then((result) => setFetched({ id: place.id, result }))
       .catch(() => {});
     return () => controller.abort();
-  }, [place, enabled]);
+  }, [place, lookupEnabled]);
 
   if (!place) return { status: "none" };
+  if (!PLACE_LOOKUP_ENABLED) return place.imageUrl ? { status: "ok", imageUrl: place.imageUrl } : { status: "none" };
   const result =
     resolved.get(place.id) ?? (fetched?.id === place.id ? fetched.result : undefined);
   const details = result?.status === "ok" ? result.details : undefined;

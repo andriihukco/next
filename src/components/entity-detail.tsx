@@ -1,19 +1,21 @@
-import { useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "motion/react";
-import { Button } from "./ui/button";
-import { Toggle } from "./ui/toggle";
+import { lazy, Suspense, useState, type CSSProperties, type ReactNode } from "react";
 import { ActionBar, ActionBarButton, DetailChip, DetailSection, QuickFacts, type QuickFact } from "./ui/detail-layout";
 import { IconButton } from "./ui/icon-button";
-import { Input } from "./ui/input";
 import { MaterialIcon } from "./ui/material-icon";
-import { exitTransition, spring } from "../lib/motion";
+import { SAMPLE_CONTENT_ENABLED, SERVICES_ENABLED } from "../lib/features";
+import { FLOWS, flowsForKind, type EntityFlow, type MenuItem } from "./entity-flow-spec";
 import { usePlacePhoto } from "../lib/place-images";
 import type { CityPlace } from "../lib/city-places";
 import { PlaceDetailsSection } from "./place-details-section";
-import { OrderPage } from "./order-page";
-import { demoRatingFor, formatRating } from "../lib/demo-rating";
+import { formatRating } from "../lib/rating";
 import "./entity-detail.css";
+
+export type { EntityFlow, MenuItem };
+
+// Demo flows load on demand, and only when the flag is on, so production builds drop them.
+const EntityFlowPanel = SERVICES_ENABLED
+  ? lazy(() => import("./entity-flows").then((module) => ({ default: module.EntityFlowPanel })))
+  : null;
 
 /**
  * One detail layout for every entity: places, schools, services, jobs, homes
@@ -21,70 +23,10 @@ import "./entity-detail.css";
  * is chosen from the entity kind: order, book a table or room, sign up, buy a
  * ticket, apply, book a viewing. Directions, call, share and save are shared.
  *
- * None of these flows is connected to a provider yet, so every result says so
- * and nothing leaves the device (DESIGN.md §1, §9).
+ * None of these flows is connected to a provider yet. They exist only when
+ * SERVICES_ENABLED is on, every result says it is a demo, and nothing leaves
+ * the device (DESIGN.md §1, §9; platform-plan D-E).
  */
-
-export type EntityFlow =
-  | "order"
-  | "table"
-  | "room"
-  | "appointment"
-  | "tickets"
-  | "apply"
-  | "viewing"
-  | "catalog";
-
-export type MenuItem = { id: string; name: string; description: string; price: number };
-
-type FlowSpec = { flow: EntityFlow; label: string; icon: string; title: string };
-
-const FLOWS: Record<EntityFlow, FlowSpec> = {
-  order: { flow: "order", label: "Замовити", icon: "shopping_bag", title: "Замовлення" },
-  table: { flow: "table", label: "Столик", icon: "table_restaurant", title: "Бронювання столика" },
-  room: { flow: "room", label: "Номер", icon: "hotel", title: "Бронювання номера" },
-  appointment: { flow: "appointment", label: "Записатися", icon: "event_available", title: "Запис" },
-  tickets: { flow: "tickets", label: "Квитки", icon: "confirmation_number", title: "Квитки" },
-  apply: { flow: "apply", label: "Відгукнутися", icon: "send", title: "Відгук на вакансію" },
-  viewing: { flow: "viewing", label: "Перегляд", icon: "calendar_month", title: "Запис на перегляд" },
-  catalog: { flow: "catalog", label: "Каталог", icon: "menu_book", title: "Каталог" },
-};
-
-/** Which flows an entity offers, primary first. Unknown kinds get directions only. */
-export function flowsForKind(kind: string): EntityFlow[] {
-  switch (kind) {
-    case "food":
-      return ["order", "table"];
-    case "groceries":
-    case "flowers":
-    case "pharmacy":
-      return ["order"];
-    case "stay":
-      return ["room"];
-    case "health":
-    case "beauty":
-    case "veterinary":
-    case "car-repair":
-    case "car-wash":
-    case "tire-service":
-    case "service":
-      return ["appointment"];
-    case "culture":
-    case "tourism":
-    case "sports":
-    case "event":
-      return ["tickets"];
-    case "job":
-      return ["apply"];
-    case "home":
-      return ["viewing"];
-    case "library":
-    case "education":
-      return ["catalog"];
-    default:
-      return [];
-  }
-}
 
 export type InfoRow = { icon: string; label: string; value: string; href?: string };
 
@@ -99,9 +41,7 @@ type EntityDetailProps = {
   date?: { day: string; month: string };
   /** Real photo for the cover. Falls back to a tinted icon panel. */
   imageUrl?: string;
-  /** Shows a sample rating, always labeled «Демо» (DESIGN.md §13). */
-  rating?: boolean;
-  /** Real place: its photo, rating and contacts come from the scraper lookup. */
+  /** Real place: its photo, rating and contacts come from the place lookup (development only). */
   place?: CityPlace;
   demo?: boolean;
   live?: string;
@@ -128,7 +68,6 @@ export function EntityDetail({
   iconColor,
   date,
   imageUrl,
-  rating,
   place,
   demo,
   live,
@@ -151,13 +90,11 @@ export function EntityDetail({
   const [photoFailed, setPhotoFailed] = useState(false);
   const lookup = usePlacePhoto(place, !date);
   const photoUrl = imageUrl || (lookup.status === "ok" ? lookup.imageUrl : undefined);
-  const scrapedRating =
-    place && lookup.details?.rating !== undefined
+  // Only a sourced rating is shown; with no source there is no rating (DESIGN.md §13).
+  const shownRating =
+    !date && place && lookup.details?.rating !== undefined
       ? { value: lookup.details.rating, count: lookup.details.reviewCount }
       : undefined;
-  // A real place shows only its scraped rating, or none. Other entities keep the labeled sample.
-  const sample = rating && !date && !place ? { ...demoRatingFor(title), demo: true } : undefined;
-  const shownRating = rating && !date ? (scrapedRating ?? sample) : undefined;
   const callPhone = phone || lookup.details?.phone;
   const showPhoto = Boolean(photoUrl) && !photoFailed && !date;
   // Quick facts: the source info rows, then the website. Only facts that exist are shown.
@@ -226,23 +163,22 @@ export function EntityDetail({
             {shownRating && (
               <p
                 className="entity-rating"
-                aria-label={`Оцінка ${formatRating(shownRating.value)} з 5${"demo" in shownRating ? ", демо" : ""}`}
+                aria-label={`Оцінка ${formatRating(shownRating.value)} з 5`}
               >
                 <MaterialIcon name="star" size={16} filled />
                 <strong>{formatRating(shownRating.value)}</strong>
                 {shownRating.count !== undefined && <span>· {shownRating.count} оцінок</span>}
-                {"demo" in shownRating && <span className="unified-card__demo">Демо</span>}
               </p>
             )}
             {subtitle && <p>{subtitle}</p>}
-            {(demo || live) && (
+            {((SAMPLE_CONTENT_ENABLED && demo) || live) && (
               <div className="detail-chips">
                 {live && (
                   <DetailChip icon="sensors" tone="live">
                     {live}
                   </DetailChip>
                 )}
-                {demo && <DetailChip icon="science">Демо</DetailChip>}
+                {SAMPLE_CONTENT_ENABLED && demo && <DetailChip icon="science">Демо</DetailChip>}
               </div>
             )}
           </div>
@@ -278,33 +214,21 @@ export function EntityDetail({
         ) : null}
       </ActionBar>
 
-      <AnimatePresence initial={false} mode="wait">
-        {openFlow && (
-          <motion.section
-            key={openFlow}
-            className="entity-flow"
-            aria-label={FLOWS[openFlow].title}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8, transition: exitTransition }}
-            transition={spring.default}
-          >
-            <header className="entity-flow-head">
-              <h3>{FLOWS[openFlow].title}</h3>
-              <DetailChip icon="science">Демо</DetailChip>
-            </header>
-            <FlowBody
-              flow={openFlow}
-              kind={kind}
-              catalog={catalog}
-              onDone={(message) => {
-                setStatus(message);
-                setOpenFlow(null);
-              }}
-            />
-          </motion.section>
-        )}
-      </AnimatePresence>
+      {EntityFlowPanel && (openFlow || orderOpen) && (
+        <Suspense fallback={null}>
+          <EntityFlowPanel
+            openFlow={openFlow}
+            orderOpen={orderOpen}
+            kind={kind}
+            placeName={title}
+            menu={menu}
+            catalog={catalog}
+            onCloseFlow={() => setOpenFlow(null)}
+            onCloseOrder={() => setOrderOpen(false)}
+            onDone={setStatus}
+          />
+        </Suspense>
+      )}
 
       {status && (
         <p className="entity-status" role="status">
@@ -331,177 +255,7 @@ export function EntityDetail({
         </section>
       )}
 
-      {orderOpen &&
-        createPortal(
-          <OrderPage
-            placeName={title}
-            items={menu}
-            onClose={() => setOrderOpen(false)}
-            onDone={(message) => {
-              setStatus(message);
-              setOrderOpen(false);
-            }}
-          />,
-          document.body,
-        )}
-
       {children}
     </article>
-  );
-}
-
-const DEMO_NOTE = "Це демо: запит нікуди не надіслано.";
-
-function FlowBody({
-  flow,
-  kind,
-  catalog,
-  onDone,
-}: {
-  flow: EntityFlow;
-  kind: string;
-  catalog: MenuItem[];
-  onDone: (message: string) => void;
-}) {
-  if (flow === "catalog") return <CatalogFlow items={catalog} onDone={onDone} />;
-  return <FormFlow flow={flow} kind={kind} onDone={onDone} />;
-}
-
-function CatalogFlow({ items, onDone }: { items: MenuItem[]; onDone: (message: string) => void }) {
-  const [query, setQuery] = useState("");
-  const visible = items.filter((item) =>
-    `${item.name} ${item.description}`.toLocaleLowerCase("uk-UA").includes(query.trim().toLocaleLowerCase("uk-UA")),
-  );
-  return (
-    <>
-      <Input type="search" aria-label="Пошук у каталозі" placeholder="Знайти книгу" value={query} onChange={(event) => setQuery(event.target.value)} />
-      <ul className="entity-menu">
-        {visible.map((item) => (
-          <li key={item.id}>
-            <span className="entity-menu-copy">
-              <strong>{item.name}</strong>
-              <span>{item.description}</span>
-            </span>
-            <Button type="button" variant="outline" size="sm" onClick={() => onDone(`«${item.name}» зарезервовано. ${DEMO_NOTE}`)}>
-              Зарезервувати
-            </Button>
-          </li>
-        ))}
-      </ul>
-      {visible.length === 0 && <p className="entity-flow-empty">Нічого не знайдено в каталозі.</p>}
-    </>
-  );
-}
-
-const APPOINTMENT_CHOICES: Record<string, string[]> = {
-  health: ["Терапевт", "Стоматолог", "Офтальмолог"],
-  beauty: ["Стрижка", "Манікюр", "Догляд за обличчям"],
-  veterinary: ["Огляд", "Щеплення", "Консультація"],
-};
-
-function FormFlow({ flow, kind, onDone }: { flow: EntityFlow; kind: string; onDone: (message: string) => void }) {
-  const [error, setError] = useState("");
-  const [count, setCount] = useState(2);
-  const [choice, setChoice] = useState(APPOINTMENT_CHOICES[kind]?.[0] ?? "");
-  const today = new Date().toISOString().slice(0, 10);
-
-  const submit = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const value = (name: string): string => String(data.get(name) ?? "");
-    if (flow === "room" && value("departure") <= value("arrival")) {
-      setError("Дата виїзду має бути пізніше за дату заїзду.");
-      return;
-    }
-    setError("");
-    const summary: Record<EntityFlow, string> = {
-      table: `Столик на ${count} ${count === 1 ? "особу" : "осіб"}, ${value("date")} о ${value("time")}.`,
-      room: `Номер з ${value("arrival")} до ${value("departure")}, гостей: ${count}.`,
-      appointment: `${choice ? `${choice}, ` : ""}${value("date")} о ${value("time")}.`,
-      tickets: `${count} ${count === 1 ? "квиток" : count < 5 ? "квитки" : "квитків"}.`,
-      apply: `Відгук від ${value("name")}.`,
-      viewing: `Перегляд ${value("date")} о ${value("time")}.`,
-      order: "",
-      catalog: "",
-    };
-    onDone(`${summary[flow]} ${DEMO_NOTE}`);
-  };
-
-  const countLabel = flow === "tickets" ? "Кількість квитків" : flow === "room" ? "Гості" : "Кількість осіб";
-
-  return (
-    <form className="entity-form" onSubmit={submit} noValidate={false}>
-      {flow === "room" ? (
-        <div className="entity-form-row">
-          <label className="entity-field">
-            <span>Заїзд</span>
-            <Input type="date" name="arrival" min={today} required />
-          </label>
-          <label className="entity-field">
-            <span>Виїзд</span>
-            <Input type="date" name="departure" min={today} required />
-          </label>
-        </div>
-      ) : flow === "apply" ? (
-        <>
-          <label className="entity-field">
-            <span>Ім’я</span>
-            <Input name="name" autoComplete="name" required />
-          </label>
-          <label className="entity-field">
-            <span>Телефон або email</span>
-            <Input name="contact" autoComplete="email" required />
-          </label>
-        </>
-      ) : flow !== "tickets" ? (
-        <div className="entity-form-row">
-          <label className="entity-field">
-            <span>Дата</span>
-            <Input type="date" name="date" min={today} defaultValue={today} required />
-          </label>
-          <label className="entity-field">
-            <span>Час</span>
-            <Input type="time" name="time" defaultValue="18:00" step={900} required />
-          </label>
-        </div>
-      ) : null}
-
-      {flow === "appointment" && APPOINTMENT_CHOICES[kind] && (
-        <fieldset className="entity-field">
-          <legend>Послуга</legend>
-          <div className="entity-chips">
-            {APPOINTMENT_CHOICES[kind].map((option) => (
-              <Toggle variant="pill" key={option} size="sm" onClick={() => setChoice(option)} pressed={choice === option}>
-                {option}
-              </Toggle>
-            ))}
-          </div>
-        </fieldset>
-      )}
-
-      {(flow === "table" || flow === "room" || flow === "tickets") && (
-        <div className="entity-field">
-          <span id={`entity-count-${flow}`}>{countLabel}</span>
-          <span className="entity-stepper" role="group" aria-labelledby={`entity-count-${flow}`}>
-            <Button type="button" variant="outline" size="icon" aria-label="Менше" disabled={count <= 1} onClick={() => setCount((c) => Math.max(1, c - 1))}>
-              <MaterialIcon name="remove" size={18} />
-            </Button>
-            <output aria-live="polite">{count}</output>
-            <Button type="button" variant="outline" size="icon" aria-label="Більше" disabled={count >= 10} onClick={() => setCount((c) => Math.min(10, c + 1))}>
-              <MaterialIcon name="add" size={18} />
-            </Button>
-          </span>
-        </div>
-      )}
-
-      {error && (
-        <p className="entity-form-error" role="alert">
-          {error}
-        </p>
-      )}
-      <Button type="submit" size="lg" className="entity-flow-submit">
-        {FLOWS[flow].flow === "apply" ? "Надіслати відгук" : flow === "tickets" ? "Придбати" : "Підтвердити"}
-      </Button>
-    </form>
   );
 }

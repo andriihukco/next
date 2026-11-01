@@ -6,7 +6,7 @@ import { Input } from "./ui/input";
 import { MaterialIcon } from "./ui/material-icon";
 import { Switch } from "./ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
-import type { MenuItem } from "./entity-detail";
+import type { MenuItem } from "./entity-flow-spec";
 import "./order-page.css";
 
 /**

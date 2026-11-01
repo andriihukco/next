@@ -10,6 +10,7 @@ import {
   StatGrid,
 } from "../../components/ui/detail-layout";
 import { label } from "../../lib/app-formatters";
+import { SAMPLE_CONTENT_ENABLED } from "../../lib/features";
 import type { Vehicle } from "../../lib/app-types";
 import { getRidershipEstimate, vehicleFleetColor, vehicleModelDescription } from "../../lib/fleet";
 import { RidershipCard } from "./ridership-card";
@@ -24,7 +25,8 @@ type VehicleInspectorProps = {
 
 /** Detail sheet for one live (or simulated) vehicle. */
 export function VehicleInspector({ vehicle, following, onToggleFollow, onZoomIn, onBack }: VehicleInspectorProps) {
-  const ridership = getRidershipEstimate(`${vehicle.id}-${vehicle.route}`);
+  // Modelled, not measured: development only until a ridership source exists.
+  const ridership = SAMPLE_CONTENT_ENABLED ? getRidershipEstimate(`${vehicle.id}-${vehicle.route}`) : null;
   return (
     <section className="inspector detail-sheet">
       <SheetNavBar title="Транспорт на мапі" onBack={onBack} />

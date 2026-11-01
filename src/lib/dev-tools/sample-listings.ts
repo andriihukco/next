@@ -1,25 +1,9 @@
-export type CityEvent = {
-  id: string;
-  day: string;
-  month: string;
-  time: string;
-  name: string;
-  venue: string;
-  summary: string;
-  category: string;
-  coordinates: [number, number];
-};
+import type { CityDirectoryListing, CityEvent } from "../listing-types";
 
-export type CityDirectoryListing = {
-  id: string;
-  name: string;
-  category: string;
-  summary: string;
-  details: string;
-  location: string;
-  organization?: string;
-  coordinates: [number, number];
-};
+/**
+ * Sample events, jobs and homes for layout review. Development only: production
+ * builds read these through `src/lib/features.ts`, which drops them.
+ */
 
 export const cityJobListings: CityDirectoryListing[] = [
   {

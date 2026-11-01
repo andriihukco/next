@@ -3,7 +3,8 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { readAdminOverride } from "../lib/admin-overrides";
 import type { AppView } from "../lib/app-types";
 import { isArrayOf, isCityEvent, isCityPlace } from "../lib/app-validators";
-import { cityEvents as defaultCityEvents, type CityEvent } from "../lib/city-fixtures";
+import { sampleEvents } from "../lib/features";
+import type { CityEvent } from "../lib/listing-types";
 import { cityPlacesFromMapFeatures, type CityPlace, type CityPlaceCategory } from "../lib/city-places";
 import { useLatest } from "./use-latest";
 import type { LoadStatus } from "./use-transit-feed";
@@ -12,7 +13,8 @@ const MAX_LAYER_CATEGORIES = 3;
 
 /**
  * Places read from the visible OSM tiles (the city list), places shown as pins on the map,
- * and the map layer filter. Events stay here until they get their own source.
+ * and the map layer filter. Events stay here until they get their own source;
+ * until then only development builds have (sample) events.
  */
 export function useCityPlaces(
   mapRef: RefObject<MapLibreMap | null>,
@@ -25,7 +27,7 @@ export function useCityPlaces(
   // Mirrors `cityPlaces` so the map's idle listener compares against the latest list.
   const cityPlacesRef = useRef(cityPlaces);
   const [eventData, setEventData] = useState<CityEvent[]>(() =>
-    readAdminOverride("events", defaultCityEvents, isArrayOf(isCityEvent)),
+    readAdminOverride("events", sampleEvents, isArrayOf(isCityEvent)),
   );
   const [mapCityPlaces, setMapCityPlaces] = useState<CityPlace[]>([]);
   const [mapLayerCategories, setMapLayerCategories] = useState<Set<CityPlaceCategory>>(new Set());

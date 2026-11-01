@@ -29,17 +29,14 @@ import {
   type CityPlaceCategory,
 } from "../lib/city-places";
 import { vehicleFleetColor } from "../lib/fleet";
-import {
-  type CityEvent,
-  type CityDirectoryListing,
-  cityJobListings,
-  cityRealEstateListings,
-} from "../lib/city-fixtures";
+import type { CityDirectoryListing, CityEvent } from "../lib/listing-types";
+import { sampleJobListings, sampleRealEstateListings } from "../lib/features";
 import { Button } from "./ui/button";
 import { CategoryTiles } from "./category-tiles";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import "./city-view-switch.css";
-import { EntityDetail, flowsForKind, type InfoRow } from "./entity-detail";
+import { EntityDetail, type InfoRow } from "./entity-detail";
+import { flowsForKind } from "./entity-flow-spec";
 import { useSavedItems } from "../lib/use-saved-items";
 import { UnifiedCard } from "./ui/unified-card";
 import { ContextCard } from "./ui/context-card";
@@ -310,7 +307,6 @@ function EducationCard({
         category={EDUCATION_KIND_LABELS[kind]}
         imageUrl={place.imageUrl}
         place={place}
-        rating
       />
       {detailPage && (
         <>
@@ -360,6 +356,16 @@ function EducationCard({
   );
 }
 
+/** Shown where a section has no data source yet, instead of sample content (platform-plan S6). */
+function ComingSoonState() {
+  return (
+    <div className="city-places-state" role="status">
+      <MaterialIcon name="schedule" size={20} />
+      <span>Незабаром. Розділ з’явиться, коли підключимо перевірене джерело даних.</span>
+    </div>
+  );
+}
+
 function DirectoryListingPage({
   title,
   kind,
@@ -371,10 +377,13 @@ function DirectoryListingPage({
   onToggleSaved,
   onShowOnMap,
   onDirections,
+  sample = false,
 }: {
   title: string;
   kind: "service" | "job" | "home";
   listings: CityDirectoryListing[];
+  /** Sample listings (jobs, homes) carry the «Демо» label; services are real OSM places. */
+  sample?: boolean;
   filters: ReadonlyArray<{ id: string; label: string; icon: string; color: string }>;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -401,8 +410,7 @@ function DirectoryListingPage({
           eyebrow={filter?.label ?? title}
           subtitle={selected.summary}
           icon={filter?.icon ?? "business"}
-          rating={kind === "service"}
-          demo
+          demo={sample}
           description={selected.details}
           info={[
             { icon: "location_on", label: "Адреса", value: selected.location },
@@ -429,9 +437,8 @@ function DirectoryListingPage({
             <UnifiedCard.Header
               title={item.name}
               subtitle={item.summary}
-              category={`${item.location} · демо`}
+              category={sample ? `${item.location} · демо` : item.location}
               icon={filters.find((filter) => filter.id === item.category)?.icon ?? "business"}
-              rating={kind === "service"}
             />
             <UnifiedCard.Action
               label="На мапі"
@@ -441,11 +448,15 @@ function DirectoryListingPage({
             />
           </UnifiedCard>
         ))}
-        {visible.length === 0 && (
-          <div className="city-places-state">
-            <MaterialIcon name="search_off" size={20} />
-            <span>Нічого не знайдено за цим фільтром.</span>
-          </div>
+        {listings.length === 0 ? (
+          <ComingSoonState />
+        ) : (
+          visible.length === 0 && (
+            <div className="city-places-state">
+              <MaterialIcon name="search_off" size={20} />
+              <span>Нічого не знайдено за цим фільтром.</span>
+            </div>
+          )
         )}
       </div>
     </section>
@@ -1064,7 +1075,6 @@ export function CityGuide({
                           iconColor={CITY_PLACE_CATEGORY_COLORS[place.category]}
                           imageUrl={place.imageUrl}
                           place={place}
-                          rating
                           info={placeInfoRows(place)}
                           menu={demoProductsFor(place)}
                           catalog={demoProductsFor(place)}
@@ -1127,7 +1137,6 @@ export function CityGuide({
                           category={place.categoryLabel}
                           imageUrl={place.imageUrl}
                           place={place}
-                          rating
                         />
                         {place.details["Графік"] && (
                           <UnifiedCard.Meta
@@ -1173,7 +1182,6 @@ export function CityGuide({
                 eyebrow={EDUCATION_KIND_LABELS[selectedEducation.kind]}
                 subtitle={selectedEducation.place.address}
                 imageUrl={selectedEducation.place.imageUrl}
-                rating
                 icon={EDUCATION_FILTERS.find((filter) => filter.id === selectedEducation.kind)?.icon ?? "school"}
                 info={placeInfoRows(selectedEducation.place)}
                 catalog={demoProductsFor(selectedEducation.place)}
@@ -1263,7 +1271,8 @@ export function CityGuide({
           saved={saved}
           onToggleSaved={toggleSaved}
           onDirections={onDirections}
-          listings={cityJobListings}
+          listings={sampleJobListings}
+          sample
           filters={JOB_FILTERS}
           onShowOnMap={onShowOnMap}
         />
@@ -1280,7 +1289,8 @@ export function CityGuide({
           saved={saved}
           onToggleSaved={toggleSaved}
           onDirections={onDirections}
-          listings={cityRealEstateListings}
+          listings={sampleRealEstateListings}
+          sample
           filters={REAL_ESTATE_FILTERS}
           onShowOnMap={onShowOnMap}
         />
@@ -1353,7 +1363,9 @@ export function CityGuide({
                   </UnifiedCard>
                 ),
               )}
-            {!selectedEvent &&
+            {cityEvents.length === 0 && <ComingSoonState />}
+            {cityEvents.length > 0 &&
+              !selectedEvent &&
               !cityEvents.some(
                 (event) => eventCategory === "all" || event.category === eventCategory,
               ) && (

@@ -11,7 +11,7 @@ import {
   isStop,
   isVehicle,
 } from "./app-validators";
-import type { CityEvent } from "./city-fixtures";
+import type { CityEvent } from "./listing-types";
 import type { CityPlace } from "./city-places";
 import { saveFixtureSettings, type FixtureSettings } from "./dev-fixture-settings";
 

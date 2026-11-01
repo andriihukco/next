@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { formatRating } from "../lib/demo-rating";
+import { formatRating } from "../lib/rating";
 import type { PlaceDetails, PlaceReview } from "../lib/place-images";
 import { MaterialIcon } from "./ui/material-icon";
 
