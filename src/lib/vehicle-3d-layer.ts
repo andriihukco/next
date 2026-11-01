@@ -1,12 +1,21 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { MercatorCoordinate } from "maplibre-gl";
-import type {
-  CustomLayerInterface,
-  Map as MapLibreMap,
-} from "maplibre-gl";
+import type { CustomLayerInterface, Map as MapLibreMap } from "maplibre-gl";
 import { vehicleFleetColor } from "./fleet";
-import { resolveColor } from "./design-colors";
+import { buildModelParts } from "./vehicle-3d-models";
+import {
+  LED_GRID_COLS,
+  LED_GRID_ROWS,
+  LED_VERTEX_SHADER,
+  LED_FRAGMENT_SHADER,
+  createLedAtlas,
+} from "./vehicle-3d-led";
+import {
+  splitTripEnds,
+  parseColor,
+  setPlateCardStep,
+  createSelectedPlate,
+} from "./vehicle-3d-plate";
 
 export type Vehicle3DData = {
   id: string;
@@ -53,7 +62,6 @@ type Fleet = {
   visible: VehicleState[];
 };
 
-type Face = "front" | "left" | "right";
 
 const TILE_SIZE = 512;
 const PLATE_HEIGHT_M = 3.6;
@@ -61,14 +69,6 @@ const PLATE_MIN_ZOOM = 14;
 const MOVE_EASE = 0.16;
 const INSTANCE_CAPACITY = 2048;
 
-// Route numbers are drawn once into a shared LED atlas; each instance picks its cell.
-const LED_DOT = 6;
-const LED_PIXEL_W = 44;
-const LED_PIXEL_H = 12;
-const LED_CELL_W = LED_PIXEL_W * LED_DOT;
-const LED_CELL_H = LED_PIXEL_H * LED_DOT;
-const LED_GRID_COLS = 8;
-const LED_GRID_ROWS = 32;
 
 // Pixel-space readability: vehicles grow as the map zooms out, like the prototype.
 function legibilityScale(zoom: number): number {
@@ -84,354 +84,6 @@ function smoothAngle(current: number, target: number, amount: number): number {
   return current + shortestAngleDelta(current, target) * amount;
 }
 
-const solidCache = new Map<number, THREE.MeshLambertMaterial>();
-function solid(color: number): THREE.MeshLambertMaterial {
-  let material = solidCache.get(color);
-  if (!material) {
-    material = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
-    solidCache.set(color, material);
-  }
-  return material;
-}
-
-// Marks LED panels while the model is built. Replaced by the atlas shader on merge.
-const LED_PLACEHOLDER = new THREE.MeshBasicMaterial();
-
-function box(
-  w: number, l: number, h: number,
-  material: THREE.Material,
-  x: number, y: number, z: number,
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, l, h), material);
-  mesh.position.set(x, y, z);
-  return mesh;
-}
-
-function wheel(x: number, y: number, r = 0.5, thickness = 0.3): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(r, r, thickness, 14),
-    solid(0x1f2937),
-  );
-  mesh.position.set(x, y, r);
-  return mesh;
-}
-
-const FACE_BASIS: Record<Face, [THREE.Vector3, THREE.Vector3, THREE.Vector3]> = {
-  front: [new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)],
-  left: [new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0)],
-  right: [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, -1, 0)],
-};
-
-function panel(
-  width: number,
-  height: number,
-  material: THREE.Material,
-  face: Face,
-  position: [number, number, number],
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
-  mesh.quaternion.setFromRotationMatrix(
-    new THREE.Matrix4().makeBasis(...FACE_BASIS[face]),
-  );
-  mesh.position.set(...position);
-  return mesh;
-}
-
-type BodyOptions = { led?: boolean; front?: boolean; side?: boolean };
-
-// Length runs along +x (front), width along y, height along z (meters).
-function body(
-  length: number,
-  width: number,
-  height: number,
-  material: THREE.Material,
-  offset: number,
-  options: BodyOptions = {},
-): THREE.Group {
-  const group = new THREE.Group();
-  const base = 0.55;
-  const dark = solid(0x0f172a);
-
-  group.add(box(length, width, height, material, offset, 0, base + height / 2));
-  group.add(box(length * 0.94, width + 0.05, height * 0.36, solid(0x1e293b), offset, 0, base + height * 0.55));
-  group.add(box(length * 0.9, width * 0.9, 0.12, solid(0xe5e7eb), offset, 0, base + height + 0.06));
-  group.add(box(0.1, width * 0.88, height * 0.42, dark, offset + length / 2, 0, base + height * 0.52));
-  group.add(box(0.14, width * 0.8, 0.08, solid(0x111827), offset + length / 2, 0, base + 0.12));
-  for (const side of [-1, 1]) {
-    group.add(box(0.12, 0.35, 0.22, solid(0xfff7c2), offset + length / 2, side * width * 0.32, base + 0.35));
-  }
-  for (const along of [-0.33, 0.33]) {
-    for (const side of [-1, 1]) {
-      group.add(wheel(offset + length * along, (side * width) / 2));
-    }
-  }
-  if (options.led) {
-    const ledZ = base + height * 0.86;
-    if (options.front !== false) {
-      group.add(panel(width * 0.72, (width * 0.72 * 12) / 44, LED_PLACEHOLDER, "front", [offset + length / 2 + 0.07, 0, ledZ]));
-    }
-    if (options.side !== false) {
-      const sides: [Face, number][] = [
-        ["left", width / 2 + 0.03],
-        ["right", -width / 2 - 0.03],
-      ];
-      for (const [face, y] of sides) {
-        group.add(panel(1.9, (1.9 * 12) / 44, LED_PLACEHOLDER, face, [offset + length * 0.3, y, ledZ]));
-      }
-    }
-  }
-  return group;
-}
-
-function pole(group: THREE.Group, y: number, z: number, x: number): void {
-  const holder = new THREE.Group();
-  holder.position.set(x, y, z);
-  holder.rotation.z = 0.42;
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 6), solid(0x111827));
-  arm.rotation.z = Math.PI / 2;
-  arm.position.x = -3;
-  holder.add(arm);
-  group.add(holder);
-}
-
-function createTram(bodyMaterial: THREE.Material): THREE.Group {
-  const group = new THREE.Group();
-  group.add(body(9, 2.4, 3, bodyMaterial, 4.8, { led: true }));
-  group.add(body(9, 2.4, 3, bodyMaterial, -4.8, { led: true, front: false }));
-  group.add(box(1.4, 2.2, 2.6, solid(0x111827), 0, 0, 1.9));
-  const pantograph = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2), solid(0x111827));
-  pantograph.position.set(4.5, 0, 4.8);
-  pantograph.rotation.z = 0.9;
-  group.add(pantograph);
-  return group;
-}
-
-function createTrolleybus(bodyMaterial: THREE.Material): THREE.Group {
-  const group = body(12, 2.55, 2.9, bodyMaterial, 0, { led: true });
-  pole(group, 0.55, 3.6, -2.5);
-  pole(group, -0.55, 3.6, -2.5);
-  return group;
-}
-
-// Keeps only the attributes every merged part must share.
-function pickAttributes(geometry: THREE.BufferGeometry, names: string[]): THREE.BufferGeometry {
-  const picked = new THREE.BufferGeometry();
-  for (const name of names) {
-    const attribute = geometry.getAttribute(name);
-    if (attribute) picked.setAttribute(name, attribute);
-  }
-  if (geometry.index) picked.setIndex(geometry.index);
-  return picked;
-}
-
-function withVertexColor(geometry: THREE.BufferGeometry, color: THREE.Color): THREE.BufferGeometry {
-  const count = geometry.getAttribute("position").count;
-  const colors = new Float32Array(count * 3);
-  for (let index = 0; index < count; index += 1) {
-    colors[index * 3] = color.r;
-    colors[index * 3 + 1] = color.g;
-    colors[index * 3 + 2] = color.b;
-  }
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  return geometry;
-}
-
-function mergeParts(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const merged = mergeGeometries(parts, false);
-  if (!merged) throw new Error("Vehicle model parts do not share attributes.");
-  return merged;
-}
-
-type ModelParts = {
-  bodyMaterial: THREE.MeshLambertMaterial;
-  body: THREE.BufferGeometry;
-  trim: THREE.BufferGeometry;
-  led: THREE.BufferGeometry;
-};
-
-// Builds one vehicle type as three merged geometries: painted body, vertex-colored trim, and LED panels.
-function buildModelParts(type: VehicleType, paint: number): ModelParts {
-  const bodyMaterial = new THREE.MeshLambertMaterial({ color: paint, side: THREE.DoubleSide });
-  const root =
-    type === "tram"
-      ? createTram(bodyMaterial)
-      : type === "trolleybus"
-        ? createTrolleybus(bodyMaterial)
-        : body(12, 2.55, 2.8, bodyMaterial, 0, { led: true });
-  root.updateMatrixWorld(true);
-
-  const bodyParts: THREE.BufferGeometry[] = [];
-  const trimParts: THREE.BufferGeometry[] = [];
-  const ledParts: THREE.BufferGeometry[] = [];
-  root.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return;
-    const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
-    if (object.material === bodyMaterial) {
-      bodyParts.push(pickAttributes(geometry, ["position", "normal"]));
-    } else if (object.material === LED_PLACEHOLDER) {
-      ledParts.push(pickAttributes(geometry, ["position", "normal", "uv"]));
-    } else {
-      const color = (object.material as THREE.MeshLambertMaterial).color;
-      trimParts.push(withVertexColor(pickAttributes(geometry, ["position", "normal"]), color));
-    }
-  });
-  return {
-    bodyMaterial,
-    body: mergeParts(bodyParts),
-    trim: mergeParts(trimParts),
-    led: mergeParts(ledParts),
-  };
-}
-
-const LED_VERTEX_SHADER = `
-attribute float ledCell;
-varying vec2 vUv;
-varying float vCell;
-void main() {
-  vUv = uv;
-  vCell = ledCell;
-  gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
-}
-`;
-
-const LED_FRAGMENT_SHADER = `
-uniform sampler2D atlas;
-uniform vec2 grid;
-varying vec2 vUv;
-varying float vCell;
-void main() {
-  float column = mod(vCell, grid.x);
-  float row = floor(vCell / grid.x);
-  vec2 atlasUv = vec2((column + vUv.x) / grid.x, 1.0 - (row + 1.0 - vUv.y) / grid.y);
-  gl_FragColor = texture2D(atlas, atlasUv);
-}
-`;
-
-// Orange dot-matrix route display, same look as the prototype's LED boards.
-function drawLedCell(context: CanvasRenderingContext2D, text: string, column: number, row: number): void {
-  const source = document.createElement("canvas");
-  source.width = LED_PIXEL_W;
-  source.height = LED_PIXEL_H;
-  const sourceContext = source.getContext("2d");
-  if (!sourceContext) return;
-  sourceContext.font = "bold 11px Arial";
-  sourceContext.textAlign = "center";
-  sourceContext.fillStyle = resolveColor("var(--art-white)");
-  sourceContext.fillText(text, LED_PIXEL_W / 2, LED_PIXEL_H - 1.5);
-  const pixels = sourceContext.getImageData(0, 0, LED_PIXEL_W, LED_PIXEL_H).data;
-
-  const originX = column * LED_CELL_W;
-  const originY = row * LED_CELL_H;
-  context.fillStyle = resolveColor("var(--led-off)");
-  context.fillRect(originX, originY, LED_CELL_W, LED_CELL_H);
-  const ledOn = resolveColor("var(--led-on)");
-  const ledDim = resolveColor("var(--led-dim)");
-  for (let y = 0; y < LED_PIXEL_H; y += 1) {
-    for (let x = 0; x < LED_PIXEL_W; x += 1) {
-      context.fillStyle = pixels[(y * LED_PIXEL_W + x) * 4 + 3] > 110 ? ledOn : ledDim;
-      context.beginPath();
-      context.arc(originX + x * LED_DOT + LED_DOT / 2, originY + y * LED_DOT + LED_DOT / 2, 2.3, 0, Math.PI * 2);
-      context.fill();
-    }
-  }
-}
-
-function createLedAtlas(): { texture: THREE.CanvasTexture; cellFor: (route: string) => number } {
-  const canvas = document.createElement("canvas");
-  canvas.width = LED_GRID_COLS * LED_CELL_W;
-  canvas.height = LED_GRID_ROWS * LED_CELL_H;
-  const context = canvas.getContext("2d");
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.anisotropy = 4;
-  const cells = new Map<string, number>();
-  const cellFor = (route: string): number => {
-    const existing = cells.get(route);
-    if (existing !== undefined) return existing;
-    const index = cells.size;
-    // Past the atlas capacity a route reuses cell 0. Real fleets stay well below 256 routes.
-    if (!context || index >= LED_GRID_COLS * LED_GRID_ROWS) return 0;
-    cells.set(route, index);
-    drawLedCell(context, route, index % LED_GRID_COLS, Math.floor(index / LED_GRID_COLS));
-    texture.needsUpdate = true;
-    return index;
-  };
-  return { texture, cellFor };
-}
-
-function splitTripEnds(destination: string): [string | null, string] {
-  const parts = destination.split(" - ");
-  if (parts.length < 2) return [null, destination];
-  return [parts[0], parts.slice(1).join(" - ")];
-}
-
-function parseColor(hex: string): number {
-  return Number.parseInt(hex.replace("#", ""), 16);
-}
-
-type PlateCardStep = { step: HTMLElement; value: HTMLElement };
-type PlateCard = {
-  route: HTMLElement;
-  start: PlateCardStep;
-  next: PlateCardStep;
-  end: PlateCardStep;
-};
-
-function setPlateCardStep(step: PlateCardStep, value: string | null): void {
-  step.step.hidden = !value;
-  step.value.textContent = value ?? "";
-}
-
-// The only DOM vehicle element: the trip card of the selected vehicle.
-function createSelectedPlate(onSelect: () => void): {
-  plate: HTMLButtonElement;
-  plateText: HTMLSpanElement;
-  plateCard: PlateCard;
-} {
-  const plate = document.createElement("button");
-  plate.type = "button";
-  plate.className = "vehicle-plate selected";
-  plate.addEventListener("click", onSelect);
-
-  const main = document.createElement("span");
-  main.className = "vehicle-plate-main";
-  const flag = document.createElement("b");
-  flag.textContent = "UA";
-  const plateText = document.createElement("span");
-  main.append(flag, plateText);
-
-  const card = document.createElement("span");
-  card.className = "vehicle-plate-card";
-  const cardRoute = document.createElement("i");
-  cardRoute.className = "vehicle-plate-card-route";
-  const steps = document.createElement("span");
-  steps.className = "vehicle-plate-card-steps";
-  const createStep = (icon: string, label: string, modifier?: string): PlateCardStep => {
-    const step = document.createElement("span");
-    step.className = modifier ? `vehicle-plate-step ${modifier}` : "vehicle-plate-step";
-    const glyph = document.createElement("span");
-    glyph.className = "material-symbols-rounded";
-    glyph.setAttribute("aria-hidden", "true");
-    glyph.textContent = icon;
-    const text = document.createElement("span");
-    text.className = "vehicle-plate-step-text";
-    const caption = document.createElement("small");
-    caption.textContent = label;
-    const value = document.createElement("b");
-    text.append(caption, value);
-    step.append(glyph, text);
-    steps.appendChild(step);
-    return { step, value };
-  };
-  const plateCard: PlateCard = {
-    route: cardRoute,
-    start: createStep("trip_origin", "Початкова"),
-    next: createStep("location_on", "Наступна", "is-next"),
-    end: createStep("flag", "Кінцева"),
-  };
-  card.append(cardRoute, steps);
-  plate.append(card, main);
-  return { plate, plateText, plateCard };
-}
 
 const zAxis = new THREE.Vector3(0, 0, 1);
 
