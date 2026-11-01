@@ -65,6 +65,14 @@ export type CityGuideProps = {
   searchQuery: string;
 };
 
+/** Save, map and directions actions every city guide card and detail shares. */
+export type CityItemActions = {
+  saved: ReadonlySet<string>;
+  onToggleSaved: (id: string) => void;
+  onShowOnMap: (coordinates: [number, number], placeName: string) => void;
+  onDirections: (coordinates: [number, number], placeName: string) => void;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 // Orb colors for category rows (DESIGN.md §2, §7).
