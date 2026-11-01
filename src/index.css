@@ -8559,16 +8559,117 @@ body {
   font-weight: 800;
 }
 
-/* Compass: the arrow turns against the map bearing, so it always points to north. */
+/* Compass (Apple Maps style): a round control. The red end of the needle always points to
+   north, because the needle turns against the map bearing. Click sets the map to north. */
+.map-compass {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  box-shadow: var(--shadow-raised);
+  color: var(--foreground);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .map-compass-needle {
-  display: inline-flex;
+  width: 24px;
+  height: 24px;
   transition: transform var(--duration-state) var(--ease);
 }
 
-/* Camera popover: the 3×3 orbit pad sits in the middle, each arrow has a label beside it.
-   Up and down tilt the view, left and right turn it. The center dot is a drag handle. */
+/* Map type: three tiles in a popover. The selected tile gets the primary border, and the
+   name stays visible so the state is not shown by color alone. */
+.map-style-wrap,
 .map-camera-wrap {
   position: relative;
+}
+
+.map-style-options {
+  display: grid;
+  grid-template-columns: repeat(3, 76px);
+  gap: 6px;
+  justify-content: center;
+}
+
+.map-style-tile {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.map-style-preview {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background-position: center;
+  background-size: cover;
+  transition: border-color var(--duration-press) var(--ease);
+}
+
+.map-style-preview-standard {
+  background: var(--map-background);
+  color: var(--map-label-strong);
+}
+
+.map-style-preview-hybrid {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.map-style-preview-satellite {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.map-style-tile[aria-pressed="true"] .map-style-preview {
+  border-color: var(--primary);
+}
+
+.map-style-label {
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.map-style-tile[aria-pressed="true"] .map-style-label {
+  font-weight: 800;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .map-style-tile:hover .map-style-preview {
+    border-color: var(--primary-border);
+  }
+}
+
+/* Camera panel: the 3D switch sits in the header. The 3×3 orbit pad sits in the middle, each
+   arrow has a label beside it. Up and down tilt the view, left and right turn it. The center
+   dot is a drag handle. */
+.map-camera-popover {
+  width: min(320px, calc(100vw - 96px));
+}
+
+.map-camera-3d {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-small);
+  font-weight: 700;
 }
 
 .map-camera-pad {
@@ -8743,7 +8844,8 @@ body {
     display: none;
   }
 
-  .map-controls .map-control {
+  .map-controls .map-control,
+  .map-compass {
     width: 40px;
     height: 40px;
   }

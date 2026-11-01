@@ -124,11 +124,12 @@ export function useCityMap(mapNode: RefObject<HTMLDivElement | null>, handlers: 
   const resetOrientation = (): void => {
     mapRef.current?.easeTo({ bearing: 0, roll: 0, duration: 250 });
   };
-  /** Sets the bearing and pitch in degrees, at once. Pitch is clamped to the map's range. */
-  const setCamera = (bearing: number, pitch: number): void => {
+  /** Turns the bearing and tilts the pitch by degrees. Pitch stays within 0 and the map's max pitch. */
+  const orbit = (bearingDelta: number, pitchDelta: number, duration: number): void => {
     const map = mapRef.current;
     if (!map) return;
-    map.jumpTo({ bearing, pitch: Math.min(Math.max(pitch, 0), map.getMaxPitch()) });
+    const pitch = Math.min(Math.max(map.getPitch() + pitchDelta, 0), map.getMaxPitch());
+    map.easeTo({ bearing: map.getBearing() + bearingDelta, pitch, duration });
   };
   const toggleMapMode = (): void => {
     const pitch = mapPitch >= 0.5 ? 0 : 60;
@@ -148,7 +149,7 @@ export function useCityMap(mapNode: RefObject<HTMLDivElement | null>, handlers: 
     mapStyleMode,
     setMapStyleMode,
     resetOrientation,
-    setCamera,
+    orbit,
     toggleMapMode,
   };
 }

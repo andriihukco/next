@@ -11,6 +11,16 @@ const SATELLITE_ATTRIBUTION = "Tiles © Esri, Maxar, Earthstar Geographics";
 /** Source of the OpenFreeMap base style. App layers use the `wayme-` prefix and are never touched here. */
 const BASE_SOURCE = "openmaptiles";
 
+/** Preview tile for the map type picker: one imagery tile over the city center. */
+export function satellitePreviewUrl(center: [number, number], zoom: number): string {
+  const [lon, lat] = center;
+  const scale = 2 ** zoom;
+  const x = Math.floor(((lon + 180) / 360) * scale);
+  const latRad = (lat * Math.PI) / 180;
+  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * scale);
+  return SATELLITE_TILES.replace("{z}", String(zoom)).replace("{y}", String(y)).replace("{x}", String(x));
+}
+
 /** Adds the imagery layer under the base style. Safe to call more than once. */
 export function addSatelliteLayer(map: MapLibreMap): void {
   if (map.getSource(SATELLITE_SOURCE)) return;

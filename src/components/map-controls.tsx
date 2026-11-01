@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { Button } from "./ui/button";
-import { LocateFixed, MaterialIcon } from "./ui/material-icon";
+import { Label } from "./ui/label";
+import { MaterialIcon } from "./ui/material-icon";
+import { Switch } from "./ui/switch";
 import { Toggle } from "./ui/toggle";
+import { CENTER } from "../lib/app-constants";
 import { CITY_PLACE_CATEGORY_COLORS, cityPlaceCategories, type CityPlaceCategory } from "../lib/city-places";
+import { satellitePreviewUrl, type MapStyleMode } from "../lib/map-style-mode";
 
 /** Button steps: one press turns the view 15° and tilts it 10°. */
 const STEP_BEARING = 15;
@@ -11,17 +15,26 @@ const STEP_PITCH = 10;
 const DRAG_BEARING = 0.4;
 const DRAG_PITCH = 0.25;
 
+/** Imagery preview for the map type tiles: one tile over the city center. */
+const SATELLITE_PREVIEW = satellitePreviewUrl(CENTER, 15);
+
+const MAP_STYLE_OPTIONS: { mode: MapStyleMode; label: string; icon: string }[] = [
+  { mode: "standard", label: "Стандартна", icon: "map" },
+  { mode: "hybrid", label: "Гібридна", icon: "layers" },
+  { mode: "satellite", label: "Супутник", icon: "satellite_alt" },
+];
+
 type MapControlsProps = {
   hidden: boolean;
   pitch: number;
   bearing: number;
-  terrainEnabled: boolean;
-  onToggleTerrain: () => void;
+  mapStyleMode: MapStyleMode;
+  onChangeMapStyle: (mode: MapStyleMode) => void;
   onResetOrientation: () => void;
   onToggleMapMode: () => void;
   /** Turns the bearing and tilts the pitch by degrees. Duration 0 applies at once (drags). */
   onOrbit: (bearingDelta: number, pitchDelta: number, duration: number) => void;
-  /** Called when the camera popover opens, so the mobile sheet can drop out of its way. */
+  /** Called when the camera panel opens, so the mobile sheet can drop out of its way. */
   onCameraOpen: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -34,13 +47,36 @@ type MapControlsProps = {
   onClearLayers: () => void;
 };
 
-/** Floating map controls: compass, 2D/3D, terrain, camera popover, zoom, locate, and map layer chips. */
+/** Closes a popover on an outside click or Escape. Runs only while the popover is open. */
+function useDismissOnOutside(
+  open: boolean,
+  setOpen: (open: boolean) => void,
+  ref: RefObject<HTMLDivElement | null>,
+): void {
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (event: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKey = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open, setOpen, ref]);
+}
+
+/** Floating map controls, top to bottom: map type and location, compass, camera, zoom, layers. */
 export function MapControls({
   hidden,
   pitch,
   bearing,
-  terrainEnabled,
-  onToggleTerrain,
+  mapStyleMode,
+  onChangeMapStyle,
   onResetOrientation,
   onToggleMapMode,
   onOrbit,
@@ -55,26 +91,15 @@ export function MapControls({
   onToggleLayerCategory,
   onClearLayers,
 }: MapControlsProps) {
+  const [styleOpen, setStyleOpen] = useState(false);
+  const styleRef = useRef<HTMLDivElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const cameraRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
+  useDismissOnOutside(styleOpen, setStyleOpen, styleRef);
+  useDismissOnOutside(cameraOpen, setCameraOpen, cameraRef);
 
-  // Close the camera popover on an outside click or Escape.
-  useEffect(() => {
-    if (!cameraOpen) return;
-    const handleOutside = (event: MouseEvent): void => {
-      if (cameraRef.current && !cameraRef.current.contains(event.target as Node)) setCameraOpen(false);
-    };
-    const handleKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setCameraOpen(false);
-    };
-    document.addEventListener("mousedown", handleOutside);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [cameraOpen]);
+  const is3D = pitch >= 0.5;
 
   const handleCenterDown = (event: PointerEvent<HTMLButtonElement>): void => {
     dragRef.current = { x: event.clientX, y: event.clientY };
@@ -93,49 +118,87 @@ export function MapControls({
 
   return (
     <div
-      className={`map-controls${pitch >= 0.5 ? " map-controls-3d" : " map-controls-2d"}`}
+      className={`map-controls${is3D ? " map-controls-3d" : " map-controls-2d"}`}
       role="group"
       aria-label="Керування мапою"
       data-tour="map-controls"
       hidden={hidden}
     >
-      <div className="map-control-set" role="group" aria-label="Вигляд мапи">
-        <Button
-          type="button"
-          variant="ghost"
-          className="map-control map-compass"
-          aria-label="Компас: повернути карту на північ"
-          title="Компас: повернути карту на північ"
-          onClick={onResetOrientation}
-        >
-          <span className="map-compass-needle" style={{ transform: `rotate(${-bearing}deg)` }}>
-            <MaterialIcon name="navigation" size={20} />
-          </span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="map-control map-mode-control"
-          aria-label={pitch < 0.5 ? "Перейти до 3D-вигляду" : "Перейти до вигляду 2D зверху"}
-          aria-pressed={pitch >= 0.5}
-          title={pitch < 0.5 ? "Перейти до 3D-вигляду" : "Перейти до вигляду 2D зверху"}
-          onClick={onToggleMapMode}
-        >
-          3D
-        </Button>
-        {pitch >= 0.5 && (
+      <div className="map-control-set" role="group" aria-label="Карта і місцезнаходження">
+        <div className="map-style-wrap" ref={styleRef}>
           <Button
             type="button"
             variant="ghost"
-            className={`map-control terrain-control${terrainEnabled ? " active" : ""}`}
-            aria-label={terrainEnabled ? "Вимкнути рельєф і лісові масиви" : "Увімкнути рельєф і лісові масиви"}
-            aria-pressed={terrainEnabled}
-            title={terrainEnabled ? "Вимкнути рельєф і лісові масиви" : "Увімкнути рельєф і лісові масиви"}
-            onClick={onToggleTerrain}
+            className={`map-control map-style-btn${styleOpen ? " active" : ""}`}
+            aria-label="Тип мапи"
+            aria-expanded={styleOpen}
+            aria-haspopup="dialog"
+            title="Тип мапи"
+            onClick={() => setStyleOpen((open) => !open)}
           >
-            <MaterialIcon name="terrain" size={20} />
+            <MaterialIcon name={MAP_STYLE_OPTIONS.find((option) => option.mode === mapStyleMode)?.icon ?? "map"} size={20} />
           </Button>
-        )}
+          {styleOpen && (
+            <div className="map-settings-popover map-style-popover" role="dialog" aria-label="Тип мапи">
+              <div className="map-style-options" role="group" aria-label="Тип мапи">
+                {MAP_STYLE_OPTIONS.map((option) => {
+                  const selected = option.mode === mapStyleMode;
+                  const isImagery = option.mode !== "standard";
+                  return (
+                    <button
+                      key={option.mode}
+                      type="button"
+                      className="map-style-tile"
+                      aria-pressed={selected}
+                      onClick={() => onChangeMapStyle(option.mode)}
+                    >
+                      <span
+                        className={`map-style-preview map-style-preview-${option.mode}`}
+                        style={isImagery ? { backgroundImage: `url("${SATELLITE_PREVIEW}")` } : undefined}
+                      >
+                        {!isImagery && <MaterialIcon name={option.icon} size={24} filled={selected} />}
+                      </span>
+                      <span className="map-style-label">{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="map-control map-locate-btn"
+          aria-label="Моє місцезнаходження"
+          title="Моє місцезнаходження"
+          data-tour="map-location"
+          onClick={onLocate}
+        >
+          <MaterialIcon name="my_location" size={20} />
+        </Button>
+      </div>
+
+      <Button
+        type="button"
+        variant="ghost"
+        className="map-compass"
+        aria-label="Компас: повернути карту на північ"
+        title="Компас: повернути карту на північ"
+        onClick={onResetOrientation}
+      >
+        <svg
+          className="map-compass-needle"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          style={{ transform: `rotate(${-bearing}deg)` }}
+        >
+          <polygon points="12,3 15.5,12 12,10.5 8.5,12" fill="var(--destructive)" />
+          <polygon points="12,21 15.5,12 12,13.5 8.5,12" fill="var(--muted-foreground)" />
+        </svg>
+      </Button>
+
+      <div className="map-control-set" role="group" aria-label="Камера">
         <div className="map-camera-wrap" ref={cameraRef}>
           <Button
             type="button"
@@ -150,12 +213,22 @@ export function MapControls({
               setCameraOpen((open) => !open);
             }}
           >
-            <MaterialIcon name="photo_camera" size={20} />
+            <MaterialIcon name="360" size={20} />
           </Button>
           {cameraOpen && (
             <div className="map-settings-popover map-camera-popover" role="dialog" aria-label="Камера">
               <div className="map-settings-header">
                 <span className="map-settings-title">Камера</span>
+                <div className="map-camera-3d">
+                  <Label htmlFor="map-3d-switch">3D</Label>
+                  <Switch
+                    id="map-3d-switch"
+                    checked={is3D}
+                    onCheckedChange={(checked) => {
+                      if (checked !== is3D) onToggleMapMode();
+                    }}
+                  />
+                </div>
               </div>
               <div className="map-camera-pad" role="group" aria-label="Нахил і поворот карти">
                 <span className="map-camera-label map-camera-label-top" aria-hidden="true">Нахил до горизонту</span>
@@ -191,12 +264,13 @@ export function MapControls({
           )}
         </div>
       </div>
+
       <div className="map-control-set map-zoom-controls" role="group" aria-label="Масштаб">
         <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={onZoomIn}><MaterialIcon name="add" size={22} /></Button>
         <Button type="button" variant="ghost" className="map-control" aria-label="Зменшити масштаб" title="Зменшити масштаб" onClick={onZoomOut}><MaterialIcon name="remove" size={22} /></Button>
       </div>
-      <div className="map-control-set" role="group" aria-label="Додаткові дії">
-        <Button type="button" variant="ghost" className="map-control" aria-label="Моє місцезнаходження" title="Моє місцезнаходження" data-tour="map-location" onClick={onLocate}><LocateFixed size={20} /></Button>
+
+      <div className="map-control-set" role="group" aria-label="Шари">
         <div className="map-settings-wrap" ref={settingsRef}>
           <Button
             type="button"

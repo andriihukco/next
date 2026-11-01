@@ -334,8 +334,8 @@ export default function App() {
         hidden={activeView === "admin"}
         pitch={map.mapPitch}
         bearing={map.mapBearing}
-        terrainEnabled={map.terrainEnabled}
-        onToggleTerrain={() => map.setTerrainEnabled((enabled) => !enabled)}
+        mapStyleMode={map.mapStyleMode}
+        onChangeMapStyle={map.setMapStyleMode}
         onResetOrientation={map.resetOrientation}
         onToggleMapMode={map.toggleMapMode}
         onOrbit={map.orbit}
