@@ -5,6 +5,7 @@ import "./legal.css";
 export function LegalFooter({ current }: { current?: LegalSlug }) {
   return (
     <nav className="legal-footer" aria-label="Правова інформація">
+      <a href="/updates">Що нового</a>
       {LEGAL_ORDER.map((slug) => (
         <a key={slug} href={`/${slug}`} aria-current={slug === current ? "page" : undefined}>
           {LEGAL_PAGES[slug].title}

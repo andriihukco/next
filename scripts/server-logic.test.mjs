@@ -7,6 +7,7 @@
 import { cumulativeShapeLengths, mapMatchPoint, projectOntoShape } from "../server/lib/geo.mjs";
 import { normalizeRoute, parseCsv } from "../server/lib/gtfs-parse.mjs";
 import { parseLvivAirAlert } from "../server/lib/air-alert-parse.mjs";
+import { parseReleaseNote, releaseRowFrom } from "../server/lib/release-note.mjs";
 
 const results = [];
 const check = (label, passed) => {
@@ -63,6 +64,22 @@ check("a drone threat over Lviv is kept", active.threats.length === 1 && active.
 const clear = parseLvivAirAlert(report("**Волинська область** [yellow] since 12:00"));
 check("no Lviv block means clear", clear.status === "clear" && clear.level === null);
 check("the report time is kept", clear.reportAt === "2026-11-01T15:00:00+03:00");
+
+const template = `## Release note
+
+<!-- Read by the release-notes job after merge. -->
+Release note (uk): %s
+Category: %s
+`;
+const note = (title, category) => template.replace("%s", title).replace("%s", category);
+const filled = parseReleaseNote(note("Додали сторінку «Що нового».", "new"));
+check("a filled release note is read", filled?.title_uk === "Додали сторінку «Що нового»." && filled.category === "new");
+check("the untouched template is ignored", parseReleaseNote(note("", "new | improved | fixed | internal")) === null);
+check("an unknown category is ignored", parseReleaseNote(note("Щось", "feature")) === null);
+check("a PR without a body is ignored", parseReleaseNote(null) === null);
+check("a valid CI payload becomes a row", releaseRowFrom({ pr_number: 12, category: "fixed", title_uk: "Виправили маршрут.", commit_sha: "abc1234" }).row?.pr_number === 12);
+check("a non-https preview link is rejected", Boolean(releaseRowFrom({ pr_number: 1, category: "new", title_uk: "X", preview_url: "http://x" }).error));
+check("a bad SHA is rejected", Boolean(releaseRowFrom({ pr_number: 1, category: "new", title_uk: "X", commit_sha: "not-a-sha" }).error));
 
 console.log(results.join("\n"));
 if (results.some((line) => line.startsWith("FAIL"))) process.exit(1);

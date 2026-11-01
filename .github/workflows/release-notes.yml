@@ -1,0 +1,25 @@
+name: Release notes
+
+# After a PR merges into main, post its «Release note (uk)» line to /updates (platform-plan S7).
+# Skips quietly until RELEASES_API_URL and RELEASES_CI_TOKEN are set in the repository secrets.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  post:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      RELEASES_API_URL: ${{ secrets.RELEASES_API_URL }}
+      RELEASES_CI_TOKEN: ${{ secrets.RELEASES_CI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Post the release note
+        if: env.RELEASES_API_URL != '' && env.RELEASES_CI_TOKEN != ''
+        run: node scripts/post-release-note.mjs

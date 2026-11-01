@@ -1,0 +1,81 @@
+/* «Що нового» (platform-plan S7). Page frame comes from legal.css; tokens only. */
+
+.updates-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.updates-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+}
+
+.updates-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.updates-item {
+  display: grid;
+  gap: 4px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+.updates-item h2 {
+  margin: 0;
+  font-size: var(--type-title);
+  line-height: 1.3;
+}
+
+.updates-item p {
+  margin: 0;
+  color: var(--text-default);
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+
+.updates-item time {
+  color: var(--muted-foreground);
+  font-size: var(--type-caption);
+}
+
+.updates-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+
+.updates-badge.is-new {
+  border-color: var(--border-info);
+  color: var(--text-info);
+}
+
+.updates-badge.is-improved {
+  border-color: var(--border-success);
+  color: var(--text-success);
+}
+
+.updates-badge.is-fixed {
+  border-color: var(--border-warning);
+  color: var(--text-warning);
+}

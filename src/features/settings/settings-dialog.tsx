@@ -37,6 +37,7 @@ export type View = "main" | "profile" | "account";
 
 // Legal and trust pages (platform-plan S8).
 const ABOUT_LINKS = [
+  { href: "/updates", icon: "new_releases", title: "Що нового" },
   { href: "/terms", icon: "gavel", title: "Умови користування" },
   { href: "/privacy", icon: "shield_person", title: "Політика конфіденційності" },
   { href: "/sources", icon: "dataset", title: "Джерела даних" },
