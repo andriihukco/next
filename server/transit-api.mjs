@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createPlaceImageService } from './place-images.mjs';
 import { signInWithTelegram } from './auth-telegram.mjs';
+import { deleteAccount } from './account.mjs';
 import { dispatchAirAlertPush, sendTestPush } from './push.mjs';
 import { getAirAlert, loadAirAlert } from './feeds/air-alert.mjs';
 import { loadBuildings } from './feeds/buildings.mjs';
@@ -82,6 +83,13 @@ export async function handleApiRequest(req, res) {
       return;
     }
     const result = await signInWithTelegram(payload);
+    sendJson(res, result.status, result.body, { 'Cache-Control': 'no-store' });
+    return;
+  }
+
+  if (pathname === '/api/account/delete' && req.method === 'POST') {
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const result = await deleteAccount(token);
     sendJson(res, result.status, result.body, { 'Cache-Control': 'no-store' });
     return;
   }

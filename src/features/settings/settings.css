@@ -285,3 +285,31 @@
     padding-top: 12px;
   }
 }
+
+/* Account deletion confirm and the sign-up consent line (platform-plan S8). */
+.settings-delete-account {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-danger);
+  border-radius: var(--radius-md);
+}
+
+.settings-delete-account p {
+  margin: 0;
+  color: var(--text-danger);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.settings-legal-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
+
+.settings-legal-note a {
+  color: var(--text-accent);
+}

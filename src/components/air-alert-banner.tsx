@@ -117,7 +117,7 @@ export function AirAlertBanner({
             </Button>
           </div>
           <small className="air-alert-source">
-            Офіційні повідомлення мають пріоритет.
+            Дані alerts.in.ua. Це не офіційна система оповіщення: слухайте сирени й офіційні канали.
           </small>
           <div className="shelter-nearest">
             {shelterLoadState === "loading" ? (

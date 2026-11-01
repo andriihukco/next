@@ -35,6 +35,14 @@ type SettingsDialogProps = {
 
 export type View = "main" | "profile" | "account";
 
+// Legal and trust pages (platform-plan S8).
+const ABOUT_LINKS = [
+  { href: "/terms", icon: "gavel", title: "Умови користування" },
+  { href: "/privacy", icon: "shield_person", title: "Політика конфіденційності" },
+  { href: "/sources", icon: "dataset", title: "Джерела даних" },
+  { href: "/accessibility", icon: "accessibility_new", title: "Доступність" },
+] as const;
+
 
 /** Profile and settings. On mobile it is a full-height sheet; on desktop a side panel. */
 export function SettingsDialog({
@@ -197,6 +205,14 @@ export function SettingsDialog({
                     onReplayOnboarding();
                   }}
                 />
+                {ABOUT_LINKS.map((link) => (
+                  <ListRow
+                    key={link.href}
+                    leading={<MaterialIcon name={link.icon} size={20} />}
+                    title={link.title}
+                    onClick={() => window.location.assign(link.href)}
+                  />
+                ))}
               </DetailSection>
 
               <DetailSection title="Дані на пристрої">

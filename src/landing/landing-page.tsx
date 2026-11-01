@@ -4,6 +4,7 @@ import { BrandLogo } from "../components/ui/brand-logo";
 import { MaterialIcon } from "../components/ui/material-icon";
 import { spring } from "../lib/motion";
 import "./landing.css";
+import { LegalFooter } from "../legal/legal-page";
 import {
   APP_HREF,
   ROUTE_D,
@@ -378,7 +379,8 @@ export function LandingPage() {
               <a href="#data">Дані</a>
             </nav>
           </div>
-                  </footer>
+          <LegalFooter />
+        </footer>
       </div>
     </MotionConfig>
   );
