@@ -1,7 +1,6 @@
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { resolveColor } from "./lib/design-colors";
 import { recolorMapForTheme, snapshotMapPalette } from "./lib/map-theme";
-import { FILLED_ICON_FAMILY, loadFilledIconFont } from "./lib/material-symbols-filled";
 import { useResolvedTheme } from "./lib/use-theme";
 import { usePasswordRecovery } from "./lib/supabase";
 import * as maplibregl from "maplibre-gl";
@@ -11,12 +10,7 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import type {
-  FeatureCollection,
-  LineString,
-  Point,
-  Position,
-} from "geojson";
+import type { Point } from "geojson";
 import {
   Bus,
   ChevronRight,
@@ -53,7 +47,7 @@ import {
 import { Input } from "./components/ui/input";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { apiUrl } from "./lib/api";
-import { EntityDetail, type InfoRow } from "./components/entity-detail";
+import { EntityDetail } from "./components/entity-detail";
 import { NavigationPanel, type NavDestination } from "./components/navigation-panel";
 import { useSavedItems } from "./lib/use-saved-items";
 import {
@@ -86,7 +80,6 @@ import {
   DEFAULT_FIXTURE_SETTINGS,
   getScenarioLimits,
   hasFixtureReplay,
-  isFixtureScenario,
   readFixtureSettings,
   saveFixtureSettings,
   type FixtureSettings,
@@ -126,356 +119,64 @@ import {
   readOnboardingValue,
   saveOnboardingValue,
 } from "./features/onboarding/storage";
+import type {
+  AdminDatasetId,
+  AirAlert,
+  AppView,
+  DetailReturnView,
+  Shelter,
+  ShelterLoadState,
+  Stop,
+  StopTab,
+  Vehicle,
+  VehicleFilter,
+  VehicleType,
+} from "./lib/app-types";
+import {
+  isAirAlert,
+  isArrayOf,
+  isCityEvent,
+  isCityPlace,
+  isFixtureSettings,
+  isNumber,
+  isShelter,
+  isStop,
+  isVehicle,
+} from "./lib/app-validators";
+import {
+  persistAdminOverride,
+  readAdminOverride,
+  readAdminOverrides,
+} from "./lib/admin-overrides";
+import {
+  CENTER,
+  CITY_UPDATES_ENDPOINT,
+  LVIV_REGION_BOUNDS,
+  MAP_STYLE,
+  TELEGRAM_CHANNEL_URL,
+} from "./lib/app-constants";
+import { cityPlacePinImage, pinImageId } from "./lib/map-pins";
+import {
+  formatDistance,
+  label,
+  minutesAway,
+  placeInfoRows,
+  safeStopWebsite,
+} from "./lib/app-formatters";
+import {
+  animateRouteProgress,
+  cityPlaceFeatures,
+  routeFeatures,
+  shelterFeatures,
+  stopFeatures,
+  updateGeoJSONSource,
+  vehicleFeatures,
+} from "./lib/map-features";
 
-type VehicleType = "tram" | "trolleybus" | "bus" | "taxi";
-type AppView = "city" | "map" | "admin";
-type DetailReturnView = "city" | "map";
 // MapLibre looks for its worker next to its own bundle chunk, where the build does not emit it.
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 const BRAND_BLUE = "var(--brand-blue)";
-type VehicleFilter = VehicleType;
-type Vehicle = {
-  id: string;
-  tripId: string;
-  route: string;
-  destination: string;
-  type: VehicleType;
-  lat: number;
-  lng: number;
-  speed: number;
-  bearing: number;
-  plate: string;
-  lowFloor: boolean;
-  mapMatched: boolean;
-  /** Next stop on the vehicle's trip, or null when unknown or at the end of the route. */
-  nextStop?: string | null;
-  fixtureRouteId?: string;
-  dataSource?: "test";
-  routeProgress?: number;
-};
-type Stop = {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  routes: string[];
-  address?: string;
-  facilities?: string[];
-  phone?: string;
-  website?: string;
-  rating?: number;
-  reviewCount?: number;
-  timetable?: { route: string; departure: string }[];
-};
-type StopTab = "overview" | "schedule" | "facilities" | "contacts" | "reviews";
-type AirAlertStatus = "active" | "clear" | "unknown";
-type AirAlertThreatKind = "drone" | "bomb" | "other";
-type AirAlertThreat = {
-  time: string;
-  kind: AirAlertThreatKind;
-  kindLabel: string;
-  place: string;
-  placeUk: string;
-  note: string;
-};
-type AirAlert = {
-  status: AirAlertStatus;
-  level: "red" | "yellow" | null;
-  since?: string | null;
-  sinceText?: string | null;
-  areasAffected?: string[];
-  threats?: AirAlertThreat[];
-  reportAt?: string | null;
-  updatedAt: number;
-  source: string;
-};
-type Shelter = {
-  id: string;
-  settlement: string;
-  address: string;
-  district: string;
-  objectType: string;
-  status: string;
-  access24_7: boolean;
-  capacity: number | null;
-  lat: number;
-  lng: number;
-};
-type ShelterLoadState = "loading" | "ready" | "error";
-
-type AdminDatasetId =
-  | "vehicles"
-  | "stops"
-  | "shelters"
-  | "places"
-  | "education"
-  | "events"
-  | "air-alert"
-  | "fixture-settings";
-type AdminOverrides = Partial<Record<AdminDatasetId, unknown>>;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-const isString = (value: unknown): value is string =>
-  typeof value === "string";
-const isNumber = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
-const isStringArray = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every(isString);
-const isVehicle = (value: unknown): value is Vehicle =>
-  isRecord(value) &&
-  isString(value.id) &&
-  isString(value.tripId) &&
-  isString(value.route) &&
-  isString(value.destination) &&
-  (value.type === "bus" ||
-    value.type === "tram" ||
-    value.type === "trolleybus") &&
-  isNumber(value.lat) &&
-  isNumber(value.lng) &&
-  isNumber(value.speed) &&
-  isNumber(value.bearing) &&
-  isString(value.plate) &&
-  typeof value.lowFloor === "boolean" &&
-  typeof value.mapMatched === "boolean" &&
-  (value.fixtureRouteId === undefined || isString(value.fixtureRouteId)) &&
-  (value.dataSource === undefined || value.dataSource === "test");
-const isStop = (value: unknown): value is Stop =>
-  isRecord(value) &&
-  isString(value.id) &&
-  isString(value.name) &&
-  isNumber(value.lat) &&
-  isNumber(value.lng) &&
-  isStringArray(value.routes) &&
-  (value.address === undefined || isString(value.address)) &&
-  (value.facilities === undefined || isStringArray(value.facilities)) &&
-  (value.phone === undefined || isString(value.phone)) &&
-  (value.website === undefined || isString(value.website)) &&
-  (value.rating === undefined ||
-    (isNumber(value.rating) && value.rating >= 0 && value.rating <= 5)) &&
-  (value.reviewCount === undefined ||
-    (isNumber(value.reviewCount) &&
-      Number.isInteger(value.reviewCount) &&
-      value.reviewCount >= 0)) &&
-  (value.timetable === undefined ||
-    (Array.isArray(value.timetable) &&
-      value.timetable.every(
-        (entry) =>
-          isRecord(entry) &&
-          isString(entry.route) &&
-          isString(entry.departure),
-      )));
-const isShelter = (value: unknown): value is Shelter =>
-  isRecord(value) &&
-  isString(value.id) &&
-  isString(value.settlement) &&
-  isString(value.address) &&
-  isString(value.district) &&
-  isString(value.objectType) &&
-  isString(value.status) &&
-  typeof value.access24_7 === "boolean" &&
-  (value.capacity === null || isNumber(value.capacity)) &&
-  isNumber(value.lat) &&
-  isNumber(value.lng);
-const isCityPlace = (value: unknown): value is CityPlace =>
-  isRecord(value) &&
-  isString(value.id) &&
-  isString(value.name) &&
-  isString(value.category) &&
-  Object.prototype.hasOwnProperty.call(
-    CITY_PLACE_CATEGORY_COLORS,
-    value.category,
-  ) &&
-  isString(value.categoryLabel) &&
-  isNumber(value.lat) &&
-  isNumber(value.lng) &&
-  isString(value.address) &&
-  isRecord(value.details) &&
-  Object.values(value.details).every(isString) &&
-  (value.imageUrl === undefined || isString(value.imageUrl));
-const isCoordinates = (value: unknown): value is [number, number] =>
-  Array.isArray(value) &&
-  value.length === 2 &&
-  isNumber(value[0]) &&
-  isNumber(value[1]);
-const isCityEvent = (value: unknown): value is CityEvent =>
-  isRecord(value) &&
-  isString(value.id) &&
-  isString(value.day) &&
-  isString(value.month) &&
-  isString(value.time) &&
-  isString(value.name) &&
-  isString(value.venue) &&
-  isString(value.summary) &&
-  isString(value.category) &&
-  isCoordinates(value.coordinates);
-const isAirAlertThreat = (value: unknown): value is AirAlertThreat =>
-  isRecord(value) &&
-  isString(value.time) &&
-  (value.kind === "drone" || value.kind === "bomb" || value.kind === "other") &&
-  isString(value.kindLabel) &&
-  isString(value.place) &&
-  isString(value.placeUk) &&
-  isString(value.note);
-const isAirAlert = (value: unknown): value is AirAlert =>
-  isRecord(value) &&
-  (value.status === "active" ||
-    value.status === "clear" ||
-    value.status === "unknown") &&
-  (value.level === "red" || value.level === "yellow" || value.level === null) &&
-  isNumber(value.updatedAt) &&
-  isString(value.source) &&
-  (value.since === undefined || value.since === null || isString(value.since)) &&
-  (value.sinceText === undefined ||
-    value.sinceText === null ||
-    isString(value.sinceText)) &&
-  (value.reportAt === undefined ||
-    value.reportAt === null ||
-    isString(value.reportAt)) &&
-  (value.areasAffected === undefined || isStringArray(value.areasAffected)) &&
-  (value.threats === undefined || isArrayOf(isAirAlertThreat)(value.threats));
-const isFixtureSettings = (value: unknown): value is FixtureSettings =>
-  isRecord(value) &&
-  typeof value.enabled === "boolean" &&
-  isFixtureScenario(value.scenario) &&
-  isNumber(value.vehicleCount) &&
-  Number.isInteger(value.vehicleCount) &&
-  isNumber(value.averageSpeed) &&
-  isNumber(value.seed) &&
-  Number.isInteger(value.seed);
-
-const isArrayOf =
-  <T,>(guard: (value: unknown) => value is T) =>
-  (value: unknown): value is T[] =>
-    Array.isArray(value) && value.every(guard);
-
-const readAdminOverrides = (): AdminOverrides => {
-  try {
-    const saved = localStorage.getItem(ADMIN_OVERRIDES_KEY);
-    if (!saved) return {};
-    const parsed: unknown = JSON.parse(saved);
-    if (!isRecord(parsed)) {
-      console.error("Saved admin overrides are invalid; ignoring them.");
-      return {};
-    }
-    return parsed as AdminOverrides;
-  } catch (error) {
-    console.error("Could not read local admin overrides.", error);
-    return {};
-  }
-};
-
-const readAdminOverride = <T,>(
-  id: AdminDatasetId,
-  fallback: T,
-  guard: (value: unknown) => value is T,
-): T => {
-  if (!isDevRouteActive()) return fallback;
-  const override = readAdminOverrides()[id];
-  if (override === undefined) return fallback;
-  if (guard(override)) return override;
-  console.error(`Saved admin override for ${id} is invalid; ignoring it.`);
-  return fallback;
-};
-
-const persistAdminOverride = (id: AdminDatasetId, value: unknown): string | null => {
-  if (!isDevRouteActive()) {
-    return "Редагування доступне лише на маршруті /dev.";
-  }
-  try {
-    const overrides = readAdminOverrides();
-    localStorage.setItem(
-      ADMIN_OVERRIDES_KEY,
-      JSON.stringify({ ...overrides, [id]: value }),
-    );
-    return null;
-  } catch (error) {
-    console.error(`Could not save the ${id} admin override.`, error);
-    return "Зміни не збережено. Перевірте доступ до локального сховища.";
-  }
-};
-
-const CENTER: [number, number] = [24.0297, 49.8397];
-const LVIV_REGION_BOUNDS: [[number, number], [number, number]] = [
-  [22.6, 48.5],
-  [25.6, 50.6],
-];
-const CITY_UPDATES_ENDPOINT = import.meta.env.VITE_CITY_UPDATES_ENDPOINT?.trim();
-const TELEGRAM_CHANNEL_URL = (() => {
-  const configuredUrl = import.meta.env.VITE_TELEGRAM_CHANNEL_URL?.trim();
-  if (!configuredUrl) return "";
-  try {
-    const url = new URL(configuredUrl);
-    if (url.protocol === "https:" && url.hostname === "t.me") {
-      return url.href;
-    }
-  } catch (error) {
-    console.error("The configured Telegram channel URL is invalid.", error);
-    return "";
-  }
-  console.error("The Telegram channel URL must be an HTTPS t.me link.");
-  return "";
-})();
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-const pinImageId = (category: string, active = false): string =>
-  active ? `wayme-place-${category}-active` : `wayme-place-${category}`;
-
-// Active pins draw the filled glyph; the rest draw the outlined one.
-const cityPlacePinImage = async (
-  category: CityPlaceCategory,
-  active = false,
-): Promise<ImageData> => {
-  const iconName = cityPlaceIcons[category];
-  const filled = active && (await loadFilledIconFont());
-  const family = filled ? FILLED_ICON_FAMILY : "Material Symbols Rounded";
-  const font = `500 18px "${family}"`;
-  await document.fonts.load(font, iconName);
-  if (!document.fonts.check(font, iconName)) {
-    throw new Error("The Material Symbols font is not available.");
-  }
-  const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 80;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Could not create the map pin canvas.");
-  context.scale(2, 2);
-  const pin = new Path2D(
-    "M16 1C7.7 1 1 7.6 1 15.8 1 26.4 16 39 16 39s15-12.6 15-23.2C31 7.6 24.3 1 16 1Z",
-  );
-  context.fillStyle = resolveColor(CITY_PLACE_CATEGORY_COLORS[category]);
-  context.strokeStyle = resolveColor("var(--card)");
-  context.lineWidth = 1.5;
-  context.fill(pin);
-  context.stroke(pin);
-  context.font = font;
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillStyle = resolveColor("var(--card)");
-  context.fillText(iconName, 16, 16);
-  return context.getImageData(0, 0, canvas.width, canvas.height);
-};
-const label = (type: VehicleType): string =>
-  type === "tram" ? "Трамвай" : type === "trolleybus" ? "Тролейбус" : "Автобус";
-const PLACE_INFO_ICONS: Record<string, string> = {
-  "Адреса": "location_on",
-  "Години роботи": "schedule",
-  "Висота": "height",
-  "Поверхи": "layers",
-  "Оператор": "business",
-  "Телефон": "call",
-};
-
-/** Source tags as quick facts. Website and phone are handled by the detail layout. */
-function placeInfoRows(place: CityPlace): InfoRow[] {
-  return Object.entries(place.details)
-    .filter(([label]) => label !== "Сайт" && label !== "Телефон")
-    .map(([label, value]) => ({
-      icon: PLACE_INFO_ICONS[label] ?? "info",
-      label,
-      value,
-    }));
-}
 
 function SidebarStepHeader({
   title,
@@ -486,197 +187,6 @@ function SidebarStepHeader({
 }) {
   return <SheetNavBar title={title} onBack={onBack} />;
 }
-const minutesAway = (vehicle: Vehicle, stop: Stop): number =>
-  Math.max(
-    1,
-    Math.round(
-      new maplibregl.LngLat(vehicle.lng, vehicle.lat).distanceTo(
-        new maplibregl.LngLat(stop.lng, stop.lat),
-      ) /
-        Math.max(vehicle.speed, 12) /
-        60,
-    ),
-  );
-
-type VehicleFeatureProperties = Pick<
-  Vehicle,
-  "id" | "route" | "plate" | "type"
-> & { selected: boolean };
-type StopFeatureProperties = Pick<Stop, "id" | "name">;
-type ShelterFeatureProperties = Pick<Shelter, "id" | "address"> & {
-  nearest: boolean;
-  readyOrRecommended: boolean;
-};
-type CityPlaceFeatureProperties = Pick<
-  CityPlace,
-  "id" | "name" | "category" | "categoryLabel" | "address"
-> & { selected: boolean };
-
-const vehicleFeatures = (
-  vehicles: Vehicle[],
-  selectedId?: string,
-): FeatureCollection<Point, VehicleFeatureProperties> => ({
-  type: "FeatureCollection",
-  features: vehicles.map((vehicle) => ({
-    type: "Feature",
-    geometry: { type: "Point", coordinates: [vehicle.lng, vehicle.lat] },
-    properties: {
-      id: vehicle.id,
-      route: vehicle.route,
-      plate: vehicle.plate,
-      type: vehicle.type,
-      selected: vehicle.id === selectedId,
-    },
-  })),
-});
-
-const stopFeatures = (
-  stops: Stop[],
-): FeatureCollection<Point, StopFeatureProperties> => ({
-  type: "FeatureCollection",
-  features: stops.map((stop) => ({
-    type: "Feature",
-    geometry: { type: "Point", coordinates: [stop.lng, stop.lat] },
-    properties: { id: stop.id, name: stop.name },
-  })),
-});
-
-const shelterFeatures = (
-  shelters: Shelter[],
-  nearestId?: string,
-): FeatureCollection<Point, ShelterFeatureProperties> => ({
-  type: "FeatureCollection",
-  features: shelters.map((shelter) => {
-    const status = shelter.status.trim().toLocaleLowerCase("uk-UA");
-    return {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [shelter.lng, shelter.lat] },
-      properties: {
-        id: shelter.id,
-        address: shelter.address,
-        nearest: shelter.id === nearestId,
-        readyOrRecommended:
-          shelter.access24_7 &&
-          (status === "готове" || status.startsWith("рекомендоване")),
-      },
-    };
-  }),
-});
-
-const cityPlaceFeatures = (
-  places: CityPlace[],
-  selectedId?: string,
-): FeatureCollection<Point, CityPlaceFeatureProperties> => ({
-  type: "FeatureCollection",
-  features: places.map((place) => ({
-    type: "Feature",
-    id: place.id,
-    geometry: { type: "Point", coordinates: [place.lng, place.lat] },
-    properties: {
-      id: place.id,
-      name: place.name,
-      category: place.category,
-      categoryLabel: place.categoryLabel,
-      address: place.address,
-      selected: place.id === selectedId,
-    },
-  })),
-});
-
-const formatDistance = (meters: number): string =>
-  meters >= 1000
-    ? `${new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 1 }).format(meters / 1000)} км`
-    : `${Math.round(meters / 10) * 10} м`;
-
-const safeStopWebsite = (value?: string): string | null => {
-  if (!value) return null;
-  try {
-    const url = new URL(value.startsWith("http") ? value : `https://${value}`);
-    return url.protocol === "https:" ? url.href : null;
-  } catch {
-    return null;
-  }
-};
-
-const routeFeatures = (
-  coordinates: Position[] = [],
-): FeatureCollection<LineString> => ({
-  type: "FeatureCollection",
-  features:
-    coordinates.length > 1
-      ? [
-          {
-            type: "Feature",
-            geometry: { type: "LineString", coordinates },
-            properties: {},
-          },
-        ]
-      : [],
-});
-
-const updateGeoJSONSource = (
-  map: MapLibreMap,
-  id: string,
-  data: FeatureCollection,
-): void => {
-  const source = map.getSource(id);
-  if (source instanceof GeoJSONSource) source.setData(data);
-};
-
-const animateRouteProgress = (
-  map: MapLibreMap,
-  coordinates: [number, number][],
-  color: string,
-): (() => void) => {
-  if (coordinates.length < 2) return () => {};
-  const distances = [0];
-  for (let index = 1; index < coordinates.length; index += 1) {
-    const previous = coordinates[index - 1];
-    const current = coordinates[index];
-    distances.push(
-      distances[index - 1] +
-        new maplibregl.LngLat(previous[0], previous[1]).distanceTo(
-          new maplibregl.LngLat(current[0], current[1]),
-        ),
-    );
-  }
-  const routeLength = distances[distances.length - 1];
-  if (!routeLength) return () => {};
-
-  const element = document.createElement("span");
-  element.className = "route-progress-marker";
-  element.setAttribute("aria-hidden", "true");
-  element.style.setProperty("--route-color", color);
-  const marker = new maplibregl.Marker({ element, anchor: "center" })
-    .setLngLat(coordinates[0])
-    .addTo(map);
-  const startedAt = performance.now();
-  let frame = 0;
-  const advance = (now: number): void => {
-    const distance = (((now - startedAt) * 9) / 1000) % routeLength;
-    let segment = distances.findIndex(
-      (value, index) => index > 0 && value >= distance,
-    );
-    if (segment < 1) segment = coordinates.length - 1;
-    const segmentStart = distances[segment - 1];
-    const segmentLength = distances[segment] - segmentStart;
-    const progress =
-      segmentLength > 0 ? (distance - segmentStart) / segmentLength : 0;
-    const [startLng, startLat] = coordinates[segment - 1];
-    const [endLng, endLat] = coordinates[segment];
-    marker.setLngLat([
-      startLng + (endLng - startLng) * progress,
-      startLat + (endLat - startLat) * progress,
-    ]);
-    frame = window.requestAnimationFrame(advance);
-  };
-  frame = window.requestAnimationFrame(advance);
-
-  return () => {
-    window.cancelAnimationFrame(frame);
-    marker.remove();
-  };
-};
 
 export default function App() {
   const devRouteActive = useDevRoute();
