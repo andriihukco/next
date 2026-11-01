@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
+import { tourTarget } from "../onboarding/onboarding";
 
 export type CitySection = "transport" | "places" | "education" | "services";
 
@@ -42,7 +43,7 @@ export function SectionTabs({ value, onChange }: { value: CitySection; onChange:
   };
 
   const content = (
-    <View style={styles.inner}>
+    <View style={styles.inner} ref={tourTarget("city-sections")} collapsable={false}>
       {SECTIONS.map((section) => {
         const active = section.id === value;
         return (

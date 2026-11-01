@@ -18,6 +18,7 @@ import { LVIV_REGION } from "../city-map";
 import { SATELLITE_ATTRIBUTION, satellitePreviewUrl, type MapStyleMode } from "../../lib/map-style";
 import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { categoryColor } from "../../lib/category-icons";
+import { tourTarget } from "../onboarding/onboarding";
 import { cityPlaceCategories } from "../../../../src/lib/city-places";
 
 /** Button steps: one press turns the view 15° and tilts it 10° (same as the web pad). */
@@ -106,7 +107,7 @@ export function MapControls({
 
   return (
     <>
-      <View style={[styles.column, { top }]} pointerEvents="box-none">
+      <View style={[styles.column, { top }]} pointerEvents="box-none" ref={tourTarget("map-controls")} collapsable={false}>
         <View style={styles.group}>
           <ControlButton
             icon={MAP_STYLE_OPTIONS.find((option) => option.mode === mapStyle)?.icon ?? "map"}
@@ -115,7 +116,9 @@ export function MapControls({
             onPress={() => setPanel("style")}
           />
           <View style={styles.divider} />
-          <ControlButton icon="my-location" label="Моє місцезнаходження" onPress={onLocate} />
+          <View ref={tourTarget("map-location")} collapsable={false}>
+            <ControlButton icon="my-location" label="Моє місцезнаходження" onPress={onLocate} />
+          </View>
         </View>
 
         <Pressable

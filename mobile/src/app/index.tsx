@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Onboarding, ONBOARDING_COMPLETE_KEY } from "../components/onboarding/onboarding";
 import * as Location from "expo-location";
 import { CityMap, LVIV_REGION, type MapCommands, type MapRegion, type Selection } from "../components/city-map";
 import { MapControls, MAX_LAYER_CATEGORIES, type MapControlsHandle } from "../components/map/map-controls";
@@ -46,6 +48,17 @@ export default function CityScreen() {
   const [routeShape, setRouteShape] = useState<{ latitude: number; longitude: number }[] | null>(null);
   const [locating, setLocating] = useState(false);
   const [section, setSection] = useState<CitySection>("transport");
+  // Onboarding on first launch, or again from Профіль («Показати знайомство ще раз» passes tour=1).
+  const { tour } = useLocalSearchParams<{ tour?: string }>();
+  const [onboarding, setOnboarding] = useState(false);
+  useEffect(() => {
+    if (tour === "1") {
+      setOnboarding(true);
+      return;
+    }
+    void AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY).then((done) => setOnboarding(done !== "1"));
+  }, [tour]);
+
   const [mapStyle, setMapStyle] = useState<MapStyleMode>("standard");
   const [layerCategories, setLayerCategories] = useState<ReadonlySet<string>>(new Set());
   const toggleLayer = (id: string) => {
@@ -260,6 +273,8 @@ export default function CityScreen() {
           </GlassSurface>
         </View>
       ) : null}
+
+      <Onboarding visible={onboarding} onDone={() => setOnboarding(false)} />
     </View>
   );
 }

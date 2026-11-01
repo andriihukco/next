@@ -33,6 +33,7 @@ const light = {
   glass: "rgba(255,255,255,0.94)",
   glassSoft: "rgba(255,255,255,0.86)",
   shadow: "#0f172a",
+  scrim: "rgba(13,24,19,0.48)",
 };
 
 export type Palette = Record<keyof typeof light, string>;
@@ -61,6 +62,7 @@ const dark: Palette = {
   glass: "rgba(23,34,29,0.94)",
   glassSoft: "rgba(23,34,29,0.86)",
   shadow: "#000000",
+  scrim: "rgba(0,0,0,0.6)",
 };
 
 export type ColorScheme = "light" | "dark";

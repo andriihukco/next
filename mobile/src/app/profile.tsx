@@ -181,7 +181,12 @@ export default function ProfileScreen() {
         </SettingsSection>
 
         <SettingsSection title="Про застосунок">
-          <SettingsRow icon="tour" title="Показати знайомство ще раз" onPress={() => router.push("/welcome")} />
+          <SettingsRow
+            icon="tour"
+            title="Показати знайомство ще раз"
+            onPress={() => router.replace({ pathname: "/", params: { tour: "1" } })}
+          />
+          <SettingsRow icon="directions-walk" title="Прогулянка центром" subtitle="Демо маршруту з прогресом ходьби" onPress={() => router.push("/welcome")} />
         </SettingsSection>
 
         <SettingsSection title="Дані на пристрої">
