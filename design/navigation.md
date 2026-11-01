@@ -60,4 +60,10 @@ The shell, sheet and tab bar are one React Native implementation for iOS and And
 
 ## Web
 
-The desktop layout stays: rail on the left, map in the middle, one inspector on the right (DESIGN.md §5). The web already keeps the map behind its panels; the same «Більше» list and the four tabs are the target when the web rail is rebuilt.
+Same four tabs and the same «Більше» list as mobile, in `src/components/city-guide.tsx` (`CITY_TABS`, `MORE_SECTION_IDS`) and `src/components/city-guide/more-list.tsx`.
+
+- **Desktop:** the rail is on the left, the map fills the rest, and the four tabs sit at the top of the rail. The rail shows one page at a time.
+- **Phone (≤ 800px):** the rail is a bottom sheet over the full-screen map. The tab row is at the top of the sheet. The sheet's peek snap is the tab row alone, so it minimises to the tab bar, as on mobile. Its half and full snaps show the page.
+- **Position:** on the web the tab row sits at the top of the sheet, and on mobile it sits at the bottom. The order, labels and behaviour match.
+
+Tab rules are the same as mobile: tapping the active tab returns to its root; tapping «Більше» shows its list; «Показати на мапі» returns to the map.

@@ -4,7 +4,8 @@ import { nearest, projectMomentum, rubberband, spring } from "../../lib/motion";
 
 export type SheetDetent = "peek" | "half" | "full";
 
-const PEEK_HEIGHT = 152;
+// Peek is the tab row only: the handle (24px) and the four tabs (76px). Design: design/navigation.md.
+const PEEK_HEIGHT = 100;
 const HALF_RATIO = 0.55;
 const DRAG_THRESHOLD = 6;
 

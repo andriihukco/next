@@ -1906,7 +1906,7 @@ body,
 }
 
 .city-section-nav {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .city-place-search {
@@ -2405,7 +2405,7 @@ body,
 
 @media (max-width: 800px) {
   .city-section-nav {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -10144,10 +10144,10 @@ body {
 
 @media (max-width: 420px) {
   .city-section-nav button {
-    min-width: 110px;
+    min-width: 0;
     min-height: 60px;
     gap: 6px;
-    padding-inline: 9px;
+    padding-inline: 2px;
   }
 
   .education-card-actions {
@@ -11122,22 +11122,6 @@ body {
   }
 }
 
-/* Section rail: favourites group, divider, and the settings entry at the end (DESIGN.md §7). */
-.city-section-divider {
-  flex: 0 0 1px;
-  align-self: stretch;
-  margin: 12px 4px;
-  background: var(--border);
-}
-
-.city-section-nav button.city-section-settings {
-  color: var(--muted-foreground);
-}
-
-.city-section-nav button.city-section-settings:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
 
 /* Section settings dialog: one row per section, grip, favourite, move, visibility. */
 .section-settings {
@@ -11227,4 +11211,72 @@ body {
 
 .place-detail-page .city-place-list.place-detail-list {
   padding-bottom: 0;
+}
+
+/* «Більше»: the city sections without a rail tab, one row each (design/navigation.md). */
+.city-more-list ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.city-more-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.city-more-row:hover {
+  background: var(--surface-muted);
+}
+
+.city-more-row:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.city-more-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.city-more-label {
+  font-weight: 700;
+}
+
+.city-more-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 6px 8px 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.city-more-back:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

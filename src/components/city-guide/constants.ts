@@ -97,6 +97,29 @@ export const CITY_SECTIONS: { id: CitySection; label: string; icon: string }[] =
   { id: "charging",   label: "Електрозарядка", icon: "ev_station" },
 ];
 
+/**
+ * The city rail: four fixed tabs, the same on web and mobile (design/navigation.md). Everything else
+ * is under «Більше», in the order of MORE_SECTION_IDS.
+ */
+export type CityTab = "transport" | "places" | "services" | "more";
+
+export const CITY_TABS: { id: CityTab; label: string; icon: string }[] = [
+  { id: "transport", label: "Транспорт", icon: "directions_transit" },
+  { id: "places", label: "Місця", icon: "explore" },
+  { id: "services", label: "Послуги", icon: "storefront" },
+  { id: "more", label: "Більше", icon: "apps" },
+];
+
+/** The sections under «Більше», in list order. */
+export const MORE_SECTION_IDS: CitySection[] = [
+  "education", "events", "jobs", "real-estate", "market", "parking", "fuel", "charging",
+];
+
+/** Which rail tab a section belongs to. */
+export function cityTabOf(section: CitySection): CityTab {
+  return MORE_SECTION_IDS.includes(section) ? "more" : (section as CityTab);
+}
+
 export const CITY_CENTER: [number, number] = [24.0297, 49.8397];
 
 export const FEATURED_CATEGORIES: CityPlaceCategory[] = [
