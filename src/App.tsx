@@ -14,13 +14,11 @@ import type { Point } from "geojson";
 import {
   Bus,
   ChevronRight,
-  LocateFixed,
   MapPin,
   MaterialIcon,
   Navigation,
   Plus,
   Search,
-  TriangleAlert,
   X,
 } from "./components/ui/material-icon";
 import { AnimatePresence, MotionConfig, motion, useTransform, type MotionStyle } from "motion/react";
@@ -32,6 +30,9 @@ import { useMediaQuery } from "./lib/use-media-query";
 import { Card } from "./components/ui/card";
 import { Toggle } from "./components/ui/toggle";
 import { AdminPanel, type AdminDataset } from "./components/admin-panel";
+import { CityLaunchDialog } from "./components/city-launch-dialog";
+import { AirAlertBanner } from "./components/air-alert-banner";
+import { MapControls } from "./components/map-controls";
 import { BuildingModelEditor } from "./components/building-model-editor";
 import { CityGuide } from "./components/city-guide";
 import { TransitVehicleArtwork } from "./components/transit-vehicle-artwork";
@@ -101,7 +102,6 @@ import {
   CITY_PLACE_CATEGORY_COLORS,
   cityBuildingFromMapFeature,
   cityPlaceIcons,
-  cityPlaceCategories,
   cityPlacesFromMapFeatures,
   type CityPlaceCategory,
   type CityPlace,
@@ -153,7 +153,6 @@ import {
   CITY_UPDATES_ENDPOINT,
   LVIV_REGION_BOUNDS,
   MAP_STYLE,
-  TELEGRAM_CHANNEL_URL,
 } from "./lib/app-constants";
 import { cityPlacePinImage, pinImageId } from "./lib/map-pins";
 import {
@@ -304,7 +303,6 @@ export default function App() {
   const [cityUpdateEmail, setCityUpdateEmail] = useState("");
   const [cityUpdateStatus, setCityUpdateStatus] = useState("");
   const [cityUpdateSubmitting, setCityUpdateSubmitting] = useState(false);
-  const cityLaunchDialogRef = useRef<HTMLDialogElement>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null,
   );
@@ -340,13 +338,6 @@ export default function App() {
   const deferredSearch = useDeferredValue(search);
   const [waypoints, setWaypoints] = useState(["Моє місцезнаходження", ""]);
   const [navDestination, setNavDestination] = useState<NavDestination | null>(null);
-
-  useEffect(() => {
-    const dialog = cityLaunchDialogRef.current;
-    if (!dialog) return;
-    if (cityLaunchModalOpen && !dialog.open) dialog.showModal();
-    else if (!cityLaunchModalOpen && dialog.open) dialog.close();
-  }, [cityLaunchModalOpen]);
 
   useEffect(() => {
     const goOnline = (): void => setBrowserOnline(true);
@@ -1813,6 +1804,14 @@ export default function App() {
         setNotificationMessage("Не вдалося запросити дозвіл на сповіщення.");
       });
   };
+  const toggleLayerCategory = (id: CityPlaceCategory): void => {
+    setMapLayerCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 3) next.add(id);
+      return next;
+    });
+  };
   const resetMapOrientation = (): void => {
     mapRef.current?.easeTo({
       bearing: 0,
@@ -3064,205 +3063,23 @@ export default function App() {
           </section>
         )}
       </motion.aside>
-      {airAlert.status === "active" && (
-      <section
-        className={`air-alert active level-${airAlert.level ?? "red"}${airAlertExpanded ? " expanded" : ""}`}
-        role="status"
-      >
-        <button
-          type="button"
-          className="air-alert-pill"
-          aria-expanded={airAlertExpanded}
-          onClick={() => setAirAlertExpanded((expanded) => !expanded)}
-        >
-          <TriangleAlert size={19} />
-          <strong>
-            {airAlert.level === "yellow"
-              ? "БпЛА · Львівщина"
-              : "Тривога · Львівщина"}
-          </strong>
-          <MaterialIcon
-            name={airAlertExpanded ? "keyboard_arrow_up" : "keyboard_arrow_down"}
-            size={20}
-          />
-        </button>
-        {airAlertExpanded && (
-          <div className="air-alert-details">
-            <p>
-              {airAlert.level === "yellow"
-                ? "Жовтий рівень — загроза ударних БпЛА. Будьте уважні, в укриття спускайтеся за потреби."
-                : "Червоний рівень — ракетна небезпека. Негайно пройдіть до найближчого укриття."}
-            </p>
-            {(airAlert.sinceText || (airAlert.areasAffected?.length ?? 0) > 0) && (
-              <div className="air-alert-meta">
-                {airAlert.sinceText && (
-                  <span className="air-alert-since">
-                    <MaterialIcon name="schedule" size={15} />
-                    {airAlert.sinceText}
-                  </span>
-                )}
-                {(airAlert.areasAffected?.length ?? 0) > 0 && (
-                  <ul className="air-alert-areas" aria-label="Райони під тривогою">
-                    {airAlert.areasAffected?.map((area) => (
-                      <li key={area}>{area}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-            <div className="air-alert-threats">
-              <div className="air-alert-threats-head">
-                <MaterialIcon name="flight" size={16} />
-                <strong>БпЛА та КАБ</strong>
-                <small>за повідомленнями Повітряних сил</small>
-              </div>
-              {(airAlert.threats?.length ?? 0) > 0 ? (
-                <ul className="air-alert-threat-list">
-                  {airAlert.threats?.map((threat) => (
-                    <li
-                      className={`air-alert-threat kind-${threat.kind}`}
-                      key={`${threat.time}-${threat.place}`}
-                    >
-                      <time>{threat.time}</time>
-                      <span>{threat.placeUk}</span>
-                      <small>{threat.kindLabel}</small>
-                      {threat.note && <p>{threat.note}</p>}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="air-alert-threat-empty">
-                  Нових повідомлень про БпЛА по Львівщині немає. Статус
-                  оновлюється кожні 30 секунд.
-                </p>
-              )}
-            </div>
-            <div className="air-alert-links">
-              <Button asChild variant="outline" size="sm" className="alert-action">
-                <a
-                  href="https://map.war-monitor.org/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <MaterialIcon name="radar" size={16} />
-                  Жива мапа БпЛА
-                </a>
-              </Button>
-            </div>
-            <small className="air-alert-source">
-              Офіційні повідомлення мають пріоритет.
-            </small>
-            <div className="shelter-nearest">
-              {shelterLoadState === "loading" ? (
-                <span>Завантажуємо міський перелік укриттів…</span>
-              ) : shelterLoadState === "error" ? (
-                <span>
-                  Не вдалося завантажити перелік укриттів. Перевірте{" "}
-                  <a
-                    href="https://opendata.city-adm.lviv.ua/dataset/zahysni-sporudy-lvivska-mth"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    дані міста
-                  </a>
-                  .
-                </span>
-              ) : !userLocation ? (
-                <>
-                  {locationError && (
-                    <span className="shelter-location-error" role="alert">
-                      {locationError}
-                    </span>
-                  )}
-                  <span>Дозвольте геолокацію, щоб знайти найближче укриття.</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shelter-action"
-                    onClick={requestLocation}
-                  >
-                    Моє місце
-                  </Button>
-                </>
-              ) : nearestShelter ? (
-                <>
-                  <strong>
-                    Найближче · {formatDistance(nearestShelter.distanceMeters)}{" "}
-                    по прямій
-                  </strong>
-                  <span className="shelter-address">
-                    {nearestShelter.address}
-                  </span>
-                  <small>
-                    {nearestShelter.status}
-                    {nearestShelter.capacity
-                      ? ` · ${nearestShelter.capacity} місць`
-                      : ""}
-                    {" · доступ 24/7 за даними міста"}
-                  </small>
-                  <div className="shelter-actions">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shelter-action"
-                      onClick={() =>
-                        mapRef.current?.flyTo({
-                          center: [nearestShelter.lng, nearestShelter.lat],
-                          zoom: 16,
-                          duration: 650,
-                        })
-                      }
-                    >
-                      На мапі
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="shelter-action"
-                    >
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${nearestShelter.lat},${nearestShelter.lng}&travelmode=walking&origin=${userLocation[1]},${userLocation[0]}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Маршрут
-                      </a>
-                    </Button>
-                  </div>
-                  <small className="shelter-source-note">
-                    Відстань по прямій. Фактичну доступність перевіряйте на
-                    місці ·{" "}
-                    <a
-                      href="https://opendata.city-adm.lviv.ua/dataset/zahysni-sporudy-lvivska-mth"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      джерело: відкриті дані Львова
-                    </a>
-                  </small>
-                </>
-              ) : (
-                <span>
-                  Немає укриття зі статусом «готове» або «рекомендоване» та
-                  цілодобовим доступом у міському переліку.{" "}
-                  <a
-                    href="https://opendata.city-adm.lviv.ua/dataset/zahysni-sporudy-lvivska-mth"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Переглянути джерело
-                  </a>
-                  .
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </section>
-      )}
+      <AirAlertBanner
+        airAlert={airAlert}
+        expanded={airAlertExpanded}
+        onToggleExpanded={() => setAirAlertExpanded((value) => !value)}
+        shelterLoadState={shelterLoadState}
+        userLocation={userLocation}
+        locationError={locationError}
+        onRequestLocation={requestLocation}
+        nearestShelter={nearestShelter}
+        onShowShelterOnMap={(shelter) =>
+          mapRef.current?.flyTo({
+            center: [shelter.lng, shelter.lat],
+            zoom: 16,
+            duration: 650,
+          })
+        }
+      />
       {locationError && activeView !== "admin" && (
         <div className="map-location-error" role="alert">
           {locationError}
@@ -3277,144 +3094,25 @@ export default function App() {
           </Button>
         </div>
       )}
-      <div
-        className={`map-controls${mapPitch >= 0.5 ? " map-controls-3d" : " map-controls-2d"}`}
-        role="group"
-        aria-label="Керування мапою"
-        data-tour="map-controls"
+      <MapControls
         hidden={activeView === "admin"}
-      >
-        <div className="map-control-set" role="group" aria-label="Вигляд мапи">
-          <Button
-            type="button"
-            variant="ghost"
-            className="map-control map-compass"
-            aria-label="Компас: повернути карту на північ"
-            title="Компас: повернути карту на північ"
-            onClick={resetMapOrientation}
-          >
-            <span className="map-compass-needle" style={{ transform: `rotate(${-mapBearing}deg)` }}>
-              <MaterialIcon name="navigation" size={20} />
-            </span>
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            className="map-control map-mode-control"
-            aria-label={mapPitch < 0.5 ? "Перейти до 3D-вигляду" : "Перейти до вигляду 2D зверху"}
-            aria-pressed={mapPitch >= 0.5}
-            title={mapPitch < 0.5 ? "Перейти до 3D-вигляду" : "Перейти до вигляду 2D зверху"}
-            onClick={toggleMapMode}
-          >
-            3D
-          </Button>
-          {mapPitch >= 0.5 && (
-            <Button
-              type="button"
-              variant="ghost"
-              className={`map-control terrain-control${terrainEnabled ? " active" : ""}`}
-              aria-label={terrainEnabled ? "Вимкнути рельєф і лісові масиви" : "Увімкнути рельєф і лісові масиви"}
-              aria-pressed={terrainEnabled}
-              title={terrainEnabled ? "Вимкнути рельєф і лісові масиви" : "Увімкнути рельєф і лісові масиви"}
-              onClick={() => setTerrainEnabled((enabled) => !enabled)}
-            >
-              <MaterialIcon name="terrain" size={20} />
-            </Button>
-          )}
-        </div>
-        <div className="map-control-set map-pan-pad" role="group" aria-label="Перемістити карту">
-          <span aria-hidden="true" />
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту вгору" title="Вгору" onClick={() => panMap("up")}><MaterialIcon name="keyboard_arrow_up" size={22} /></Button>
-          <span aria-hidden="true" />
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту ліворуч" title="Ліворуч" onClick={() => panMap("left")}><MaterialIcon name="keyboard_arrow_left" size={22} /></Button>
-          <span aria-hidden="true" className="map-pan-center" />
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту праворуч" title="Праворуч" onClick={() => panMap("right")}><MaterialIcon name="keyboard_arrow_right" size={22} /></Button>
-          <span aria-hidden="true" />
-          <Button type="button" variant="ghost" className="map-control" aria-label="Перемістити карту донизу" title="Донизу" onClick={() => panMap("down")}><MaterialIcon name="keyboard_arrow_down" size={22} /></Button>
-          <span aria-hidden="true" />
-        </div>
-        <div className="map-control-set map-zoom-controls" role="group" aria-label="Масштаб">
-          <Button type="button" variant="ghost" className="map-control" aria-label="Збільшити масштаб" title="Збільшити масштаб" onClick={() => mapRef.current?.zoomIn()}><MaterialIcon name="add" size={22} /></Button>
-          <Button type="button" variant="ghost" className="map-control" aria-label="Зменшити масштаб" title="Зменшити масштаб" onClick={() => mapRef.current?.zoomOut()}><MaterialIcon name="remove" size={22} /></Button>
-        </div>
-        <div className="map-control-set" role="group" aria-label="Додаткові дії">
-          <Button type="button" variant="ghost" className="map-control" aria-label="Моє місцезнаходження" title="Моє місцезнаходження" data-tour="map-location" onClick={requestLocation}><LocateFixed size={20} /></Button>
-          <div className="map-settings-wrap" ref={mapSettingsRef}>
-            <Button
-              type="button"
-              variant="ghost"
-              className={`map-control map-settings-btn${mapSettingsOpen ? " active" : ""}`}
-              aria-label="Що показувати на мапі"
-              aria-expanded={mapSettingsOpen}
-              aria-haspopup="dialog"
-              title="Шари мапи"
-              onClick={() => setMapSettingsOpen((o) => !o)}
-            >
-              <MaterialIcon name="layers" size={20} />
-              {mapLayerCategories.size > 0 && (
-                <span className="map-settings-badge">{mapLayerCategories.size}</span>
-              )}
-            </Button>
-            {mapSettingsOpen && (
-              <div
-                className="map-settings-popover"
-                role="dialog"
-                aria-label="Шари мапи"
-              >
-                <div className="map-settings-header">
-                  <span className="map-settings-title">Що показувати</span>
-                  {mapLayerCategories.size > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="map-settings-clear"
-                      onClick={() => setMapLayerCategories(new Set())}
-                    >
-                      Скинути
-                    </Button>
-                  )}
-                </div>
-                <p className="map-settings-hint">
-                  До 3 категорій одночасно
-                </p>
-                <div className="map-settings-chips" role="group" aria-label="Категорії місць">
-                  {cityPlaceCategories.map((cat) => {
-                    const isActive = mapLayerCategories.has(cat.id);
-                    const atLimit = !isActive && mapLayerCategories.size >= 3;
-                    return (
-                      <Toggle variant="pill"
-                        key={cat.id}
-                        size="sm"
-                       
-                        disabled={atLimit}
-                        className="map-layer-chip"
-                        style={{ "--chip-color": CITY_PLACE_CATEGORY_COLORS[cat.id] } as React.CSSProperties}
-                        onClick={() => {
-                          setMapLayerCategories((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(cat.id)) {
-                              next.delete(cat.id);
-                            } else if (next.size < 3) {
-                              next.add(cat.id);
-                            }
-                            return next;
-                          });
-                        }} pressed={isActive}>
-                        <span
-                          className="map-layer-chip-dot"
-                          aria-hidden="true"
-                        />
-                        {cat.label}
-                      </Toggle>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        pitch={mapPitch}
+        bearing={mapBearing}
+        terrainEnabled={terrainEnabled}
+        onToggleTerrain={() => setTerrainEnabled((enabled) => !enabled)}
+        onResetOrientation={resetMapOrientation}
+        onToggleMapMode={toggleMapMode}
+        onPan={panMap}
+        onZoomIn={() => mapRef.current?.zoomIn()}
+        onZoomOut={() => mapRef.current?.zoomOut()}
+        onLocate={requestLocation}
+        settingsRef={mapSettingsRef}
+        settingsOpen={mapSettingsOpen}
+        onToggleSettings={() => setMapSettingsOpen((open) => !open)}
+        layerCategories={mapLayerCategories}
+        onToggleLayerCategory={toggleLayerCategory}
+        onClearLayers={() => setMapLayerCategories(new Set())}
+      />
       {developmentToolsAvailable && activeView !== "admin" && (
         <DevToolsDock
           key="dev-tools-dock"
@@ -3474,168 +3172,24 @@ export default function App() {
         )}
       </AnimatePresence>
     </main>
-    <dialog
-      ref={cityLaunchDialogRef}
-      className="city-launch-dialog"
-      aria-modal="true"
-      aria-labelledby="city-launch-title"
-      onClose={() => setCityLaunchModalOpen(false)}
-      onCancel={() => setCityLaunchModalOpen(false)}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          setCityLaunchModalOpen(false);
-        }
+    <CityLaunchDialog
+      open={cityLaunchModalOpen}
+      onOpenChange={setCityLaunchModalOpen}
+      citySearch={citySearch}
+      onCitySearchChange={setCitySearch}
+      cityIndexGroups={cityIndexGroups}
+      noMatches={filteredCityRegions.length === 0}
+      interestedCities={interestedCities}
+      onToggleCity={selectInterestedCity}
+      cityUpdateEmail={cityUpdateEmail}
+      onCityUpdateEmailChange={(value) => {
+        setCityUpdateEmail(value);
+        setCityUpdateStatus("");
       }}
-    >
-      <div className="city-launch-content">
-        <header className="city-launch-header">
-          <div>
-            <span className="city-launch-eyebrow">un · МІСТО ПОРУЧ</span>
-            <h2 id="city-launch-title">Незабаром у нових містах</h2>
-            <p>
-              Оберіть область або знайдіть місто. Повідомимо, щойно un
-              з’явиться поруч.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Закрити вибір міста"
-            onClick={() => setCityLaunchModalOpen(false)}
-          >
-            <X size={20} />
-          </Button>
-        </header>
-        <label className="city-launch-search">
-          <MaterialIcon name="search" size={20} />
-          <Input
-            type="search"
-            aria-label="Знайти місто або область"
-            placeholder="Місто або область"
-            value={citySearch}
-            onChange={(event) => setCitySearch(event.target.value)}
-          />
-          {citySearch && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Очистити пошук міст"
-              onClick={() => setCitySearch("")}
-            >
-              <MaterialIcon name="close" size={18} />
-            </Button>
-          )}
-        </label>
-        <div
-          className="city-launch-list"
-          role="region"
-          aria-label="Області та міста України"
-        >
-          <div className="city-index">
-            {cityIndexGroups.map(({ letter, items }) => (
-              <section
-                key={letter}
-                className="city-index-section"
-                aria-labelledby={`city-index-${letter}`}
-              >
-                <h3 id={`city-index-${letter}`} className="city-index-letter">
-                  {letter}
-                </h3>
-                <ul className="city-index-items">
-                  {items.map((entry) => {
-                    const isSelected = interestedCities.has(entry.name);
-                    const isCurrent = entry.name === "Львів";
-                    return (
-                      <li key={entry.key}>
-                        <button
-                          type="button"
-                          className={`city-region-city${entry.isCenter ? " city-region-center" : ""}${isSelected ? " active" : ""}${isCurrent ? " current" : ""}`}
-                          aria-pressed={isSelected}
-                          disabled={isCurrent}
-                          onClick={() => selectInterestedCity(entry.name)}
-                        >
-                          <span>{entry.name}</span>
-                          {isCurrent ? (
-                            <span className="city-region-badge">Доступне</span>
-                          ) : isSelected ? (
-                            <MaterialIcon name="check" size={18} />
-                          ) : entry.isCenter ? (
-                            <span className="city-region-badge">Центр</span>
-                          ) : null}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-          {filteredCityRegions.length === 0 && (
-            <p className="city-launch-empty" role="status">
-              Місто або область не знайдено. Перевірте назву й спробуйте ще раз.
-            </p>
-          )}
-        </div>
-        <div className="city-launch-actions">
-          {TELEGRAM_CHANNEL_URL ? (
-            <a
-              className="city-launch-telegram"
-              href={TELEGRAM_CHANNEL_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <div className="city-launch-telegram-content">
-                <div className="city-launch-telegram-icon">
-                  <MaterialIcon name="send" size={24} />
-                </div>
-                <div className="city-launch-telegram-text">
-                  <strong>Підпишіться на Telegram</strong>
-                  <span>Отримуйте новини про запуск у нових містах</span>
-                </div>
-                <MaterialIcon name="arrow_forward" size={20} />
-              </div>
-            </a>
-          ) : (
-            <p className="city-launch-telegram-note">
-              Посилання на Telegram-канал з’явиться тут незабаром.
-            </p>
-          )}
-          <form className="city-launch-email-form" onSubmit={submitCityUpdate}>
-            <label htmlFor="city-launch-email">
-              Залиште email — надішлемо новину про запуск у {interestedCities.size} {interestedCities.size === 1 ? "місті" : "містах"}
-            </label>
-            <div>
-              <Input
-                id="city-launch-email"
-                type="email"
-                autoComplete="email"
-                placeholder="name@example.com"
-                value={cityUpdateEmail}
-                disabled={cityUpdateSubmitting}
-                onChange={(event) => {
-                  setCityUpdateEmail(event.target.value);
-                  setCityUpdateStatus("");
-                }}
-                required
-              />
-              <Button type="submit" disabled={cityUpdateSubmitting}>
-                {cityUpdateSubmitting ? "Надсилаємо…" : "Повідомити мене"}
-              </Button>
-            </div>
-            <p
-              className="city-launch-status"
-              role="status"
-              aria-live="polite"
-            >
-              {cityUpdateStatus ||
-                "Адресу буде надіслано лише після підключення підписки."}
-            </p>
-          </form>
-        </div>
-      </div>
-    </dialog>
+      cityUpdateSubmitting={cityUpdateSubmitting}
+      cityUpdateStatus={cityUpdateStatus}
+      onSubmit={submitCityUpdate}
+    />
     </TooltipProvider>
     </MotionConfig>
   );
