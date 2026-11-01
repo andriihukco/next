@@ -3,7 +3,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { categoryColor, materialIconFor } from "../../lib/category-icons";
 import { cityPlaceIcons } from "../../../../src/lib/city-places";
 import type { CityPlace } from "../../lib/places-api";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 export function formatDistance(meters: number): string {
   return meters >= 1000
@@ -41,7 +41,7 @@ export function PlaceListCard({ place, categoryLabel, distanceMeters, onOpen, on
       </Pressable>
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" onPress={onDirections} style={[styles.button, styles.buttonPrimary]}>
-          <MaterialIcons name="directions" size={18} color="#ffffff" />
+          <MaterialIcons name="directions" size={18} color={colors.onPrimary} />
           <Text style={styles.buttonPrimaryText}>Маршрут</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={onShowOnMap} style={[styles.button, styles.buttonOutline]}>
@@ -70,7 +70,7 @@ export function PlaceGridCard({ place, distanceMeters, onOpen }: Omit<CardProps,
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   buttonPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
-  buttonPrimaryText: { fontFamily: fonts.bold, fontSize: 15, color: "#ffffff" },
+  buttonPrimaryText: { fontFamily: fonts.bold, fontSize: 15, color: colors.onPrimary },
   buttonOutline: { backgroundColor: colors.card, borderColor: colors.border },
   buttonText: { fontFamily: fonts.bold, fontSize: 15, color: colors.foreground },
   tile: {
@@ -112,4 +112,4 @@ const styles = StyleSheet.create({
   },
   tileTop: { height: 72, alignItems: "center", justifyContent: "center" },
   tileBody: { padding: 10, gap: 2 },
-});
+}));

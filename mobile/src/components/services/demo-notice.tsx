@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, fonts, radius } from "../../lib/theme";
+import { colors, fonts, radius, themed } from "../../lib/theme";
 
 /** Every service is a demo. Shown on the hub and in each flow, as on the web. */
 export function DemoNotice({ text }: { text: string }) {
@@ -12,7 +12,7 @@ export function DemoNotice({ text }: { text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   box: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -22,4 +22,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amberSurface,
   },
   text: { flex: 1, fontFamily: fonts.regular, fontSize: 14, color: colors.amberText, lineHeight: 20 },
-});
+}));

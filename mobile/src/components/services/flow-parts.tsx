@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { DemoNotice } from "./demo-notice";
 import { PrimaryButton } from "../primary-button";
 
@@ -77,7 +77,7 @@ export function QuantityStepper({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   header: { gap: 4 },
   back: { flexDirection: "row", alignItems: "center", minHeight: MIN_TOUCH, marginLeft: -8 },
   backText: { fontFamily: fonts.bold, fontSize: 17, color: colors.primary },
@@ -105,14 +105,14 @@ const styles = StyleSheet.create({
   chipDisabled: { opacity: 0.4 },
   chipTextDisabled: { textDecorationLine: "line-through" },
   count: { minWidth: 28, textAlign: "center", fontFamily: fonts.bold, fontSize: 16, color: colors.foreground },
-});
+}));
 
 /** Typography for flow content, matching the shop flow. */
-export const flowText = StyleSheet.create({
+export const flowText = themed(() => ({
   heading: { fontFamily: fonts.extrabold, fontSize: 22, letterSpacing: -0.4, color: colors.foreground },
   section: { fontFamily: fonts.extrabold, fontSize: 17, letterSpacing: -0.2, color: colors.foreground, marginTop: 8 },
   caption: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground },
-});
+}));
 
 /** Tappable card row with an icon, a title and a caption. Used for every choice list. */
 export function CardRow({
@@ -142,7 +142,7 @@ export function CardRow({
     >
       {icon ? (
         <View style={[cardStyles.icon, { backgroundColor: selected ? colors.primary : colors.accent }]}>
-          <MaterialIcons name={icon} size={22} color={selected ? "#ffffff" : iconColor} />
+          <MaterialIcons name={icon} size={22} color={selected ? colors.onPrimary : iconColor} />
         </View>
       ) : null}
       <View style={cardStyles.copy}>
@@ -214,7 +214,7 @@ export function FlowResultView({ title, lines, onExit, notice }: { title: string
   return (
     <View style={resultStyles.wrap}>
       <View style={resultStyles.icon}>
-        <MaterialIcons name="check" size={36} color="#ffffff" />
+        <MaterialIcons name="check" size={36} color={colors.onPrimary} />
       </View>
       <Text style={resultStyles.title} accessibilityRole="header">{title}</Text>
       {lines.map((line) => (
@@ -227,7 +227,7 @@ export function FlowResultView({ title, lines, onExit, notice }: { title: string
 }
 
 
-const cardStyles = StyleSheet.create({
+const cardStyles = themed(() => ({
   card: {
     minHeight: MIN_TOUCH + 20,
     flexDirection: "row",
@@ -248,11 +248,11 @@ const cardStyles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   radioActive: { borderColor: colors.primary },
   radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary },
-});
+}));
 
-const resultStyles = StyleSheet.create({
+const resultStyles = themed(() => ({
   wrap: { alignItems: "center", gap: 12, paddingVertical: 16 },
   icon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   title: { fontFamily: fonts.extrabold, fontSize: 22, letterSpacing: -0.4, color: colors.foreground },
   line: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.foreground, textAlign: "center" },
-});
+}));

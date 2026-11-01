@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { PrimaryButton } from "../primary-button";
 import { CardRow, ChipRow, FlowHeader, FlowInput, FlowResultView, flowText, RadioCard } from "./flow-parts";
-import { colors, radius } from "../../lib/theme";
+import { colors, radius, themed } from "../../lib/theme";
 import { formatUAH } from "../../lib/demo-format";
 import { GYMS, GYM_PLANS } from "../../lib/demo-care";
 import { formatDay, nextDays } from "../../lib/demo-booking";
@@ -126,10 +126,10 @@ export function MembershipFlow({ onExit }: { onExit: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flow: { flex: 1, gap: 10 },
   scroll: { gap: 10, paddingBottom: 16 },
   summary: { gap: 6, padding: 14, borderRadius: radius.xl, backgroundColor: colors.surfaceMuted },
   total: { fontFamily: "Manrope_800ExtraBold", fontSize: 18, letterSpacing: -0.3, color: colors.foreground },
   footer: { gap: 8 },
-});
+}));

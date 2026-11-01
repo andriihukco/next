@@ -9,7 +9,7 @@ import { CinemaFlow } from "./cinema-flow";
 import { AppointmentFlow } from "./appointment-flow";
 import { MembershipFlow } from "./membership-flow";
 import { SERVICES, type ServiceId } from "../../lib/services";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 type Props = { onFlowChange?: (open: boolean) => void };
 
@@ -83,7 +83,7 @@ export function ServicesPanel({ onFlowChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flexFill: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
   hub: { gap: 14, paddingHorizontal: 16, paddingBottom: 28, paddingTop: 4 },
   largeTitle: { fontFamily: fonts.extrabold, fontSize: 28, letterSpacing: -0.6, color: colors.foreground },
@@ -98,14 +98,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   promoCopy: { flex: 1, gap: 4 },
-  promoKicker: { fontFamily: fonts.bold, fontSize: 12, color: "#c9ecd9", textTransform: "uppercase", letterSpacing: 0.6 },
-  promoTitle: { fontFamily: fonts.extrabold, fontSize: 19, letterSpacing: -0.3, color: "#ffffff" },
-  promoText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 19, color: "#e6f6ee" },
+  promoKicker: { fontFamily: fonts.bold, fontSize: 12, color: colors.onPrimary, opacity: 0.8, textTransform: "uppercase", letterSpacing: 0.6 },
+  promoTitle: { fontFamily: fonts.extrabold, fontSize: 19, letterSpacing: -0.3, color: colors.onPrimary },
+  promoText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 19, color: colors.onPrimary },
   promoButton: {
     minHeight: MIN_TOUCH,
     paddingHorizontal: 14,
     borderRadius: radius.pill,
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.card,
     justifyContent: "center",
   },
   promoButtonText: { fontFamily: fonts.bold, fontSize: 15, color: colors.primary },
@@ -125,4 +125,4 @@ const styles = StyleSheet.create({
   tileIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   tileTitle: { fontFamily: fonts.extrabold, fontSize: 16, letterSpacing: -0.2, color: colors.foreground, marginTop: 6 },
   tileDescription: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground },
-});
+}));

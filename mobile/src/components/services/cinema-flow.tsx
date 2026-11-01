@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { PrimaryButton } from "../primary-button";
 import { CardRow, ChipRow, FlowHeader, FlowResultView, flowText, RadioCard } from "./flow-parts";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { formatUAH } from "../../lib/demo-format";
 import { FILMS, formatDay, isSeatTaken, MAX_SEATS, nextDays, SEAT_ROWS, SEATS_PER_ROW, SESSION_TEMPLATES } from "../../lib/demo-booking";
 
@@ -174,7 +174,7 @@ export function CinemaFlow({ onExit }: { onExit: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flow: { flex: 1, gap: 10 },
   scroll: { gap: 10, paddingBottom: 16 },
   hall: { gap: 6, padding: 12, borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: colors.card, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
@@ -186,8 +186,8 @@ const styles = StyleSheet.create({
   seatSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   seatTaken: { backgroundColor: colors.surfaceMuted, opacity: 0.6 },
   seatText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.foreground },
-  seatTextSelected: { color: "#ffffff" },
+  seatTextSelected: { color: colors.onPrimary },
   summary: { gap: 6, padding: 14, borderRadius: radius.xl, backgroundColor: colors.surfaceMuted },
   total: { fontFamily: fonts.extrabold, fontSize: 20, letterSpacing: -0.3, color: colors.foreground },
   footer: { gap: 8 },
-});
+}));

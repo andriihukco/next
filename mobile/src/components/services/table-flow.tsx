@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { PrimaryButton } from "../primary-button";
 import { ChipRow, CardRow, FlowHeader, FlowInput, FlowResultView, flowText, QuantityStepper } from "./flow-parts";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { formatUAH } from "../../lib/demo-format";
 import { MENUS, RESTAURANTS } from "../../lib/demo-shop";
 import { formatDay, isDemoSlotFree, nextDays, TIME_SLOTS } from "../../lib/demo-booking";
@@ -156,7 +156,7 @@ export function TableFlow({ onExit }: { onExit: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flow: { flex: 1, gap: 10 },
   scroll: { gap: 12, paddingBottom: 16 },
   guests: { gap: 8 },
@@ -166,4 +166,4 @@ const styles = StyleSheet.create({
   cardFoot: { gap: 6, marginTop: 6 },
   price: { fontFamily: fonts.extrabold, fontSize: 15, color: colors.foreground },
   footer: { gap: 8 },
-});
+}));

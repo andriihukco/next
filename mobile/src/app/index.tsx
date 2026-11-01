@@ -17,7 +17,7 @@ import { useStops } from "../hooks/use-stops";
 import { fetchPlacesIn, type CityPlace } from "../lib/places-api";
 import { fetchRouteShape } from "../lib/transit-api";
 import { distanceKm } from "../lib/geo";
-import { colors } from "../lib/theme";
+import { colors, themed } from "../lib/theme";
 import { TransportPanel } from "../components/transport/transport-panel";
 import { MapHeader } from "../components/transport/map-header";
 import { SectionTabs, type CitySection } from "../components/transport/section-tabs";
@@ -264,7 +264,7 @@ export default function CityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   alertWrap: {
     position: "absolute",
@@ -278,4 +278,4 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 36,
   },
-});
+}));

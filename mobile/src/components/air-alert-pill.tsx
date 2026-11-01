@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { GlassSurface } from "./glass-surface";
 import type { AirAlert } from "../lib/alerts-api";
-import { colors, MIN_TOUCH, type } from "../lib/theme";
+import { colors, MIN_TOUCH, type, themed } from "../lib/theme";
 
 const ALERT_RED = "#dc2626"; // --map-marker-alert (DESIGN.md §2a)
 const ALERT_YELLOW = "#d89418"; // --transport-bus, the web's yellow alert tone
@@ -57,7 +57,7 @@ export function AirAlertPill({ alert }: { alert: AirAlert }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   surface: { padding: 0, borderRadius: 22, paddingHorizontal: 14 },
   header: {
     minHeight: MIN_TOUCH,
@@ -73,4 +73,4 @@ const styles = StyleSheet.create({
   caption: { ...type.footnote, color: colors.mutedForeground },
   threats: { gap: 4, marginTop: 4 },
   sectionTitle: { ...type.bodyStrong, color: colors.foreground },
-});
+}));

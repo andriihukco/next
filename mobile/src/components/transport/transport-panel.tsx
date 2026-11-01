@@ -8,7 +8,7 @@ import { TransitRouteList } from "./transit-route-list";
 import { PlacesPanel } from "../places/places-panel";
 import { EducationPanel } from "../places/education-panel";
 import { ServicesPanel } from "../services/services-panel";
-import { colors, radius } from "../../lib/theme";
+import { colors, radius, themed } from "../../lib/theme";
 import type { Vehicle } from "../../lib/transit-types";
 import type { CityPlace } from "../../lib/places-api";
 
@@ -166,7 +166,7 @@ export function TransportPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0 },
   surface: {
     flex: 1,
@@ -184,4 +184,4 @@ const styles = StyleSheet.create({
   },
   body: { paddingHorizontal: 16, paddingBottom: 24, gap: 4 },
   flexFill: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
-});
+}));

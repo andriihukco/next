@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { StyleSheet } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";
-import { MAP_HTML } from "./map/map-html";
+import { colors, themed } from "../lib/theme";
+import { mapHtml } from "./map/map-html";
 import type { CityPlace } from "../lib/places-api";
 import type { Shelter } from "../lib/alerts-api";
 import type { Stop, Vehicle } from "../lib/transit-types";
@@ -230,7 +231,7 @@ export function CityMap({
         webRef.current = instance as { postMessage: (message: string) => void } | null;
       }}
       style={styles.map}
-      source={{ html: MAP_HTML }}
+      source={{ html: mapHtml() }}
       originWhitelist={["*"]}
       onMessage={onMessage}
       scrollEnabled={false}
@@ -240,6 +241,6 @@ export function CityMap({
   );
 }
 
-const styles = StyleSheet.create({
-  map: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#f8faf9" },
-});
+const styles = themed(() => ({
+  map: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background },
+}));

@@ -4,7 +4,7 @@ import { formatDistance } from "./place-cards";
 import { categoryColor, materialIconFor } from "../../lib/category-icons";
 import { cityPlaceIcons, formatOpeningHours } from "../../../../src/lib/city-places";
 import type { CityPlace } from "../../lib/places-api";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 // Info rows the web app shows. Phone and website are actions, not rows (same as the web).
 const INFO_ICONS: Record<string, string> = {
@@ -53,7 +53,7 @@ export function PlaceDetail({ place, distanceMeters, onBack, onShowOnMap, onDire
 
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" onPress={onDirections} style={[styles.button, styles.buttonPrimary]}>
-          <MaterialIcons name="directions" size={18} color="#ffffff" />
+          <MaterialIcons name="directions" size={18} color={colors.onPrimary} />
           <Text style={styles.buttonPrimaryText}>Маршрут</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={onShowOnMap} style={[styles.button, styles.buttonOutline]}>
@@ -99,7 +99,7 @@ export function PlaceDetail({ place, distanceMeters, onBack, onShowOnMap, onDire
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   scroll: { maxHeight: 420 },
   head: { flexDirection: "row", alignItems: "center", gap: 12 },
   back: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: "center", justifyContent: "center", marginLeft: -10 },
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   buttonPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
-  buttonPrimaryText: { fontFamily: fonts.bold, fontSize: 15, color: "#ffffff" },
+  buttonPrimaryText: { fontFamily: fonts.bold, fontSize: 15, color: colors.onPrimary },
   buttonOutline: { backgroundColor: colors.card, borderColor: colors.border },
   buttonText: { fontFamily: fonts.bold, fontSize: 15, color: colors.foreground },
   row: {
@@ -138,4 +138,4 @@ const styles = StyleSheet.create({
   more: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, marginTop: 10 },
   moreText: { fontFamily: fonts.bold, fontSize: 15, color: colors.foreground },
   source: { fontFamily: fonts.regular, fontSize: 12, color: colors.mutedForeground, marginTop: 12 },
-});
+}));

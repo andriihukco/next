@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { MapCamera, MapCommands } from "../city-map";
 import { LVIV_REGION } from "../city-map";
 import { SATELLITE_ATTRIBUTION, satellitePreviewUrl, type MapStyleMode } from "../../lib/map-style";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { categoryColor } from "../../lib/category-icons";
 import { cityPlaceCategories } from "../../../../src/lib/city-places";
 
@@ -317,7 +317,7 @@ function PadButton({
 const PAD = 132;
 const CELL = 44;
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   column: { position: "absolute", right: 12, alignItems: "flex-end", gap: 8 },
   group: {
     backgroundColor: colors.card,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: "hidden",
-    shadowColor: "#0f172a",
+    shadowColor: colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0f172a",
+    shadowColor: colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.sm,
-    backgroundColor: "rgba(255,255,255,0.86)",
+    backgroundColor: colors.glassSoft,
     color: colors.mutedForeground,
     fontFamily: fonts.regular,
     fontSize: 10,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
-    shadowColor: "#0f172a",
+    shadowColor: colors.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
@@ -474,4 +474,4 @@ const styles = StyleSheet.create({
   chipDot: { width: 8, height: 8, borderRadius: radius.pill },
   chipText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.foreground },
   chipTextSelected: { fontFamily: fonts.bold, color: colors.accentForeground },
-});
+}));

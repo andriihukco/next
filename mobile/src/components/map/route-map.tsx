@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";
-import { MAP_HTML } from "./map-html";
+import { colors, themed } from "../../lib/theme";
+import { mapHtml } from "./map-html";
 import type { LatLng } from "../../../../src/lib/navigation";
 
 type Props = {
@@ -42,7 +43,7 @@ export function RouteMap({ route, routeColor, origin }: Props) {
         webRef.current = instance as { postMessage: (message: string) => void } | null;
       }}
       style={styles.map}
-      source={{ html: MAP_HTML }}
+      source={{ html: mapHtml() }}
       originWhitelist={["*"]}
       onMessage={onMessage}
       scrollEnabled={false}
@@ -51,6 +52,6 @@ export function RouteMap({ route, routeColor, origin }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  map: { flex: 1, backgroundColor: "#f8faf9" },
-});
+const styles = themed(() => ({
+  map: { flex: 1, backgroundColor: colors.background },
+}));

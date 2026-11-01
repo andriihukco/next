@@ -7,7 +7,7 @@ import { categoryColor, materialIconFor } from "../../lib/category-icons";
 import { cityPlaceCategories, cityPlaceIcons } from "../../../../src/lib/city-places";
 import { distanceKm } from "../../lib/geo";
 import type { CityPlace } from "../../lib/places-api";
-import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 const PAGE_SIZE = 40; // Same page size as the web app.
 const NEARBY_METERS = 1000;
@@ -91,7 +91,7 @@ export function PlacesPanel({ places, origin, hasUserLocation, onOpen, onShowOnM
               onPress={() => setLayout(option.id)}
               style={[styles.segmentItem, active && styles.segmentActive]}
             >
-              <MaterialIcons name={option.icon} size={18} color={active ? "#ffffff" : colors.foreground} />
+              <MaterialIcons name={option.icon} size={18} color={active ? colors.onPrimary : colors.foreground} />
               <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{option.label}</Text>
             </Pressable>
           );
@@ -132,7 +132,7 @@ export function PlacesPanel({ places, origin, hasUserLocation, onOpen, onShowOnM
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   body: { paddingHorizontal: 16, paddingBottom: 24, gap: 14 },
   segment: {
     flexDirection: "row",
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   },
   segmentActive: { backgroundColor: colors.primary },
   segmentText: { fontFamily: fonts.bold, fontSize: 15, color: colors.foreground },
-  segmentTextActive: { color: "#ffffff" },
+  segmentTextActive: { color: colors.onPrimary },
   count: { fontFamily: fonts.regular, fontSize: 14, color: colors.mutedForeground },
   list: { gap: 12 },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 12 },
@@ -166,4 +166,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
   },
   moreText: { fontFamily: fonts.bold, fontSize: 15, color: colors.foreground },
-});
+}));

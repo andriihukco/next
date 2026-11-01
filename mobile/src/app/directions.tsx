@@ -27,7 +27,7 @@ import {
   type RouteProgress,
 } from "../../../src/lib/navigation";
 import type { Stop } from "../lib/transit-types";
-import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius } from "../lib/theme";
+import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius, themed } from "../lib/theme";
 
 type Mode = NavMode | "transit";
 
@@ -215,7 +215,7 @@ export default function DirectionsScreen() {
           ) : (
             <>
               <View style={styles.bannerIcon}>
-                <MaterialIcons name={MANEUVER_ICON[upcoming?.kind ?? "straight"]} size={34} color="#ffffff" />
+                <MaterialIcons name={MANEUVER_ICON[upcoming?.kind ?? "straight"]} size={34} color={colors.onPrimary} />
               </View>
               <View style={styles.bannerCopy}>
                 <Text style={styles.bannerDistance}>{route && progress ? formatDistance(toUpcoming) : "—"}</Text>
@@ -267,7 +267,7 @@ export default function DirectionsScreen() {
                 onPress={() => setMode(item.id)}
                 style={[styles.mode, active && styles.modeActive]}
               >
-                <MaterialIcons name={MODE_ICON[item.id]} size={18} color={active ? "#ffffff" : colors.foreground} />
+                <MaterialIcons name={MODE_ICON[item.id]} size={18} color={active ? colors.onPrimary : colors.foreground} />
                 <Text style={[styles.modeText, active && styles.modeTextActive]}>{item.label}</Text>
               </Pressable>
             );
@@ -296,7 +296,7 @@ export default function DirectionsScreen() {
               onPress={startNavigation}
               style={[styles.start, (!route || status !== "idle" || !originIsReal) && styles.startDisabled]}
             >
-              <MaterialIcons name="navigation" size={20} color="#ffffff" />
+              <MaterialIcons name="navigation" size={20} color={colors.onPrimary} />
               <Text style={styles.startText}>{originIsReal ? "Почати" : "Потрібна геолокація"}</Text>
             </Pressable>
 
@@ -353,7 +353,7 @@ export default function DirectionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   map: { flex: 1 },
   back: { position: "absolute", top: 56, left: 16 },
@@ -365,12 +365,12 @@ const styles = StyleSheet.create({
   mode: { minHeight: MIN_TOUCH, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, flexDirection: "row", alignItems: "center", gap: 6 },
   modeActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   modeText: { fontFamily: fonts.bold, fontSize: 14, color: colors.foreground },
-  modeTextActive: { color: "#ffffff" },
+  modeTextActive: { color: colors.onPrimary },
   eta: { gap: 2, minHeight: 56 },
   etaValue: { fontFamily: fonts.extrabold, fontSize: 34, letterSpacing: -0.8, color: colors.foreground },
   start: { minHeight: MIN_TOUCH + 4, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   startDisabled: { opacity: 0.45 },
-  startText: { fontFamily: fonts.bold, fontSize: 16, color: "#ffffff" },
+  startText: { fontFamily: fonts.bold, fontSize: 16, color: colors.onPrimary },
   steps: { maxHeight: 220 },
   step: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   stepIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceMuted, alignItems: "center", justifyContent: "center" },
@@ -385,10 +385,10 @@ const styles = StyleSheet.create({
   banner: { position: "absolute", top: 56, left: 16, right: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.primary, borderRadius: radius.xl },
   bannerIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
   bannerCopy: { flex: 1, gap: 2 },
-  bannerDistance: { fontFamily: fonts.extrabold, fontSize: 24, letterSpacing: -0.4, color: "#ffffff" },
-  bannerTitle: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 21, color: "#ffffff" },
+  bannerDistance: { fontFamily: fonts.extrabold, fontSize: 24, letterSpacing: -0.4, color: colors.onPrimary },
+  bannerTitle: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 21, color: colors.onPrimary },
   navBar: { position: "absolute", bottom: 24, left: 16, right: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, borderRadius: radius.xl },
   navStats: { flex: 1, gap: 2 },
   endButton: { minHeight: MIN_TOUCH, paddingHorizontal: 18, borderRadius: radius.lg, backgroundColor: colors.destructive, alignItems: "center", justifyContent: "center" },
   endButtonText: { fontFamily: fonts.bold, fontSize: 15, color: "#ffffff" },
-});
+}));

@@ -7,9 +7,15 @@ import { PrimaryButton } from "../components/primary-button";
 import { SettingsRow, SettingsSection } from "../components/settings/settings-parts";
 import { ChipRow } from "../components/services/flow-parts";
 import { clearDeviceData, EMPTY_PROFILE, readLocalProfile, saveLocalProfile, VISITOR_TYPES, type LocalProfile } from "../lib/local-profile";
-import { colors, fonts, MIN_TOUCH, radius, HIT_SLOP } from "../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, HIT_SLOP, themed } from "../lib/theme";
+import { useThemePreference, type ThemePreference } from "../lib/theme-provider";
 
 type View_ = "main" | "profile";
+const THEME_OPTIONS: { id: ThemePreference; label: string }[] = [
+  { id: "system", label: "Системна" },
+  { id: "light", label: "Світла" },
+  { id: "dark", label: "Темна" },
+];
 const PERMISSION_LABEL: Record<string, string> = { granted: "Дозволено", denied: "Заборонено", undetermined: "Не запитано" };
 
 /** Settings and profile, grouped as in the web's settings dialog. Account sign-in is not built yet. */
@@ -19,6 +25,7 @@ export default function ProfileScreen() {
   const [draft, setDraft] = useState<LocalProfile>(EMPTY_PROFILE);
   const [location, setLocation] = useState<string>("undetermined");
   const [notifications, setNotifications] = useState(false);
+  const theme = useThemePreference();
 
   useEffect(() => {
     void readLocalProfile().then((saved) => {
@@ -142,14 +149,23 @@ export default function ProfileScreen() {
         <SettingsSection title="Вигляд">
           <View style={styles.themeBox}>
             <Text style={styles.themeTitle}>Тема</Text>
-            <View style={styles.segment}>
-              {["Системна", "Світла", "Темна"].map((label, index) => (
-                <View key={label} style={[styles.segmentItem, index === 1 && styles.segmentActive]} accessibilityState={{ disabled: index !== 1 }}>
-                  <Text style={[styles.segmentText, index === 1 && styles.segmentTextActive, index !== 1 && styles.segmentDisabled]}>{label}</Text>
-                </View>
-              ))}
+            <View style={styles.segment} accessibilityRole="radiogroup">
+              {THEME_OPTIONS.map((option) => {
+                const active = option.id === theme.preference;
+                return (
+                  <Pressable
+                    key={option.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: active }}
+                    onPress={() => theme.setPreference(option.id)}
+                    style={[styles.segmentItem, active && styles.segmentActive]}
+                  >
+                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            <Text style={styles.caption}>Поки лише світла тема. Темну й системну додамо окремо.</Text>
+            <Text style={styles.caption}>Системна тема змінюється разом із налаштуваннями телефона.</Text>
           </View>
         </SettingsSection>
 
@@ -167,7 +183,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background, paddingTop: 52 },
   nav: { paddingHorizontal: 12, minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   back: { flexDirection: "row", alignItems: "center", minHeight: MIN_TOUCH },
@@ -179,7 +195,7 @@ const styles = StyleSheet.create({
   card: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: colors.card },
   pressed: { opacity: 0.92 },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontFamily: fonts.extrabold, fontSize: 24, color: "#ffffff" },
+  avatarText: { fontFamily: fonts.extrabold, fontSize: 24, color: colors.onPrimary },
   cardCopy: { flex: 1, gap: 2 },
   cardTitle: { fontFamily: fonts.extrabold, fontSize: 18, letterSpacing: -0.3, color: colors.foreground },
   smallButton: { minHeight: MIN_TOUCH - 8, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: colors.accent, justifyContent: "center" },
@@ -190,9 +206,9 @@ const styles = StyleSheet.create({
   segmentItem: { flex: 1, minHeight: MIN_TOUCH - 8, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   segmentActive: { backgroundColor: colors.primary },
   segmentText: { fontFamily: fonts.bold, fontSize: 14, color: colors.foreground },
-  segmentTextActive: { color: "#ffffff" },
+  segmentTextActive: { color: colors.onPrimary },
   segmentDisabled: { color: colors.mutedForeground },
   label: { fontFamily: fonts.semibold, fontSize: 13, color: colors.mutedForeground, marginTop: 8 },
   input: { minHeight: MIN_TOUCH, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, paddingHorizontal: 14, fontFamily: fonts.regular, fontSize: 16, color: colors.foreground },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 12 },
-});
+}));

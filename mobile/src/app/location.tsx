@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { GlassSurface } from "../components/glass-surface";
 import { PrimaryButton } from "../components/primary-button";
 import { WalkMap } from "../components/walk-map";
-import { colors, type } from "../lib/theme";
+import { colors, type, themed } from "../lib/theme";
 
 /** Onboarding 3 of 3: one permission, one action. Either answer opens the app. */
 export default function LocationScreen() {
@@ -32,7 +32,7 @@ export default function LocationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -55,4 +55,4 @@ const styles = StyleSheet.create({
     ...type.body,
     color: colors.mutedForeground,
   },
-});
+}));

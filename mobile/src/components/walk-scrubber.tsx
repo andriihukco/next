@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { PanResponder, StyleSheet, Text, View } from "react-native";
-import { colors, MIN_TOUCH, type } from "../lib/theme";
+import { colors, MIN_TOUCH, type, themed } from "../lib/theme";
 
 type Props = {
   progress: number;
@@ -64,7 +64,7 @@ export function WalkScrubber({ progress, lengthKm, onScrubStart, onChange }: Pro
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { gap: 6 },
   labels: { flexDirection: "row", alignItems: "baseline", gap: 6 },
   value: { ...type.title, color: colors.foreground },
@@ -97,4 +97,4 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
-});
+}));

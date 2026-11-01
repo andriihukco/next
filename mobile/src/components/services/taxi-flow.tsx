@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { PrimaryButton } from "../primary-button";
 import { CardRow, FlowHeader, FlowInput, FlowResultView, flowText, RadioCard } from "./flow-parts";
-import { colors, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { estimateTripKm, roundFare, TAXI_CLASSES, TAXI_PLACES } from "../../lib/demo-taxi";
 import { formatUAH } from "../../lib/demo-format";
 
@@ -146,7 +146,7 @@ export function TaxiFlow({ onExit }: { onExit: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flow: { flex: 1, gap: 10 },
   scroll: { gap: 10, paddingBottom: 16 },
   routeBox: { padding: 12, gap: 4, borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: colors.card, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
@@ -159,4 +159,4 @@ const styles = StyleSheet.create({
   summary: { gap: 6, padding: 14, borderRadius: radius.xl, backgroundColor: colors.surfaceMuted },
   total: { fontFamily: "Manrope_800ExtraBold", fontSize: 20, letterSpacing: -0.3, color: colors.foreground },
   footer: { gap: 8 },
-});
+}));

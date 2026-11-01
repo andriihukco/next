@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View, Animated } from "react-native";
 import { useRef } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { colors, fonts, HIT_SLOP } from "../../lib/theme";
+import { colors, fonts, HIT_SLOP, themed } from "../../lib/theme";
 import { useDevSim } from "../../lib/dev-sim";
 
 /** Clean header floating over map: logo on left, city centered, profile on right. */
@@ -66,7 +66,7 @@ export function MapHeader() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   container: {
     position: "absolute",
     top: 12,
@@ -98,4 +98,4 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginTop: 2,
   },
-});
+}));

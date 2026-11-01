@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { PrimaryButton } from "../primary-button";
 import { CardRow, ChipRow, FlowHeader, FlowInput, FlowResultView, flowText } from "./flow-parts";
-import { colors, radius } from "../../lib/theme";
+import { colors, radius, themed } from "../../lib/theme";
 import { DOCTORS, SPECIALTIES } from "../../lib/demo-care";
 import { formatDay, isDemoSlotFree, nextDays, TIME_SLOTS } from "../../lib/demo-booking";
 import { materialIconFor } from "../../lib/category-icons";
@@ -133,8 +133,8 @@ export function AppointmentFlow({ onExit }: { onExit: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flow: { flex: 1, gap: 10 },
   scroll: { gap: 10, paddingBottom: 16 },
   footer: { gap: 8 },
-});
+}));

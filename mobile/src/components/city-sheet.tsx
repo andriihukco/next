@@ -3,7 +3,7 @@ import { arrivalsAt } from "../lib/transit-eta";
 import type { Shelter } from "../lib/alerts-api";
 import type { CityPlace } from "../lib/places-api";
 import { FLEET_COLORS, VEHICLE_LABELS, type Stop, type Vehicle } from "../lib/transit-types";
-import { colors, MIN_TOUCH, type } from "../lib/theme";
+import { colors, MIN_TOUCH, type, themed } from "../lib/theme";
 
 export type SheetContent =
   | { kind: "shelter"; shelter: Shelter; nearestMeters: number | null }
@@ -117,7 +117,7 @@ function RouteChip({ route, color }: { route: string; color: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   block: { gap: 8 },
   headRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   headCopy: { flex: 1, gap: 2 },
@@ -143,4 +143,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   chipText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
-});
+}));

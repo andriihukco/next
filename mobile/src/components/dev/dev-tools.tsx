@@ -1,7 +1,7 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useDevSim } from "../../lib/dev-sim";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 /** Dev tools sheet: spawn fake transport and a fake air alert. Opened by holding the logo for 5 seconds. */
 export function DevTools() {
@@ -87,7 +87,7 @@ function Action({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background, paddingTop: 16 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingBottom: 12 },
   headCopy: { flex: 1, gap: 2 },
@@ -104,4 +104,4 @@ const styles = StyleSheet.create({
   rowLabel: { fontFamily: fonts.bold, fontSize: 16, color: colors.foreground },
   count: { fontFamily: fonts.bold, fontSize: 15, color: colors.mutedForeground },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground, marginTop: 8 },
-});
+}));

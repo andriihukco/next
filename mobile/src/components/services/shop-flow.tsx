@@ -4,7 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { PrimaryButton } from "../primary-button";
 import { DemoNotice } from "./demo-notice";
 import { FlowHeader, FlowInput } from "./flow-parts";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { formatUAH } from "../../lib/demo-format";
 import { GROCERY_CATALOG, GROCERY_STORES, MENUS, RESTAURANTS, type DemoItem, type DemoStore } from "../../lib/demo-shop";
 
@@ -65,7 +65,7 @@ export function ShopFlow({ mode, onExit }: { mode: ShopMode; onExit: () => void 
     return (
       <View style={styles.result}>
         <View style={styles.resultIcon}>
-          <MaterialIcons name="check" size={36} color="#ffffff" />
+          <MaterialIcons name="check" size={36} color={colors.onPrimary} />
         </View>
         <Text style={styles.resultTitle} accessibilityRole="header">Замовлення прийнято</Text>
         <Text style={styles.resultBody}>№{orderNumber} · {store?.name}</Text>
@@ -147,7 +147,7 @@ export function ShopFlow({ mode, onExit }: { mode: ShopMode; onExit: () => void 
                       <Text style={styles.price}>{formatUAH(item.price)}</Text>
                       {qty === 0 ? (
                         <Pressable accessibilityRole="button" accessibilityLabel={`Додати: ${item.name}`} onPress={() => setQty(item.id, 1)} style={styles.addBtn}>
-                          <MaterialIcons name="add" size={22} color="#ffffff" />
+                          <MaterialIcons name="add" size={22} color={colors.onPrimary} />
                         </Pressable>
                       ) : (
                         <View style={styles.inlineStepper}>
@@ -213,7 +213,7 @@ export function ShopFlow({ mode, onExit }: { mode: ShopMode; onExit: () => void 
                     onPress={() => setFulfillment(option)}
                     style={[styles.segmentItem, active && styles.segmentActive]}
                   >
-                    <MaterialIcons name={option === "delivery" ? "delivery-dining" : "storefront"} size={18} color={active ? "#ffffff" : colors.foreground} />
+                    <MaterialIcons name={option === "delivery" ? "delivery-dining" : "storefront"} size={18} color={active ? colors.onPrimary : colors.foreground} />
                     <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{option === "delivery" ? "Доставка" : "Самовивіз"}</Text>
                   </Pressable>
                 );
@@ -286,7 +286,7 @@ export function ShopFlow({ mode, onExit }: { mode: ShopMode; onExit: () => void 
           </View>
           <Text style={styles.cartLabel}>Кошик</Text>
           <Text style={styles.cartTotal}>{formatUAH(total)}</Text>
-          <MaterialIcons name="chevron-right" size={22} color="#ffffff" />
+          <MaterialIcons name="chevron-right" size={22} color={colors.onPrimary} />
         </Pressable>
       ) : step === 0 || step === 1 ? null : (
         <View style={styles.footer}>
@@ -298,7 +298,7 @@ export function ShopFlow({ mode, onExit }: { mode: ShopMode; onExit: () => void 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flow: { flex: 1, gap: 10 },
   scroll: { gap: 12, paddingBottom: 96 },
   heading: { fontFamily: fonts.extrabold, fontSize: 22, letterSpacing: -0.4, color: colors.foreground },
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   segmentItem: { flex: 1, minHeight: MIN_TOUCH, borderRadius: radius.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   segmentActive: { backgroundColor: colors.primary },
   segmentText: { fontFamily: fonts.bold, fontSize: 15, color: colors.foreground },
-  segmentTextActive: { color: "#ffffff" },
+  segmentTextActive: { color: colors.onPrimary },
   choice: { minHeight: MIN_TOUCH + 16, flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   choiceActive: { borderColor: colors.primary, backgroundColor: colors.accent },
   choiceTitle: { fontFamily: fonts.bold, fontSize: 16, color: colors.foreground },
@@ -342,11 +342,11 @@ const styles = StyleSheet.create({
   footer: { gap: 8 },
   cartBar: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: MIN_TOUCH + 12, paddingLeft: 8, paddingRight: 14, borderRadius: radius.pill, backgroundColor: colors.primary },
   cartCount: { minWidth: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
-  cartCountText: { fontFamily: fonts.extrabold, fontSize: 14, color: "#ffffff" },
-  cartLabel: { flex: 1, fontFamily: fonts.bold, fontSize: 16, color: "#ffffff" },
-  cartTotal: { fontFamily: fonts.extrabold, fontSize: 16, color: "#ffffff" },
+  cartCountText: { fontFamily: fonts.extrabold, fontSize: 14, color: colors.onPrimary },
+  cartLabel: { flex: 1, fontFamily: fonts.bold, fontSize: 16, color: colors.onPrimary },
+  cartTotal: { fontFamily: fonts.extrabold, fontSize: 16, color: colors.onPrimary },
   result: { alignItems: "center", gap: 12, paddingVertical: 16 },
   resultIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   resultTitle: { fontFamily: fonts.extrabold, fontSize: 22, letterSpacing: -0.4, color: colors.foreground },
   resultBody: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.foreground, textAlign: "center" },
-});
+}));

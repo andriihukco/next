@@ -5,7 +5,7 @@ import { PrimaryButton } from "../components/primary-button";
 import { GlassSurface } from "../components/glass-surface";
 import { WalkMap } from "../components/walk-map";
 import { WALK_TRACK } from "../data/walk-track";
-import { colors, type } from "../lib/theme";
+import { colors, type, themed } from "../lib/theme";
 
 /** Onboarding 1 of 3: the route, one action. */
 export default function WelcomeScreen() {
@@ -31,7 +31,7 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -54,4 +54,4 @@ const styles = StyleSheet.create({
     ...type.body,
     color: colors.mutedForeground,
   },
-});
+}));

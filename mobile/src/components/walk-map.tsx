@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";
-import { MAP_HTML } from "./map/map-html";
+import { colors, themed } from "../lib/theme";
+import { mapHtml } from "./map/map-html";
 import { WALK_TRACK } from "../data/walk-track";
 import { buildTrack, pointAt, walkedPath } from "../lib/geo";
 
@@ -53,7 +54,7 @@ export function WalkMap({ progress, follow = false, bottomInset = 0 }: Props) {
         webRef.current = instance as { postMessage: (message: string) => void } | null;
       }}
       style={styles.map}
-      source={{ html: MAP_HTML }}
+      source={{ html: mapHtml() }}
       originWhitelist={["*"]}
       onMessage={onMessage}
       scrollEnabled={false}
@@ -62,6 +63,6 @@ export function WalkMap({ progress, follow = false, bottomInset = 0 }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  map: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#f8faf9" },
-});
+const styles = themed(() => ({
+  map: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background },
+}));

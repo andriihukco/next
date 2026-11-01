@@ -2,8 +2,11 @@
 // so the 3D building layer is the same. Native code talks to it with JSON messages.
 import { SATELLITE_TILES } from "../../lib/map-style";
 import { VEHICLE_3D_BUNDLE_BASE64, VEHICLE_PLATE_CSS } from "./vehicle-3d.generated";
+import { activeColorScheme, type ColorScheme } from "../../lib/theme";
 
-export const MAP_HTML = `<!doctype html>
+function buildMapHtml(scheme: ColorScheme): string {
+  const dark = scheme === "dark";
+  return `<!doctype html>
 <html lang="uk">
 <head>
 <meta charset="utf-8" />
@@ -14,7 +17,7 @@ export const MAP_HTML = `<!doctype html>
   /* Design tokens from DESIGN.md §2, used by the vehicle trip card copied from the web stylesheet. */
   :root { --background: #f8faf9; --foreground: #18251f; --card: #ffffff; --surface-muted: #f1f4f2; --muted-foreground: #5f6e66; --border: #dce5df; --primary: #087a50; --primary-border: #a9d3bf; --accent: #e5f2eb; --accent-foreground: #075c3d; --fleet-bus: #22c55e; --fleet-tram: #f97316; --fleet-trolleybus: #3b82f6; --fleet-taxi: #eab308; }
   ${VEHICLE_PLATE_CSS}
-  html, body, #map { margin: 0; height: 100%; width: 100%; background: #f8faf9; overflow: hidden; }
+  html, body, #map { margin: 0; height: 100%; width: 100%; background: ${dark ? "#0f1714" : "#f8faf9"}; overflow: hidden; }
   .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { display: none; }
   /* Stop tooltip: a glass card above the stop, like the web's map overlays. */
   .stop-tip .maplibregl-popup-content { background: rgba(255,255,255,0.86); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-radius: 16px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(15,23,42,0.16); border: 1px solid rgba(255,255,255,0.7); font-family: Manrope, Arial, sans-serif; color: #18251f; min-width: 140px; }
@@ -48,7 +51,7 @@ const pending = [];
 
 const map = new maplibregl.Map({
   container: "map",
-  style: "https://tiles.openfreemap.org/styles/liberty",
+  style: "https://tiles.openfreemap.org/styles/${dark ? "dark" : "liberty"}",
   center: [24.0315, 49.8419],
   zoom: 14.2,
   pitch: 50,
@@ -138,6 +141,7 @@ map.on("load", () => {
     paint: { "circle-radius": 9, "circle-color": "#0874df", "circle-stroke-color": "#ffffff", "circle-stroke-width": 3 },
   });
 
+  if (${dark}) addDarkBuildings();
   addSatellite();
 
   ready = true;
@@ -167,6 +171,20 @@ map.on("pitch", emitCamera);
 // Map type (web DESIGN.md §7): imagery under the base style. Standard restores the style's own
 // visibility, hybrid keeps roads and labels over imagery, satellite shows imagery only.
 const baseVisibility = {};
+// The dark style has no 3D buildings, so they are added from the same OpenMapTiles building layer.
+function addDarkBuildings() {
+  if (map.getStyle().layers.some((layer) => layer.type === "fill-extrusion")) return;
+  const firstSymbol = map.getStyle().layers.find((layer) => layer.type === "symbol");
+  map.addLayer({
+    id: "building-3d-dark", type: "fill-extrusion", source: "openmaptiles", "source-layer": "building", minzoom: 14,
+    paint: {
+      "fill-extrusion-color": "#2a3832",
+      "fill-extrusion-height": ["coalesce", ["get", "render_height"], 0],
+      "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+      "fill-extrusion-opacity": 0.9,
+    },
+  }, firstSymbol && firstSymbol.id);
+}
 function addSatellite() {
   for (const layer of map.getStyle().layers) baseVisibility[layer.id] = (layer.layout && layer.layout.visibility) || "visible";
   map.addSource("satellite", { type: "raster", tiles: ["${SATELLITE_TILES}"], tileSize: 256, maxzoom: 19 });
@@ -350,3 +368,14 @@ document.addEventListener("message", (event) => {
 </script>
 </body>
 </html>`;
+}
+
+const htmlByScheme = new Map<ColorScheme, string>();
+
+/** The map page for the active theme: the dark OpenFreeMap style in dark mode, as the web map follows the theme. */
+export function mapHtml(): string {
+  const scheme = activeColorScheme();
+  const cached = htmlByScheme.get(scheme) ?? buildMapHtml(scheme);
+  htmlByScheme.set(scheme, cached);
+  return cached;
+}

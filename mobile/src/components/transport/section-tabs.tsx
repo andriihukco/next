@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View, Animated } from "react-native";
 import { useRef } from "react";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 export type CitySection = "transport" | "places" | "education" | "services";
 
@@ -87,7 +87,7 @@ export function SectionTabs({ value, onChange }: { value: CitySection; onChange:
   return <View style={[styles.fallback]}>{content}</View>;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   glass: {
     position: "absolute",
     bottom: 0,
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -136,4 +136,4 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: colors.primary,
   },
-});
+}));

@@ -3,7 +3,7 @@ import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "r
 import { MaterialIcons } from "@expo/vector-icons";
 import { usePlaceImages, type PlaceReview } from "../../hooks/use-place-images";
 import type { CityPlace } from "../../lib/places-api";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 const REVIEW_CUT = 180;
 const MAX_REVIEWS = 5;
@@ -117,7 +117,7 @@ export function PlaceExtras({ place }: { place: CityPlace }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { gap: 12 },
   caption: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground },
   photos: { gap: 8 },
@@ -138,4 +138,4 @@ const styles = StyleSheet.create({
   reviewText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.foreground },
   more: { alignSelf: "flex-start", minHeight: MIN_TOUCH - 8, justifyContent: "center" },
   moreText: { fontFamily: fonts.bold, fontSize: 14, color: colors.primary },
-});
+}));

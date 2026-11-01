@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, fonts, HIT_SLOP } from "../../lib/theme";
+import { colors, fonts, HIT_SLOP, themed } from "../../lib/theme";
 
 export type TransportTab = "nearby" | "bus" | "tram" | "trolleybus" | "taxi";
 
@@ -55,7 +55,7 @@ export function CategoryOrbs({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: { flexDirection: "row", gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
   item: { width: 76, alignItems: "center", gap: 8 },
   orb: {
@@ -88,4 +88,4 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: fonts.extrabold, fontSize: 12, color: colors.primary },
   label: { fontFamily: fonts.semibold, fontSize: 13, color: colors.foreground, textAlign: "center" },
   labelActive: { fontFamily: fonts.extrabold, color: colors.primary },
-});
+}));

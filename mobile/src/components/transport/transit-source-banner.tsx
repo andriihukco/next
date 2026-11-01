@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 /** Shown only while the map runs on simulated data. Live data has no banner. */
 export function TransitSourceBanner({ simulated, onUseLive }: { simulated: boolean; onUseLive?: () => void }) {
@@ -16,7 +16,7 @@ export function TransitSourceBanner({ simulated, onUseLive }: { simulated: boole
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   box: {
     flexDirection: "row",
     alignItems: "center",
@@ -39,4 +39,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonText: { fontFamily: fonts.bold, fontSize: 14, color: colors.foreground },
-});
+}));

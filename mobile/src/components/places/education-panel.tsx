@@ -6,7 +6,7 @@ import { categoryColor } from "../../lib/category-icons";
 import { cityEducationKind, type CityEducationKind } from "../../../../src/lib/city-places";
 import { distanceKm } from "../../lib/geo";
 import type { CityPlace } from "../../lib/places-api";
-import { colors, fonts } from "../../lib/theme";
+import { colors, fonts, themed } from "../../lib/theme";
 
 // Same kinds, labels and order as the web «Освіта» (src/components/city-guide/constants.ts).
 const EDUCATION_FILTERS: { id: CityEducationKind; label: string; icon: string }[] = [
@@ -83,9 +83,9 @@ export function EducationPanel({ places, origin, onOpen, onShowOnMap, onDirectio
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   body: { paddingHorizontal: 16, paddingBottom: 24, gap: 14 },
   count: { fontFamily: fonts.regular, fontSize: 14, color: colors.mutedForeground },
   list: { gap: 12 },
   empty: { fontFamily: fonts.regular, fontSize: 15, color: colors.mutedForeground, paddingVertical: 12 },
-});
+}));

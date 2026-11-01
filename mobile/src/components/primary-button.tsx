@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 import * as Haptics from "expo-haptics";
-import { colors, HIT_SLOP, MIN_TOUCH, type } from "../lib/theme";
+import { colors, HIT_SLOP, MIN_TOUCH, type, themed } from "../lib/theme";
 
 type Props = {
   label: string;
@@ -27,7 +27,7 @@ export function PrimaryButton({ label, onPress, accessibilityHint }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   button: {
     minHeight: MIN_TOUCH + 8,
     borderRadius: 16,
@@ -45,4 +45,4 @@ const styles = StyleSheet.create({
     ...type.bodyStrong,
     color: colors.onPrimary,
   },
-});
+}));

@@ -7,7 +7,7 @@ import { WalkMap } from "../components/walk-map";
 import { WalkScrubber } from "../components/walk-scrubber";
 import { WALK_TRACK } from "../data/walk-track";
 import { useDemoWalk } from "../lib/use-demo-walk";
-import { colors, type } from "../lib/theme";
+import { colors, type, themed } from "../lib/theme";
 
 const DEMO_WALK_MS = 16000; // Demo pace, not real walking speed (about 9 km/h).
 
@@ -36,7 +36,7 @@ export default function WalkScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -55,4 +55,4 @@ const styles = StyleSheet.create({
   action: {
     marginTop: 16,
   },
-});
+}));

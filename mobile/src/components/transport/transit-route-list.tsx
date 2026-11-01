@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { FLEET_COLORS, type Vehicle, type VehicleType } from "../../lib/transit-types";
 
 type Route = { route: string; type: VehicleType; items: Vehicle[] };
@@ -75,7 +75,7 @@ export function TransitRouteList({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   group: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   row: { minHeight: MIN_TOUCH + 16, flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
   number: { minWidth: 52, height: 40, paddingHorizontal: 8, borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
@@ -92,4 +92,4 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   empty: { fontFamily: fonts.regular, fontSize: 15, color: colors.mutedForeground, paddingVertical: 16 },
-});
+}));

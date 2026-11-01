@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius, themed } from "../../lib/theme";
 import { useDevSim } from "../../lib/dev-sim";
 
 /** Logo, city switcher and account button, as in the web header. */
@@ -43,7 +43,7 @@ export function CityHeader() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 8 },
   logo: { flexDirection: "row", alignItems: "center" },
   logoText: { fontFamily: fonts.extrabold, fontSize: 26, letterSpacing: -0.8, color: colors.foreground },
@@ -74,4 +74,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginLeft: "auto",
   },
-});
+}));

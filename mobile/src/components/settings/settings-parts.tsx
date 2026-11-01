@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../../lib/theme";
 
 /** Section heading in the iOS grouped style: small, uppercase, muted. */
 export function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
@@ -50,7 +50,7 @@ export function SettingsRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   section: { gap: 6 },
   sectionTitle: { fontFamily: fonts.semibold, fontSize: 13, letterSpacing: -0.1, color: colors.mutedForeground, textTransform: "uppercase", paddingLeft: 16 },
   group: { borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: colors.card, overflow: "hidden" },
@@ -62,4 +62,4 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.bold, fontSize: 16, letterSpacing: -0.2, color: colors.foreground },
   textDisabled: { color: colors.mutedForeground },
   subtitle: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground },
-});
+}));

@@ -7,7 +7,7 @@ import { PlaceExtras } from "../components/places/place-extras";
 import { categoryColor, materialIconFor } from "../lib/category-icons";
 import { cityPlaceIcons, formatOpeningHours } from "../../../src/lib/city-places";
 import type { CityPlace } from "../lib/places-api";
-import { colors, fonts, MIN_TOUCH, radius } from "../lib/theme";
+import { colors, fonts, MIN_TOUCH, radius, themed } from "../lib/theme";
 
 const INFO_ICONS: Record<string, string> = { Графік: "schedule", Email: "email", "Wi-Fi": "wifi", Кухня: "restaurant-menu", Оператор: "domain" };
 const HIDDEN = ["Тип", "Телефон", "Мобільний", "Сайт"];
@@ -57,7 +57,7 @@ export default function PlaceScreen() {
             onPress={() => router.push({ pathname: "/directions", params: { name: place.name, lat: String(place.lat), lng: String(place.lng) } })}
             style={[styles.action, styles.actionPrimary]}
           >
-            <MaterialIcons name="directions" size={20} color="#ffffff" />
+            <MaterialIcons name="directions" size={20} color={colors.onPrimary} />
             <Text style={styles.actionPrimaryText}>Маршрут</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => router.navigate("/")} style={[styles.action, styles.actionOutline]}>
@@ -97,7 +97,7 @@ export default function PlaceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   hero: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, gap: 6, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl },
   back: { position: "absolute", top: 54, left: 12, width: MIN_TOUCH, height: MIN_TOUCH, alignItems: "center", justifyContent: "center" },
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 10 },
   action: { flex: 1, minHeight: MIN_TOUCH + 6, borderRadius: radius.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1 },
   actionPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
-  actionPrimaryText: { fontFamily: fonts.bold, fontSize: 16, color: "#ffffff" },
+  actionPrimaryText: { fontFamily: fonts.bold, fontSize: 16, color: colors.onPrimary },
   actionOutline: { backgroundColor: colors.card, borderColor: colors.border },
   actionText: { fontFamily: fonts.bold, fontSize: 16, color: colors.foreground },
   row: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
@@ -118,4 +118,4 @@ const styles = StyleSheet.create({
   source: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: colors.mutedForeground, marginTop: 8 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24, backgroundColor: colors.background },
   body: { fontFamily: fonts.regular, fontSize: 16, color: colors.foreground },
-});
+}));

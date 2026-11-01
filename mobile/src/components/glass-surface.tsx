@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import { colors } from "../lib/theme";
+import { colors, themed } from "../lib/theme";
 
 type Props = {
   children: ReactNode;
@@ -24,7 +24,7 @@ export function GlassSurface({ children, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   base: {
     borderRadius: 28,
     borderCurve: "continuous",
@@ -32,8 +32,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fallback: {
-    backgroundColor: "rgba(255,255,255,0.94)",
+    backgroundColor: colors.glass,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-});
+}));

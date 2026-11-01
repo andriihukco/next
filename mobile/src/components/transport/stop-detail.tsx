@@ -3,7 +3,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-na
 import { MaterialIcons } from "@expo/vector-icons";
 import { arrivalsAt } from "../../lib/transit-eta";
 import { FLEET_COLORS, VEHICLE_LABELS, type Stop, type Vehicle } from "../../lib/transit-types";
-import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius, type } from "../../lib/theme";
+import { colors, fonts, HIT_SLOP, MIN_TOUCH, radius, type, themed } from "../../lib/theme";
 
 type StopTab = "overview" | "schedule" | "facilities" | "contacts" | "reviews";
 
@@ -227,7 +227,7 @@ export function StopDetail({ stop, vehicles, distanceMeters, onSelectVehicle, on
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: { gap: 12 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 32 },
   backText: { fontFamily: fonts.bold, fontSize: 14, color: colors.accentForeground },
@@ -291,4 +291,4 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   link: { ...type.body, color: colors.accentForeground, flex: 1 },
   empty: { ...type.footnote, color: colors.mutedForeground, paddingVertical: 8 },
-});
+}));
