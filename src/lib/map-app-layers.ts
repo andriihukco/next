@@ -6,8 +6,8 @@ import { CITY_PLACE_CATEGORY_COLORS, type CityPlaceCategory } from "./city-place
 import { TRANSIT_TYPE_COLORS as COLORS } from "./fleet";
 import { cityPlacePinImage, pinImageId } from "./map-pins";
 import { addBuildingExtrusions, addTerrain, paintBaseStyle } from "./map-base-style";
-import { createBuilding3DLayer, type Building3DLayer } from "./building-3d-layer";
-import { createVehicle3DLayer, type Vehicle3DLayer } from "./vehicle-3d-layer";
+import type { Building3DLayer } from "./building-3d-layer";
+import type { Vehicle3DLayer } from "./vehicle-3d-layer";
 import {
   cityPlaceFeatures,
   routeFeatures,
@@ -29,9 +29,10 @@ export const INTERACTIVE_LAYERS = [
   "wayme-city-place-labels",
 ];
 
+/** The 3D layers are null when three.js could not load; the 2D map still works. */
 export type AppLayers = {
-  vehicle3D: Vehicle3DLayer;
-  building3D: Building3DLayer;
+  vehicle3D: Vehicle3DLayer | null;
+  building3D: Building3DLayer | null;
 };
 
 function addAppSources(map: MapLibreMap): void {
@@ -257,7 +258,21 @@ function addShelterLayers(map: MapLibreMap): void {
   });
 }
 
-function addVehicleLayers(map: MapLibreMap, onSelectVehicle: (id: string) => void): AppLayers {
+// three.js is large, so the 3D layers load here, after the map and the app shell are up.
+async function load3DLayers(onSelectVehicle: (id: string) => void): Promise<AppLayers> {
+  try {
+    const [{ createBuilding3DLayer }, { createVehicle3DLayer }] = await Promise.all([
+      import("./building-3d-layer"),
+      import("./vehicle-3d-layer"),
+    ]);
+    return { building3D: createBuilding3DLayer(), vehicle3D: createVehicle3DLayer({ onSelect: onSelectVehicle }) };
+  } catch (error) {
+    console.error("3D layers are unavailable; showing the 2D map.", error);
+    return { building3D: null, vehicle3D: null };
+  }
+}
+
+function addVehicleLayers(map: MapLibreMap, layers: AppLayers): AppLayers {
   map.addLayer({
     id: "wayme-vehicles-circles",
     type: "circle",
@@ -270,10 +285,8 @@ function addVehicleLayers(map: MapLibreMap, onSelectVehicle: (id: string) => voi
       "circle-stroke-width": 0,
     },
   });
-  const building3D = createBuilding3DLayer();
-  map.addLayer(building3D);
-  const vehicle3D = createVehicle3DLayer({ onSelect: onSelectVehicle });
-  map.addLayer(vehicle3D);
+  if (layers.building3D) map.addLayer(layers.building3D);
+  if (layers.vehicle3D) map.addLayer(layers.vehicle3D);
   // DOM-free route labels: a colored badge and its route number, drawn by MapLibre above the models.
   map.addLayer({
     id: "wayme-vehicles-badge",
@@ -319,7 +332,7 @@ function addVehicleLayers(map: MapLibreMap, onSelectVehicle: (id: string) => voi
       "circle-stroke-width": 3,
     },
   });
-  return { vehicle3D, building3D };
+  return layers;
 }
 
 /**
@@ -332,12 +345,15 @@ export async function installAppLayers(
 ): Promise<AppLayers | null> {
   snapshotMapPalette();
   addAppSources(map);
+  const layersReady = load3DLayers(options.onSelectVehicle);
   if (!(await addPinImages(map, options.isCurrent))) return null;
+  const layers = await layersReady;
+  if (!options.isCurrent()) return null;
   paintBaseStyle(map);
   addBuildingExtrusions(map);
   addTerrain(map);
   addRouteAndStopLayers(map);
   addPlaceLayers(map);
   addShelterLayers(map);
-  return addVehicleLayers(map, options.onSelectVehicle);
+  return addVehicleLayers(map, layers);
 }

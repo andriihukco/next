@@ -1,9 +1,18 @@
+import { lazy, Suspense } from "react";
 import { AnimatePresence } from "motion/react";
-import { BenefitsDialog } from "../features/onboarding/benefits-dialog";
-import { OnboardingDialog } from "../features/onboarding/onboarding-dialog";
-import { SettingsDialog } from "../features/settings/settings-dialog";
 import type { AppView } from "../lib/app-types";
 import type { useOnboardingGate } from "../hooks/use-onboarding-gate";
+
+// Each dialog is its own chunk: most visits open none of them, and settings pulls in Supabase.
+const OnboardingDialog = lazy(() =>
+  import("../features/onboarding/onboarding-dialog").then((module) => ({ default: module.OnboardingDialog })),
+);
+const BenefitsDialog = lazy(() =>
+  import("../features/onboarding/benefits-dialog").then((module) => ({ default: module.BenefitsDialog })),
+);
+const SettingsDialog = lazy(() =>
+  import("../features/settings/settings-dialog").then((module) => ({ default: module.SettingsDialog })),
+);
 
 type AppDialogsProps = {
   onboarding: ReturnType<typeof useOnboardingGate>;
@@ -26,6 +35,7 @@ export function AppDialogs({
   onRequestLocation,
 }: AppDialogsProps) {
   return (
+    <Suspense fallback={null}>
     <AnimatePresence>
       {onboarding.showOnboarding && (
         <OnboardingDialog
@@ -60,5 +70,6 @@ export function AppDialogs({
         />
       )}
     </AnimatePresence>
+    </Suspense>
   );
 }

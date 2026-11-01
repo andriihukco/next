@@ -1,5 +1,6 @@
 import { createClient, type Session, type User } from "@supabase/supabase-js";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
+import { markPasswordRecovery } from "./password-recovery";
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim();
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
@@ -11,30 +12,12 @@ export const supabase = url && anonKey ? createClient(url, anonKey) : null;
 export const googleSignInEnabled = import.meta.env.VITE_AUTH_GOOGLE === "true";
 
 // A password-reset link signs the user in and fires PASSWORD_RECOVERY once, while the
-// client starts. Listen from module load so the event is not missed before React mounts.
-let passwordRecovery = false;
-const recoveryListeners = new Set<() => void>();
+// client starts. Listen from module load so the event is not missed.
 supabase?.auth.onAuthStateChange((event) => {
-  if (event !== "PASSWORD_RECOVERY") return;
-  passwordRecovery = true;
-  recoveryListeners.forEach((listener) => listener());
+  if (event === "PASSWORD_RECOVERY") markPasswordRecovery();
 });
 
-/** True after the user arrived from a password-reset link and has not set a new password yet. */
-export function usePasswordRecovery(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      recoveryListeners.add(listener);
-      return () => recoveryListeners.delete(listener);
-    },
-    () => passwordRecovery,
-  );
-}
-
-export function finishPasswordRecovery(): void {
-  passwordRecovery = false;
-  recoveryListeners.forEach((listener) => listener());
-}
+export { finishPasswordRecovery, usePasswordRecovery } from "./password-recovery";
 
 export type AuthProvider = "email" | "google" | "telegram";
 

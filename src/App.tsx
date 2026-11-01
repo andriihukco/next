@@ -1,15 +1,12 @@
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useDeferredValue, useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MotionConfig, motion, type MotionStyle } from "motion/react";
-import { AdminPanel } from "./components/admin-panel";
 import { AppDialogs } from "./components/app-dialogs";
 import { AirAlertBanner } from "./components/air-alert-banner";
 import { BrandHeaderControls } from "./components/brand-header-controls";
 import { CityGuide } from "./components/city-guide";
-import { CityLaunchDialog } from "./components/city-launch-dialog";
-import { DevToolsLayer } from "./components/dev-tools/dev-tools-layer";
 import { MapControls } from "./components/map-controls";
-import { NavigationPanel, type NavDestination } from "./components/navigation-panel";
+import type { NavDestination } from "./components/navigation-panel";
 import { SheetHandle } from "./components/sheet-handle";
 import { Button } from "./components/ui/button";
 import { MaterialIcon, X } from "./components/ui/material-icon";
@@ -37,9 +34,21 @@ import { useStopDetails } from "./hooks/use-stop-details";
 import { useTransitFeed } from "./hooks/use-transit-feed";
 import { useVehicleFollow } from "./hooks/use-vehicle-follow";
 import { useDevRoute } from "./lib/dev-tools/route";
-import { usePasswordRecovery } from "./lib/supabase";
+import { loadSupabaseForAuthRedirect, usePasswordRecovery } from "./lib/password-recovery";
 import { useMediaQuery } from "./lib/use-media-query";
 import { useSavedItems } from "./lib/use-saved-items";
+
+// Panels most visits never open load on demand (refactor-plan R9).
+const AdminPanel = lazy(() => import("./components/admin-panel").then((module) => ({ default: module.AdminPanel })));
+const CityLaunchDialog = lazy(() =>
+  import("./components/city-launch-dialog").then((module) => ({ default: module.CityLaunchDialog })),
+);
+const DevToolsLayer = lazy(() =>
+  import("./components/dev-tools/dev-tools-layer").then((module) => ({ default: module.DevToolsLayer })),
+);
+const NavigationPanel = lazy(() =>
+  import("./components/navigation-panel").then((module) => ({ default: module.NavigationPanel })),
+);
 
 export default function App() {
   const devToolsActive = useDevRoute();
@@ -83,6 +92,8 @@ export default function App() {
   const [navDestination, setNavDestination] = useState<NavDestination | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const passwordRecovery = usePasswordRecovery();
+  // Supabase loads only for an auth redirect (or when settings open), not on every visit.
+  useEffect(loadSupabaseForAuthRedirect, []);
   // A password-reset link lands here signed in; open the account view to set the new password.
   useEffect(() => {
     if (passwordRecovery) setSettingsOpen(true);
@@ -224,7 +235,9 @@ export default function App() {
           />
         </div>
         {activeView === "admin" && devToolsActive && (
-          <AdminPanel datasets={admin.datasets} onSave={admin.save} onClose={() => setActiveView("city")} />
+          <Suspense fallback={null}>
+            <AdminPanel datasets={admin.datasets} onSave={admin.save} onClose={() => setActiveView("city")} />
+          </Suspense>
         )}
         {activeView === "map" && !selection.inspectorOpen && (
           <MapTransportPanel
@@ -287,7 +300,9 @@ export default function App() {
           />
         )}
         {navDestination && (
-          <NavigationPanel map={mapRef.current} destination={navDestination} onClose={() => setNavDestination(null)} />
+          <Suspense fallback={null}>
+            <NavigationPanel map={mapRef.current} destination={navDestination} onClose={() => setNavDestination(null)} />
+          </Suspense>
         )}
         {selectedPlace && (
           <PlaceInspector
@@ -346,18 +361,20 @@ export default function App() {
         onClearLayers={places.clearLayerCategories}
       />
       {devToolsActive && activeView !== "admin" && (
-        <DevToolsLayer
-          key="dev-tools-dock"
-          dev={dev}
-          feed={feed}
-          places={places}
-          admin={admin}
-          mapReady={mapReady}
-          activeView={activeView}
-          online={online}
-          onOpenAdmin={() => setActiveView("admin")}
-          onShowOnboarding={onboarding.restart}
-        />
+        <Suspense fallback={null}>
+          <DevToolsLayer
+            key="dev-tools-dock"
+            dev={dev}
+            feed={feed}
+            places={places}
+            admin={admin}
+            mapReady={mapReady}
+            activeView={activeView}
+            online={online}
+            onOpenAdmin={() => setActiveView("admin")}
+            onShowOnboarding={onboarding.restart}
+          />
+        </Suspense>
       )}
       <AppDialogs
         onboarding={onboarding}
@@ -369,21 +386,23 @@ export default function App() {
         onRequestLocation={geo.requestLocation}
       />
     </main>
-    <CityLaunchDialog
-      open={cityLaunch.open}
-      onOpenChange={cityLaunch.setOpen}
-      citySearch={cityLaunch.citySearch}
-      onCitySearchChange={cityLaunch.setCitySearch}
-      cityIndexGroups={cityLaunch.cityIndexGroups}
-      noMatches={cityLaunch.noMatches}
-      interestedCities={cityLaunch.interestedCities}
-      onToggleCity={cityLaunch.toggleCity}
-      cityUpdateEmail={cityLaunch.email}
-      onCityUpdateEmailChange={cityLaunch.changeEmail}
-      cityUpdateSubmitting={cityLaunch.submitting}
-      cityUpdateStatus={cityLaunch.status}
-      onSubmit={cityLaunch.submit}
-    />
+    <Suspense fallback={null}>
+      <CityLaunchDialog
+        open={cityLaunch.open}
+        onOpenChange={cityLaunch.setOpen}
+        citySearch={cityLaunch.citySearch}
+        onCitySearchChange={cityLaunch.setCitySearch}
+        cityIndexGroups={cityLaunch.cityIndexGroups}
+        noMatches={cityLaunch.noMatches}
+        interestedCities={cityLaunch.interestedCities}
+        onToggleCity={cityLaunch.toggleCity}
+        cityUpdateEmail={cityLaunch.email}
+        onCityUpdateEmailChange={cityLaunch.changeEmail}
+        cityUpdateSubmitting={cityLaunch.submitting}
+        cityUpdateStatus={cityLaunch.status}
+        onSubmit={cityLaunch.submit}
+      />
+    </Suspense>
     </TooltipProvider>
     </MotionConfig>
   );

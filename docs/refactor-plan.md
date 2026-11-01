@@ -52,7 +52,7 @@ Other findings:
 | **R6** `server/transit-api.mjs` | Routes per file: vehicles, stops, shelters, alerts, push, buildings, routes. One entry for the Vercel function | Done locally (`refactor/r6-server-split`): 801 → 203 lines, feeds in `server/feeds`, pure helpers in `server/lib`, `npm run test:server` (17 checks) in CI. Output matched the old server. |
 | **R7** 3D layers | Shared loader and material setup. Vehicle and building layers become thin | Pairs with platform-plan S5 |
 | **R8** `index.css` | Split per feature, remove the 1,122 overridden declarations already listed in DESIGN.md §15, merge the 6 `:root` blocks | Independent, large diff, do last |
-| **R9** Performance | Virtualize long lists (places, transit routes), memoize map sources, cap re-renders on the 2.5 s vehicle poll | After R2 |
+| **R9** Performance | Virtualize long lists (places, transit routes), memoize map sources, cap re-renders on the 2.5 s vehicle poll | First load done (`perf/r9-first-load`): `/app` static JS 774 → ~537 KB gzip. Supabase (60 KB) loads only for auth redirects or settings; three.js (165 KB) loads with the map layers; dialogs, admin, dev tools, navigation and the building editor are lazy. Map sources already update per change (R2). Open: the 300 KB budget cannot hold while MapLibre alone is 286 KB; places list is already paged by 40. |
 
 ## 4. Design practices applied
 

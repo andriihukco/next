@@ -1,9 +1,14 @@
-import { BuildingModelEditor } from "../../components/building-model-editor";
+import { lazy, Suspense } from "react";
 import { EntityDetail } from "../../components/entity-detail";
 import { SheetNavBar } from "../../components/ui/detail-layout";
 import { placeInfoRows } from "../../lib/app-formatters";
 import type { BuildingModelData } from "../../lib/building-3d-layer";
 import { CITY_PLACE_CATEGORY_COLORS, cityPlaceIcons, type CityPlace } from "../../lib/city-places";
+
+// The editor pulls in three.js model loaders; only buildings need it.
+const BuildingModelEditor = lazy(() =>
+  import("../../components/building-model-editor").then((module) => ({ default: module.BuildingModelEditor })),
+);
 
 type PlaceInspectorProps = {
   place: CityPlace;
@@ -54,7 +59,7 @@ export function PlaceInspector({
           onDirections={onDirections}
         >
           {place.category === "buildings" && (
-            <>
+            <Suspense fallback={null}>
               <BuildingModelEditor
                 key={place.id}
                 knownHeight={place.heightMeters ?? null}
@@ -67,7 +72,7 @@ export function PlaceInspector({
               {buildingModels.status === "error" && (
                 <p className="building-model-message error">{buildingModels.error}</p>
               )}
-            </>
+            </Suspense>
           )}
         </EntityDetail>
       </div>
