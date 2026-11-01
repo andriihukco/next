@@ -1,4 +1,5 @@
-import { lazy, Suspense, useDeferredValue, useEffect, useRef, useState } from "react";
+import { Suspense, useDeferredValue, useEffect, useRef, useState } from "react";
+import { AdminPanel, CityLaunchDialog, DevToolsLayer, NavigationPanel } from "./app-lazy";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MotionConfig, motion, type MotionStyle } from "motion/react";
 import { AppDialogs } from "./components/app-dialogs";
@@ -37,18 +38,6 @@ import { useDevRoute } from "./lib/dev-tools/route";
 import { loadSupabaseForAuthRedirect, usePasswordRecovery } from "./lib/password-recovery";
 import { useMediaQuery } from "./lib/use-media-query";
 import { useSavedItems } from "./lib/use-saved-items";
-
-// Panels most visits never open load on demand (refactor-plan R9).
-const AdminPanel = lazy(() => import("./components/admin-panel").then((module) => ({ default: module.AdminPanel })));
-const CityLaunchDialog = lazy(() =>
-  import("./components/city-launch-dialog").then((module) => ({ default: module.CityLaunchDialog })),
-);
-const DevToolsLayer = lazy(() =>
-  import("./components/dev-tools/dev-tools-layer").then((module) => ({ default: module.DevToolsLayer })),
-);
-const NavigationPanel = lazy(() =>
-  import("./components/navigation-panel").then((module) => ({ default: module.NavigationPanel })),
-);
 
 export default function App() {
   const devToolsActive = useDevRoute();
