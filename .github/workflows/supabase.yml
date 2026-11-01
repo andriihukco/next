@@ -3,6 +3,7 @@ name: Supabase
 # Migrations: dry-run on every PR that touches supabase/, apply to staging on merge to main,
 # then to production behind the `production` environment (add a required reviewer there).
 # Each job runs only when its secrets exist, so the workflow is safe before setup is finished.
+# Secrets are mapped to job env because GitHub does not allow `secrets` in `if:` conditions.
 
 on:
   pull_request:
@@ -19,17 +20,17 @@ jobs:
   dry-run:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
+      PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
           version: 2.122.0
       - name: Dry-run migrations against staging
-        if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
-          PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+        if: env.SUPABASE_ACCESS_TOKEN != ''
         run: |
           supabase link --project-ref "$PROJECT_REF"
           supabase db push --dry-run
@@ -38,37 +39,41 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
+      PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+      STAGING_DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
           version: 2.122.0
       - name: Apply migrations to staging
-        if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
-          PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+        if: env.SUPABASE_ACCESS_TOKEN != ''
         run: |
           supabase link --project-ref "$PROJECT_REF"
           supabase db push
+      - name: RLS tests on staging (one transaction, rolled back)
+        if: env.STAGING_DB_URL != ''
+        run: psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/platform_rls.test.sql
 
   production:
     if: github.event_name == 'push'
     needs: staging
     runs-on: ubuntu-latest
     environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
           version: 2.122.0
       - name: Apply migrations to production
-        if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
-          PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+        if: env.SUPABASE_ACCESS_TOKEN != ''
         run: |
           supabase link --project-ref "$PROJECT_REF"
           supabase db push
