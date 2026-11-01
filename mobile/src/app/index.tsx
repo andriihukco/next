@@ -3,7 +3,7 @@ import { Alert, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import * as Location from "expo-location";
 import { CityMap, LVIV_REGION, type MapCommands, type MapRegion, type Selection } from "../components/city-map";
-import { MapControls, type MapControlsHandle } from "../components/map/map-controls";
+import { MapControls, MAX_LAYER_CATEGORIES, type MapControlsHandle } from "../components/map/map-controls";
 import type { MapStyleMode } from "../lib/map-style";
 import { CitySheet, type SheetContent } from "../components/city-sheet";
 import { GlassSurface } from "../components/glass-surface";
@@ -22,6 +22,7 @@ import { TransportPanel } from "../components/transport/transport-panel";
 import { MapHeader } from "../components/transport/map-header";
 import { SectionTabs, type CitySection } from "../components/transport/section-tabs";
 import { PlaceDetail } from "../components/places/place-detail";
+import { StopDetail } from "../components/transport/stop-detail";
 
 const PLACES_MAX_DELTA = 0.08; // Places load only when zoomed in enough to be useful.
 const PLACES_DEBOUNCE_MS = 500;
@@ -46,6 +47,20 @@ export default function CityScreen() {
   const [locating, setLocating] = useState(false);
   const [section, setSection] = useState<CitySection>("transport");
   const [mapStyle, setMapStyle] = useState<MapStyleMode>("standard");
+  const [layerCategories, setLayerCategories] = useState<ReadonlySet<string>>(new Set());
+  const toggleLayer = (id: string) => {
+    setLayerCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < MAX_LAYER_CATEGORIES) next.add(id);
+      return next;
+    });
+  };
+  // As on the web: chosen categories narrow the map pins; no choice shows every place.
+  const mapPlaces = useMemo(
+    () => (layerCategories.size > 0 ? places.filter((place) => layerCategories.has(place.category)) : places),
+    [places, layerCategories],
+  );
   const mapCommands = useRef<MapCommands>(null);
   const controls = useRef<MapControlsHandle>(null);
 
@@ -161,7 +176,7 @@ export default function CityScreen() {
       <CityMap
         vehicles={vehicles}
         stops={stops}
-        places={places}
+        places={mapPlaces}
         shelters={shelters}
         showShelters={showShelters}
         nearestShelterId={showShelters ? (nearest?.shelter.id ?? null) : null}
@@ -184,6 +199,9 @@ export default function CityScreen() {
         mapStyle={mapStyle}
         onChangeMapStyle={setMapStyle}
         onLocate={() => void locate()}
+        layerCategories={layerCategories}
+        onToggleLayer={toggleLayer}
+        onClearLayers={() => setLayerCategories(new Set())}
       />
 
       {showShelters && alert && (
@@ -222,6 +240,19 @@ export default function CityScreen() {
                 onShowOnMap={() => setFocus({ latitude: content.place.lat, longitude: content.place.lng })}
                 onDirections={() => openDirections(content.place)}
                 onOpenPage={() => router.push({ pathname: "/place", params: { place: JSON.stringify(content.place) } })}
+              />
+            ) : content.kind === "stop" ? (
+              <StopDetail
+                key={content.stop.id}
+                stop={content.stop}
+                vehicles={content.vehicles}
+                distanceMeters={
+                  userCoordinate
+                    ? distanceKm(userCoordinate, { latitude: content.stop.lat, longitude: content.stop.lng }) * 1000
+                    : null
+                }
+                onSelectVehicle={(vehicle) => setSelection({ kind: "vehicle", id: vehicle.id })}
+                onBack={() => setSelection(null)}
               />
             ) : (
               <CitySheet content={content} />

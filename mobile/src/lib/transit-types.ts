@@ -23,6 +23,14 @@ export type Stop = {
   lat: number;
   lng: number;
   routes: string[];
+  // Optional extras from /api/stops, the same fields as the web Stop (src/lib/app-types.ts).
+  address?: string;
+  facilities?: string[];
+  phone?: string;
+  website?: string;
+  rating?: number;
+  reviewCount?: number;
+  timetable?: { route: string; departure: string }[];
 };
 
 /** Colors from src/lib/fleet.ts (web). */

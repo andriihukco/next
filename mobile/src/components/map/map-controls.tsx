@@ -4,6 +4,7 @@ import {
   Modal,
   PanResponder,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -16,6 +17,8 @@ import type { MapCamera, MapCommands } from "../city-map";
 import { LVIV_REGION } from "../city-map";
 import { SATELLITE_ATTRIBUTION, satellitePreviewUrl, type MapStyleMode } from "../../lib/map-style";
 import { colors, fonts, MIN_TOUCH, radius } from "../../lib/theme";
+import { categoryColor } from "../../lib/category-icons";
+import { cityPlaceCategories } from "../../../../src/lib/city-places";
 
 /** Button steps: one press turns the view 15° and tilts it 10° (same as the web pad). */
 const STEP_BEARING = 15;
@@ -37,22 +40,38 @@ const MAP_STYLE_OPTIONS: { mode: MapStyleMode; label: string; icon: keyof typeof
 
 export type MapControlsHandle = { setCamera: (camera: MapCamera) => void };
 
+/** Same limit as the web layers popover (src/hooks/use-city-places.ts). */
+export const MAX_LAYER_CATEGORIES = 3;
+
 type Props = {
   ref?: Ref<MapControlsHandle>;
   map: RefObject<MapCommands | null>;
   mapStyle: MapStyleMode;
   onChangeMapStyle: (mode: MapStyleMode) => void;
   onLocate: () => void;
+  /** Place categories shown on the map. Empty shows every place. */
+  layerCategories: ReadonlySet<string>;
+  onToggleLayer: (id: string) => void;
+  onClearLayers: () => void;
 };
 
-type Panel = "style" | "camera" | null;
+type Panel = "style" | "camera" | "layers" | null;
 
 /**
  * Floating map controls, the same set and order as the web (DESIGN.md §7): map type and my
  * location, compass, camera (360). Camera state arrives through `setCamera`, so only this
  * component re-renders while the map turns.
  */
-export function MapControls({ ref, map, mapStyle, onChangeMapStyle, onLocate }: Props) {
+export function MapControls({
+  ref,
+  map,
+  mapStyle,
+  onChangeMapStyle,
+  onLocate,
+  layerCategories,
+  onToggleLayer,
+  onClearLayers,
+}: Props) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [camera, setCamera] = useState<MapCamera>({ bearing: 0, pitch: 50 });
@@ -118,6 +137,20 @@ export function MapControls({ ref, map, mapStyle, onChangeMapStyle, onLocate }: 
             active={panel === "camera"}
             onPress={() => setPanel("camera")}
           />
+        </View>
+
+        <View style={styles.group}>
+          <ControlButton
+            icon="layers"
+            label="Що показувати на мапі"
+            active={panel === "layers"}
+            onPress={() => setPanel("layers")}
+          />
+          {layerCategories.size > 0 && (
+            <View style={styles.badge} pointerEvents="none">
+              <Text style={styles.badgeText}>{layerCategories.size}</Text>
+            </View>
+          )}
         </View>
 
         <Text style={styles.attribution}>
@@ -194,6 +227,39 @@ export function MapControls({ ref, map, mapStyle, onChangeMapStyle, onLocate }: 
             </View>
             <Text style={styles.padLabel}>Вид зверху</Text>
             <Text style={styles.hint}>Перетягніть точку в центрі, щоб повертати й нахиляти разом.</Text>
+          </View>
+        )}
+
+        {panel === "layers" && (
+          <View style={[styles.panel, panelStyle, styles.layersPanel]} accessibilityViewIsModal>
+            <View style={styles.cameraHeader}>
+              <Text style={styles.panelTitle}>Що показувати</Text>
+              {layerCategories.size > 0 && (
+                <Pressable accessibilityRole="button" onPress={onClearLayers} hitSlop={8}>
+                  <Text style={styles.clear}>Скинути</Text>
+                </Pressable>
+              )}
+            </View>
+            <Text style={styles.hint}>До {MAX_LAYER_CATEGORIES} категорій одночасно</Text>
+            <ScrollView contentContainerStyle={styles.chips}>
+              {cityPlaceCategories.map((category) => {
+                const selected = layerCategories.has(category.id);
+                const disabled = !selected && layerCategories.size >= MAX_LAYER_CATEGORIES;
+                return (
+                  <Pressable
+                    key={category.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected, disabled }}
+                    disabled={disabled}
+                    onPress={() => onToggleLayer(category.id)}
+                    style={[styles.chip, selected && styles.chipSelected, disabled && styles.chipDisabled]}
+                  >
+                    <View style={[styles.chipDot, { backgroundColor: categoryColor(category.id) }]} />
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{category.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
         )}
       </Modal>
@@ -376,4 +442,36 @@ const styles = StyleSheet.create({
   },
   padDot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.mutedForeground },
   hint: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.mutedForeground },
+  badge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { fontFamily: fonts.extrabold, fontSize: 10, color: colors.onPrimary },
+  layersPanel: { maxHeight: 420 },
+  clear: { fontFamily: fonts.bold, fontSize: 14, color: colors.accentForeground },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  chipSelected: { borderColor: colors.primaryBorder, backgroundColor: colors.accent },
+  chipDisabled: { opacity: 0.4 },
+  chipDot: { width: 8, height: 8, borderRadius: radius.pill },
+  chipText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.foreground },
+  chipTextSelected: { fontFamily: fonts.bold, color: colors.accentForeground },
 });
