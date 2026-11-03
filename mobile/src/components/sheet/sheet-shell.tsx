@@ -60,8 +60,9 @@ export function SheetShell({ backdrop, children }: { backdrop: ReactNode; childr
         <View style={styles.pages}>{children}</View>
       </Animated.View>
 
+      {/* Pinned to the bottom edge: the root is a column, so an in-flow bar would sit at the top. */}
       <GestureDetector gesture={barDrag}>
-        <View style={{ height: barHeight }}>
+        <View style={[styles.tabBarFrame, { height: barHeight }]}>
           <TabBar height={barHeight} paddingBottom={insets.bottom} />
         </View>
       </GestureDetector>
@@ -81,12 +82,15 @@ function useSheetDrag(
     if (activeOffset > 0) pan.activeOffsetY([-activeOffset, activeOffset]);
     return pan
         .onStart(() => {
+          'worklet';
           startHeight.value = sheetHeight.value;
         })
         .onUpdate((event) => {
+          'worklet';
           sheetHeight.value = Math.min(heights.full, Math.max(0, startHeight.value - event.translationY));
         })
         .onEnd((event) => {
+          'worklet';
           const projected = sheetHeight.value - event.velocityY * 0.2;
           let target: SheetSnap = "minimised";
           let best = Infinity;
@@ -119,4 +123,5 @@ const styles = StyleSheet.create({
   grabberArea: { height: 24, alignItems: "center", justifyContent: "center" },
   grabber: { width: 40, height: 5, borderRadius: radius.pill, backgroundColor: colors.border },
   pages: { flex: 1 },
+  tabBarFrame: { position: "absolute", left: 0, right: 0, bottom: 0 },
 });

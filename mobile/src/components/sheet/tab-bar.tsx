@@ -18,11 +18,12 @@ export function TabBar({ height, paddingBottom }: { height: number; paddingBotto
   const press = (id: TabId, href: (typeof TABS)[number]["href"]) => {
     if (id === tab) {
       if (snap === "minimised") requestSheet("half");
-      else router.dismissAll();
+      else if (router.canDismiss()) router.dismissAll();
       return;
     }
     setActiveTab(id);
-    router.dismissAll();
+    // dismissAll throws POP_TO_TOP when nothing is pushed above the tab root.
+    if (router.canDismiss()) router.dismissAll();
     router.replace(href);
     if (snap === "minimised") requestSheet("half");
   };

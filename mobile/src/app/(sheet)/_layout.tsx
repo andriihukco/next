@@ -6,7 +6,7 @@ import { pageHeaderOptions } from "../../components/navigation/header";
 const page = pageHeaderOptions();
 
 /** The sheet opens on Транспорт; pushes from it stack above it. */
-export const unstable_settings = { initialRouteName: "transport" };
+export const unstable_settings = { anchor: "transport" };
 
 /**
  * Every page of the app lives in this bottom sheet over the live map: the tab roots and the pages
