@@ -2,6 +2,8 @@ import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { AppErrorBoundary } from './components/app-error-boundary';
 import { LandingPage } from './landing/landing-page';
+import { CityLandingPage } from './landing/city-landing-page';
+import { findCity } from './landing/landing-cities';
 import { isDevPathname } from './lib/dev-tools/route';
 import { isLegalSlug } from './legal/legal-content';
 import './index.css';
@@ -25,6 +27,8 @@ const path = window.location.pathname.replace(/\/+$/, '') || '/';
 const isDesignSystem = path === '/design' || path === '/design-system';
 const isApp = path === '/app' || path.startsWith('/app/') || isDevPathname(path);
 const legalSlug = path.slice(1);
+// `/<city>` is the city page (landing/landing-cities.ts). Unknown paths keep the global landing.
+const city = findCity(legalSlug);
 
 // The app shell locks html, body and #root to the viewport (overflow hidden).
 // The landing page scrolls the document, so it lifts that lock on its own route.
@@ -46,6 +50,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <Suspense fallback={null}>
         <LegalPage slug={legalSlug} />
       </Suspense>
+    ) : city ? (
+      <CityLandingPage city={city} />
     ) : isDesignSystem ? (
       <Suspense fallback={null}>
         <DesignLibrary />

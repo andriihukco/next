@@ -13,7 +13,9 @@ type Status = { state: "idle" | "sending" | "done" } | { state: "error"; message
  * Landing sign-up (public.leads). Insert only: the page can never read sign-ups back.
  * A repeat address counts as done, so the form never reveals who already signed up.
  */
-export function LandingLeadForm() {
+export function LandingLeadForm({ source = "landing", cityName }: { source?: string; cityName?: string }) {
+  // A city page only takes a waitlist sign-up for that city; the venue form is global.
+  const kinds = cityName ? LEAD_KINDS.filter((item) => item.id === "waitlist") : LEAD_KINDS;
   const [kind, setKind] = useState<LeadKind>("waitlist");
   const [email, setEmail] = useState("");
   const [business, setBusiness] = useState("");
@@ -21,7 +23,13 @@ export function LandingLeadForm() {
   const [trap, setTrap] = useState("");
   const [status, setStatus] = useState<Status>({ state: "idle" });
   const id = useId();
-  const copy = LEAD_KINDS.find((item) => item.id === kind) ?? LEAD_KINDS[0];
+  const copy = cityName
+    ? {
+        title: `Напишіть, коли відкриємо ${cityName}.`,
+        text: `Залиште пошту, і ми напишемо, щойно мапа міста буде готова. Не частіше ніж раз на місяць.`,
+        button: "Підписатися",
+      }
+    : (kinds.find((item) => item.id === kind) ?? LEAD_KINDS[0]);
   const privacyPublished = PUBLISHED_LEGAL.includes("privacy");
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -39,7 +47,7 @@ export function LandingLeadForm() {
       kind,
       email: email.trim(),
       business_name: kind === "business" ? business.trim() || null : null,
-      source: "landing",
+      source,
     });
     if (error && error.code !== "23505") {
       console.error("Could not save the sign-up.", error);
@@ -51,21 +59,23 @@ export function LandingLeadForm() {
 
   return (
     <div className="landing-lead">
-      <div className="landing-lead-kinds" role="group" aria-label="Кому цікаво">
-        {LEAD_KINDS.map((item) => (
-          <Toggle
-            key={item.id}
-            variant="pill"
-            pressed={kind === item.id}
-            onClick={() => {
-              setKind(item.id);
-              setStatus({ state: "idle" });
-            }}
-          >
-            {item.label}
-          </Toggle>
-        ))}
-      </div>
+      {kinds.length > 1 && (
+        <div className="landing-lead-kinds" role="group" aria-label="Кому цікаво">
+          {kinds.map((item) => (
+            <Toggle
+              key={item.id}
+              variant="pill"
+              pressed={kind === item.id}
+              onClick={() => {
+                setKind(item.id);
+                setStatus({ state: "idle" });
+              }}
+            >
+              {item.label}
+            </Toggle>
+          ))}
+        </div>
+      )}
       <h3 className="landing-lead-title">{copy.title}</h3>
       <p className="landing-lead-text">{copy.text}</p>
       {status.state === "done" ? (
